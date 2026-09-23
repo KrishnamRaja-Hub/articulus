@@ -1,0 +1,2605 @@
+{
+ "receivingId": 7,
+ "major": "ECE: Electrical Engineering B.S.",
+ "year": "2025-2026",
+ "sendingIds": [
+  113,
+  51,
+  137,
+  49,
+  114,
+  124,
+  74,
+  103,
+  58,
+  33,
+  136,
+  92,
+  65,
+  80,
+  32
+ ],
+ "root": {
+  "kind": "node",
+  "type": "AND",
+  "required": true,
+  "children": [
+   {
+    "kind": "node",
+    "type": "AND",
+    "title": "LOWER DIVISION MAJOR REQUIREMENTS",
+    "required": true,
+    "children": [
+     {
+      "kind": "node",
+      "type": "AND",
+      "required": true,
+      "children": [
+       {
+        "kind": "req",
+        "id": "ECE 35",
+        "label": "Introduction to Analog Design",
+        "units": 4,
+        "groups": [],
+        "noArticulation": {
+         "32": "No Course Articulated",
+         "33": "No Course Articulated",
+         "49": "No Course Articulated",
+         "51": "No Course Articulated",
+         "58": "No Course Articulated",
+         "65": "No Course Articulated",
+         "74": "No Course Articulated",
+         "80": "No Course Articulated",
+         "92": "No Course Articulated",
+         "103": "No Course Articulated",
+         "113": "No Course Articulated",
+         "114": "No Course Articulated",
+         "124": "No Course Articulated",
+         "136": "No Course Articulated",
+         "137": "No Course Articulated"
+        }
+       },
+       {
+        "kind": "req",
+        "id": "ECE 45",
+        "label": "Circuits and Systems",
+        "units": 4,
+        "groups": [],
+        "noArticulation": {
+         "32": "This course must be taken at the university after transfer",
+         "33": "This course must be taken at the university after transfer",
+         "49": "This course must be taken at the university after transfer",
+         "51": "This course must be taken at the university after transfer",
+         "58": "This course must be taken at the university after transfer",
+         "65": "This course must be taken at the university after transfer",
+         "74": "This course must be taken at the university after transfer",
+         "80": "This course must be taken at the university after transfer",
+         "92": "This course must be taken at the university after transfer",
+         "103": "This course must be taken at the university after transfer",
+         "113": "This course must be taken at the university after transfer",
+         "114": "This course must be taken at the university after transfer",
+         "124": "This course must be taken at the university after transfer",
+         "136": "This course must be taken at the university after transfer",
+         "137": "This course must be taken at the university after transfer"
+        }
+       },
+       {
+        "kind": "req",
+        "id": "ECE 5",
+        "label": "Introduction to Electrical and Computer Engineering",
+        "units": 4,
+        "groups": [],
+        "noArticulation": {
+         "32": "No Course Articulated",
+         "33": "No Course Articulated",
+         "49": "No Course Articulated",
+         "51": "No Course Articulated",
+         "58": "No Course Articulated",
+         "65": "No Course Articulated",
+         "74": "No Course Articulated",
+         "80": "No Course Articulated",
+         "92": "No Course Articulated",
+         "103": "No Course Articulated",
+         "113": "No Course Articulated",
+         "114": "No Course Articulated",
+         "124": "No Course Articulated",
+         "136": "No Course Articulated",
+         "137": "No Course Articulated"
+        }
+       },
+       {
+        "kind": "req",
+        "id": "ECE 30",
+        "label": "Introduction to Computer Engineering",
+        "units": 4,
+        "groups": [
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:CS 40A",
+           "124:CS 40B"
+          ]
+         },
+         {
+          "institutionId": 33,
+          "courses": [
+           "33:CS 270"
+          ]
+         }
+        ]
+       },
+       {
+        "kind": "req",
+        "id": "ECE 65",
+        "label": "Components and Circuits Lab",
+        "units": 4,
+        "groups": [],
+        "noArticulation": {
+         "32": "This course must be taken at the university after transfer",
+         "33": "This course must be taken at the university after transfer",
+         "49": "This course must be taken at the university after transfer",
+         "51": "This course must be taken at the university after transfer",
+         "58": "This course must be taken at the university after transfer",
+         "65": "This course must be taken at the university after transfer",
+         "74": "This course must be taken at the university after transfer",
+         "80": "This course must be taken at the university after transfer",
+         "92": "This course must be taken at the university after transfer",
+         "103": "This course must be taken at the university after transfer",
+         "113": "This course must be taken at the university after transfer",
+         "114": "This course must be taken at the university after transfer",
+         "124": "This course must be taken at the university after transfer",
+         "136": "This course must be taken at the university after transfer",
+         "137": "This course must be taken at the university after transfer"
+        }
+       },
+       {
+        "kind": "req",
+        "id": "ECE 15",
+        "label": "Engineering Computation",
+        "units": 4,
+        "groups": [],
+        "noArticulation": {
+         "32": "This course must be taken at the university after transfer",
+         "33": "This course must be taken at the university after transfer",
+         "49": "This course must be taken at the university after transfer",
+         "51": "This course must be taken at the university after transfer",
+         "58": "This course must be taken at the university after transfer",
+         "65": "This course must be taken at the university after transfer",
+         "74": "This course must be taken at the university after transfer",
+         "80": "This course must be taken at the university after transfer",
+         "92": "This course must be taken at the university after transfer",
+         "103": "This course must be taken at the university after transfer",
+         "113": "This course must be taken at the university after transfer",
+         "114": "This course must be taken at the university after transfer",
+         "124": "This course must be taken at the university after transfer",
+         "136": "This course must be taken at the university after transfer",
+         "137": "This course must be taken at the university after transfer"
+        }
+       },
+       {
+        "kind": "req",
+        "id": "ECE 25",
+        "label": "Introduction to Digital Design",
+        "units": 4,
+        "groups": [],
+        "noArticulation": {
+         "32": "This course must be taken at the university after transfer",
+         "33": "This course must be taken at the university after transfer",
+         "49": "This course must be taken at the university after transfer",
+         "51": "This course must be taken at the university after transfer",
+         "58": "This course must be taken at the university after transfer",
+         "65": "This course must be taken at the university after transfer",
+         "74": "This course must be taken at the university after transfer",
+         "80": "This course must be taken at the university after transfer",
+         "92": "This course must be taken at the university after transfer",
+         "103": "This course must be taken at the university after transfer",
+         "113": "This course must be taken at the university after transfer",
+         "114": "This course must be taken at the university after transfer",
+         "124": "This course must be taken at the university after transfer",
+         "136": "This course must be taken at the university after transfer",
+         "137": "This course must be taken at the university after transfer"
+        }
+       }
+      ]
+     },
+     {
+      "kind": "node",
+      "type": "AND",
+      "required": true,
+      "children": [
+       {
+        "kind": "req",
+        "id": "MATH 18",
+        "label": "Linear Algebra",
+        "units": 4,
+        "groups": [
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:MATH 2BH"
+          ]
+         },
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:MATH 2B"
+          ]
+         },
+         {
+          "institutionId": 51,
+          "courses": [
+           "51:MATH 2B"
+          ]
+         },
+         {
+          "institutionId": 137,
+          "courses": [
+           "137:MATH 13"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:MATH 010H"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:MATH 010"
+          ]
+         },
+         {
+          "institutionId": 114,
+          "courses": [
+           "114:MATH 194"
+          ]
+         },
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:MATH 26"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:MATH A235"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:MATH A285"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:MATH A285H"
+          ]
+         },
+         {
+          "institutionId": 103,
+          "courses": [
+           "103:MATH 270"
+          ]
+         },
+         {
+          "institutionId": 58,
+          "courses": [
+           "58:MATH 3E"
+          ]
+         },
+         {
+          "institutionId": 33,
+          "courses": [
+           "33:MATH 130"
+          ]
+         },
+         {
+          "institutionId": 33,
+          "courses": [
+           "33:MATH 120"
+          ]
+         },
+         {
+          "institutionId": 136,
+          "courses": [
+           "136:MATH 079"
+          ]
+         },
+         {
+          "institutionId": 92,
+          "courses": [
+           "92:MATH 210"
+          ]
+         },
+         {
+          "institutionId": 65,
+          "courses": [
+           "65:MATH 26"
+          ]
+         },
+         {
+          "institutionId": 80,
+          "courses": [
+           "80:MATH 004C"
+          ]
+         },
+         {
+          "institutionId": 32,
+          "courses": [
+           "32:MAT 004C"
+          ]
+         }
+        ]
+       },
+       {
+        "kind": "req",
+        "id": "MATH 20C",
+        "label": "Calculus and Analytic Geometry for Science and Engineering",
+        "units": 4,
+        "groups": [
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:MATH 1C",
+           "113:MATH 1D"
+          ]
+         },
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:MATH 1CH",
+           "113:MATH 1DH"
+          ]
+         },
+         {
+          "institutionId": 51,
+          "courses": [
+           "51:MATH 1C",
+           "51:MATH 1D"
+          ]
+         },
+         {
+          "institutionId": 137,
+          "courses": [
+           "137:MATH 11"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:MATH 005C"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:MATH 005CH"
+          ]
+         },
+         {
+          "institutionId": 114,
+          "courses": [
+           "114:MATH 292"
+          ]
+         },
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:MATH 4A"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:MATH A280H"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:MATH A280"
+          ]
+         },
+         {
+          "institutionId": 103,
+          "courses": [
+           "103:MATH 220"
+          ]
+         },
+         {
+          "institutionId": 58,
+          "courses": [
+           "58:MATH 3C"
+          ]
+         },
+         {
+          "institutionId": 33,
+          "courses": [
+           "33:MATH 110C"
+          ]
+         },
+         {
+          "institutionId": 136,
+          "courses": [
+           "136:MATH 073"
+          ]
+         },
+         {
+          "institutionId": 92,
+          "courses": [
+           "92:MATH 200"
+          ]
+         },
+         {
+          "institutionId": 65,
+          "courses": [
+           "65:MATH 3C"
+          ]
+         },
+         {
+          "institutionId": 80,
+          "courses": [
+           "80:MATH 004A"
+          ]
+         },
+         {
+          "institutionId": 32,
+          "courses": [
+           "32:MAT 004A"
+          ]
+         }
+        ]
+       },
+       {
+        "kind": "req",
+        "id": "MATH 20D",
+        "label": "Introduction to Differential Equations",
+        "units": 4,
+        "groups": [
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:MATH 2AH"
+          ]
+         },
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:MATH 2A"
+          ]
+         },
+         {
+          "institutionId": 51,
+          "courses": [
+           "51:MATH 2A"
+          ]
+         },
+         {
+          "institutionId": 137,
+          "courses": [
+           "137:MATH 15"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:MATH 055"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:MATH 055H"
+          ]
+         },
+         {
+          "institutionId": 114,
+          "courses": [
+           "114:MATH 294"
+          ]
+         },
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:MATH 24H"
+          ]
+         },
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:MATH 24"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:MATH A285"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:MATH A285H"
+          ]
+         },
+         {
+          "institutionId": 103,
+          "courses": [
+           "103:MATH 270"
+          ]
+         },
+         {
+          "institutionId": 58,
+          "courses": [
+           "58:MATH 3F"
+          ]
+         },
+         {
+          "institutionId": 33,
+          "courses": [
+           "33:MATH 130"
+          ]
+         },
+         {
+          "institutionId": 33,
+          "courses": [
+           "33:MATH 125"
+          ]
+         },
+         {
+          "institutionId": 136,
+          "courses": [
+           "136:MATH 078"
+          ]
+         },
+         {
+          "institutionId": 92,
+          "courses": [
+           "92:MATH 220"
+          ]
+         },
+         {
+          "institutionId": 65,
+          "courses": [
+           "65:MATH 24"
+          ]
+         },
+         {
+          "institutionId": 80,
+          "courses": [
+           "80:MATH 004B"
+          ]
+         },
+         {
+          "institutionId": 32,
+          "courses": [
+           "32:MAT 004B",
+           "32:MAT 003B"
+          ]
+         }
+        ]
+       },
+       {
+        "kind": "req",
+        "id": "MATH 20A",
+        "label": "Calculus for Science and Engineering",
+        "units": 4,
+        "groups": [
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:MATH 1A"
+          ]
+         },
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:MATH 1AH"
+          ]
+         },
+         {
+          "institutionId": 51,
+          "courses": [
+           "51:MATH 1AH"
+          ]
+         },
+         {
+          "institutionId": 51,
+          "courses": [
+           "51:MATH 1A"
+          ]
+         },
+         {
+          "institutionId": 137,
+          "courses": [
+           "137:MATH 8",
+           "137:MATH 7"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:MATH 005AH"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:MATH 005A"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:MATH 005AE"
+          ]
+         },
+         {
+          "institutionId": 114,
+          "courses": [
+           "114:MATH 192"
+          ]
+         },
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:MATH 3A"
+          ]
+         },
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:MATH 3AH"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:MATH A180"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:MATH A182H"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:MATH A180H"
+          ]
+         },
+         {
+          "institutionId": 103,
+          "courses": [
+           "103:MATH 190"
+          ]
+         },
+         {
+          "institutionId": 58,
+          "courses": [
+           "58:MATH 3A"
+          ]
+         },
+         {
+          "institutionId": 33,
+          "courses": [
+           "33:MATH 110A"
+          ]
+         },
+         {
+          "institutionId": 136,
+          "courses": [
+           "136:MATH 071"
+          ]
+         },
+         {
+          "institutionId": 92,
+          "courses": [
+           "92:MATH 150"
+          ]
+         },
+         {
+          "institutionId": 65,
+          "courses": [
+           "65:MATH 3AH"
+          ]
+         },
+         {
+          "institutionId": 65,
+          "courses": [
+           "65:MATH 3A"
+          ]
+         },
+         {
+          "institutionId": 80,
+          "courses": [
+           "80:MATH 003AH"
+          ]
+         },
+         {
+          "institutionId": 80,
+          "courses": [
+           "80:MATH 003A"
+          ]
+         },
+         {
+          "institutionId": 32,
+          "courses": [
+           "32:MAT 003A"
+          ]
+         },
+         {
+          "institutionId": 32,
+          "courses": [
+           "32:MAT 003AH"
+          ]
+         }
+        ]
+       },
+       {
+        "kind": "req",
+        "id": "MATH 20E",
+        "label": "Vector Calculus",
+        "units": 4,
+        "groups": [
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:MATH 1C",
+           "113:MATH 1D"
+          ]
+         },
+         {
+          "institutionId": 51,
+          "courses": [
+           "51:MATH 1C",
+           "51:MATH 1D"
+          ]
+         },
+         {
+          "institutionId": 137,
+          "courses": [
+           "137:MATH 11"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:MATH 005C"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:MATH 005CH"
+          ]
+         },
+         {
+          "institutionId": 114,
+          "courses": [
+           "114:MATH 292"
+          ]
+         },
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:MATH 4A"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:MATH A280"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:MATH A280H"
+          ]
+         },
+         {
+          "institutionId": 103,
+          "courses": [
+           "103:MATH 220"
+          ]
+         },
+         {
+          "institutionId": 65,
+          "courses": [
+           "65:MATH 3C"
+          ]
+         },
+         {
+          "institutionId": 32,
+          "courses": [
+           "32:MAT 004A"
+          ]
+         }
+        ],
+        "noArticulation": {
+         "33": "No Course Articulated",
+         "58": "No Course Articulated",
+         "80": "No Course Articulated",
+         "92": "No Course Articulated",
+         "136": "No Course Articulated"
+        }
+       },
+       {
+        "kind": "req",
+        "id": "MATH 20B",
+        "label": "Calculus for Science and Engineering",
+        "units": 4,
+        "groups": [
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:MATH 1BH"
+          ]
+         },
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:MATH 1B"
+          ]
+         },
+         {
+          "institutionId": 51,
+          "courses": [
+           "51:MATH 1B"
+          ]
+         },
+         {
+          "institutionId": 137,
+          "courses": [
+           "137:MATH 8"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:MATH 005BH"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:MATH 005B"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:MATH 005BE"
+          ]
+         },
+         {
+          "institutionId": 114,
+          "courses": [
+           "114:MATH 193"
+          ]
+         },
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:MATH 3B"
+          ]
+         },
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:MATH 3BH"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:MATH A185"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:MATH A185H"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:MATH A182H"
+          ]
+         },
+         {
+          "institutionId": 103,
+          "courses": [
+           "103:MATH 191"
+          ]
+         },
+         {
+          "institutionId": 58,
+          "courses": [
+           "58:MATH 3B"
+          ]
+         },
+         {
+          "institutionId": 33,
+          "courses": [
+           "33:MATH 110B"
+          ]
+         },
+         {
+          "institutionId": 136,
+          "courses": [
+           "136:MATH 072"
+          ]
+         },
+         {
+          "institutionId": 92,
+          "courses": [
+           "92:MATH 160"
+          ]
+         },
+         {
+          "institutionId": 65,
+          "courses": [
+           "65:MATH 3B"
+          ]
+         },
+         {
+          "institutionId": 80,
+          "courses": [
+           "80:MATH 003BH"
+          ]
+         },
+         {
+          "institutionId": 80,
+          "courses": [
+           "80:MATH 003B"
+          ]
+         },
+         {
+          "institutionId": 32,
+          "courses": [
+           "32:MAT 003B"
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "kind": "node",
+      "type": "AND",
+      "required": true,
+      "children": [
+       {
+        "kind": "req",
+        "id": "PHYS 2C",
+        "label": "Physics - Fluids, Waves, Thermodynamics, and Optics",
+        "units": 4,
+        "groups": [
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:PHYS 4C"
+          ]
+         },
+         {
+          "institutionId": 51,
+          "courses": [
+           "51:PHYS 4C"
+          ]
+         },
+         {
+          "institutionId": 137,
+          "courses": [
+           "137:PHYSCS 23"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:PHYS 008C",
+           "49:PHYS 008A",
+           "49:PHYS 008B"
+          ]
+         },
+         {
+          "institutionId": 114,
+          "courses": [
+           "114:PHYS 231",
+           "114:PHYS 230"
+          ]
+         },
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:PHYS 4C"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:PHYS A285"
+          ]
+         },
+         {
+          "institutionId": 103,
+          "courses": [
+           "103:PHYS 1B"
+          ]
+         },
+         {
+          "institutionId": 58,
+          "courses": [
+           "58:PHYS 4C",
+           "58:PHYS 4A",
+           "58:PHYS 4B"
+          ]
+         },
+         {
+          "institutionId": 33,
+          "courses": [
+           "33:PHYC 4C"
+          ]
+         },
+         {
+          "institutionId": 136,
+          "courses": [
+           "136:PHYS 004C"
+          ]
+         },
+         {
+          "institutionId": 92,
+          "courses": [
+           "92:PHYS 123"
+          ]
+         },
+         {
+          "institutionId": 65,
+          "courses": [
+           "65:PHYS 4C"
+          ]
+         },
+         {
+          "institutionId": 80,
+          "courses": [
+           "80:PHYS 004C"
+          ]
+         },
+         {
+          "institutionId": 32,
+          "courses": [
+           "32:PHY 004C"
+          ]
+         }
+        ]
+       },
+       {
+        "kind": "req",
+        "id": "PHYS 2B",
+        "label": "Physics - Electricity and Magnetism",
+        "units": 4,
+        "groups": [
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:PHYS 4B"
+          ]
+         },
+         {
+          "institutionId": 51,
+          "courses": [
+           "51:PHYS 4B"
+          ]
+         },
+         {
+          "institutionId": 137,
+          "courses": [
+           "137:PHYSCS 22"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:PHYS 008B"
+          ]
+         },
+         {
+          "institutionId": 114,
+          "courses": [
+           "114:PHYS 230"
+          ]
+         },
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:PHYS 4B"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:PHYS A280"
+          ]
+         },
+         {
+          "institutionId": 103,
+          "courses": [
+           "103:PHYS 1C"
+          ]
+         },
+         {
+          "institutionId": 58,
+          "courses": [
+           "58:PHYS 4B"
+          ]
+         },
+         {
+          "institutionId": 33,
+          "courses": [
+           "33:PHYC 4B"
+          ]
+         },
+         {
+          "institutionId": 136,
+          "courses": [
+           "136:PHYS 004B"
+          ]
+         },
+         {
+          "institutionId": 92,
+          "courses": [
+           "92:PHYS 122"
+          ]
+         },
+         {
+          "institutionId": 65,
+          "courses": [
+           "65:PHYS 4B"
+          ]
+         },
+         {
+          "institutionId": 80,
+          "courses": [
+           "80:PHYS 004B"
+          ]
+         },
+         {
+          "institutionId": 32,
+          "courses": [
+           "32:PHY 004B"
+          ]
+         }
+        ]
+       },
+       {
+        "kind": "req",
+        "id": "PHYS 2A",
+        "label": "Physics - Mechanics",
+        "units": 4,
+        "groups": [
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:PHYS 4A"
+          ]
+         },
+         {
+          "institutionId": 51,
+          "courses": [
+           "51:PHYS 4A"
+          ]
+         },
+         {
+          "institutionId": 137,
+          "courses": [
+           "137:PHYSCS 21"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:PHYS 008A"
+          ]
+         },
+         {
+          "institutionId": 114,
+          "courses": [
+           "114:PHYS 130"
+          ]
+         },
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:PHYS 4A"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:PHYS A185"
+          ]
+         },
+         {
+          "institutionId": 103,
+          "courses": [
+           "103:PHYS 1A"
+          ]
+         },
+         {
+          "institutionId": 58,
+          "courses": [
+           "58:PHYS 4A"
+          ]
+         },
+         {
+          "institutionId": 33,
+          "courses": [
+           "33:PHYC 4A"
+          ]
+         },
+         {
+          "institutionId": 136,
+          "courses": [
+           "136:PHYS 004A"
+          ]
+         },
+         {
+          "institutionId": 92,
+          "courses": [
+           "92:PHYS 121"
+          ]
+         },
+         {
+          "institutionId": 65,
+          "courses": [
+           "65:PHYS 4A"
+          ]
+         },
+         {
+          "institutionId": 80,
+          "courses": [
+           "80:PHYS 004A"
+          ]
+         },
+         {
+          "institutionId": 32,
+          "courses": [
+           "32:PHY 004A"
+          ]
+         }
+        ]
+       },
+       {
+        "kind": "req",
+        "id": "PHYS 2D",
+        "label": "Physics - Relativity and Quantum Physics",
+        "units": 4,
+        "groups": [
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:PHYS 4D"
+          ]
+         },
+         {
+          "institutionId": 51,
+          "courses": [
+           "51:PHYS 4D"
+          ]
+         },
+         {
+          "institutionId": 137,
+          "courses": [
+           "137:PHYSCS 24"
+          ]
+         },
+         {
+          "institutionId": 114,
+          "courses": [
+           "114:PHYS 231"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:PHYS A285",
+           "74:PHYS A280",
+           "74:PHYS A185"
+          ]
+         },
+         {
+          "institutionId": 103,
+          "courses": [
+           "103:PHYS 1D"
+          ]
+         },
+         {
+          "institutionId": 58,
+          "courses": [
+           "58:PHYS 4C"
+          ]
+         },
+         {
+          "institutionId": 33,
+          "courses": [
+           "33:PHYC 4D"
+          ]
+         },
+         {
+          "institutionId": 92,
+          "courses": [
+           "92:PHYS 123",
+           "92:PHYS 121",
+           "92:PHYS 122"
+          ]
+         }
+        ],
+        "noArticulation": {
+         "49": "No Course Articulated"
+        }
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "catalog": {
+  "113:MATH 2BH": {
+   "id": "113:MATH 2BH",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "2BH",
+   "title": "Linear Algebra - HONORS",
+   "units": 5
+  },
+  "113:MATH 2B": {
+   "id": "113:MATH 2B",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "2B",
+   "title": "Linear Algebra",
+   "units": 5
+  },
+  "113:MATH 1C": {
+   "id": "113:MATH 1C",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "1C",
+   "title": "Calculus III",
+   "units": 5
+  },
+  "113:MATH 1D": {
+   "id": "113:MATH 1D",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "1D",
+   "title": "Calculus IV",
+   "units": 5
+  },
+  "113:MATH 1CH": {
+   "id": "113:MATH 1CH",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "1CH",
+   "title": "Calculus III - HONORS",
+   "units": 5
+  },
+  "113:MATH 1DH": {
+   "id": "113:MATH 1DH",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "1DH",
+   "title": "Calculus IV - HONORS",
+   "units": 5
+  },
+  "113:MATH 2AH": {
+   "id": "113:MATH 2AH",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "2AH",
+   "title": "Differential Equations - HONORS",
+   "units": 5
+  },
+  "113:MATH 2A": {
+   "id": "113:MATH 2A",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "2A",
+   "title": "Differential Equations",
+   "units": 5
+  },
+  "113:MATH 1A": {
+   "id": "113:MATH 1A",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "1A",
+   "title": "Calculus I",
+   "units": 5
+  },
+  "113:MATH 1AH": {
+   "id": "113:MATH 1AH",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "1AH",
+   "title": "Calculus I - HONORS",
+   "units": 5
+  },
+  "113:MATH 1BH": {
+   "id": "113:MATH 1BH",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "1BH",
+   "title": "Calculus II - HONORS",
+   "units": 5
+  },
+  "113:MATH 1B": {
+   "id": "113:MATH 1B",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "1B",
+   "title": "Calculus II",
+   "units": 5
+  },
+  "113:PHYS 4C": {
+   "id": "113:PHYS 4C",
+   "institutionId": 113,
+   "prefix": "PHYS",
+   "number": "4C",
+   "title": "Physics for Scientists and Engineers: Fluids, Waves, Optics and Thermodynamics",
+   "units": 6
+  },
+  "113:PHYS 4B": {
+   "id": "113:PHYS 4B",
+   "institutionId": 113,
+   "prefix": "PHYS",
+   "number": "4B",
+   "title": "Physics for Scientists and Engineers: Electricity and Magnetism",
+   "units": 6
+  },
+  "113:PHYS 4A": {
+   "id": "113:PHYS 4A",
+   "institutionId": 113,
+   "prefix": "PHYS",
+   "number": "4A",
+   "title": "Physics for Scientists and Engineers: Mechanics",
+   "units": 6
+  },
+  "113:PHYS 4D": {
+   "id": "113:PHYS 4D",
+   "institutionId": 113,
+   "prefix": "PHYS",
+   "number": "4D",
+   "title": "Physics for Scientists and Engineers: Modern Physics",
+   "units": 6
+  },
+  "51:MATH 2B": {
+   "id": "51:MATH 2B",
+   "institutionId": 51,
+   "prefix": "MATH",
+   "number": "2B",
+   "title": "Linear Algebra",
+   "units": 5
+  },
+  "51:MATH 1C": {
+   "id": "51:MATH 1C",
+   "institutionId": 51,
+   "prefix": "MATH",
+   "number": "1C",
+   "title": "Calculus",
+   "units": 5
+  },
+  "51:MATH 1D": {
+   "id": "51:MATH 1D",
+   "institutionId": 51,
+   "prefix": "MATH",
+   "number": "1D",
+   "title": "Calculus",
+   "units": 5
+  },
+  "51:MATH 2A": {
+   "id": "51:MATH 2A",
+   "institutionId": 51,
+   "prefix": "MATH",
+   "number": "2A",
+   "title": "Differential Equations",
+   "units": 5
+  },
+  "51:MATH 1AH": {
+   "id": "51:MATH 1AH",
+   "institutionId": 51,
+   "prefix": "MATH",
+   "number": "1AH",
+   "title": "Honors Calculus I ",
+   "units": 5
+  },
+  "51:MATH 1A": {
+   "id": "51:MATH 1A",
+   "institutionId": 51,
+   "prefix": "MATH",
+   "number": "1A",
+   "title": "Calculus",
+   "units": 5
+  },
+  "51:MATH 1B": {
+   "id": "51:MATH 1B",
+   "institutionId": 51,
+   "prefix": "MATH",
+   "number": "1B",
+   "title": "Calculus",
+   "units": 5
+  },
+  "51:PHYS 4C": {
+   "id": "51:PHYS 4C",
+   "institutionId": 51,
+   "prefix": "PHYS",
+   "number": "4C",
+   "title": "General Physics (Calculus)",
+   "units": 6
+  },
+  "51:PHYS 4B": {
+   "id": "51:PHYS 4B",
+   "institutionId": 51,
+   "prefix": "PHYS",
+   "number": "4B",
+   "title": "General Physics (Calculus)",
+   "units": 6
+  },
+  "51:PHYS 4A": {
+   "id": "51:PHYS 4A",
+   "institutionId": 51,
+   "prefix": "PHYS",
+   "number": "4A",
+   "title": "General Physics (Calculus)",
+   "units": 6
+  },
+  "51:PHYS 4D": {
+   "id": "51:PHYS 4D",
+   "institutionId": 51,
+   "prefix": "PHYS",
+   "number": "4D",
+   "title": "General Physics (Calculus)",
+   "units": 6
+  },
+  "137:MATH 13": {
+   "id": "137:MATH 13",
+   "institutionId": 137,
+   "prefix": "MATH",
+   "number": "13",
+   "title": "Linear Algebra",
+   "units": 3
+  },
+  "137:MATH 11": {
+   "id": "137:MATH 11",
+   "institutionId": 137,
+   "prefix": "MATH",
+   "number": "11",
+   "title": "Multivariable Calculus",
+   "units": 5
+  },
+  "137:MATH 15": {
+   "id": "137:MATH 15",
+   "institutionId": 137,
+   "prefix": "MATH",
+   "number": "15",
+   "title": "Differential Equations",
+   "units": 3
+  },
+  "137:MATH 8": {
+   "id": "137:MATH 8",
+   "institutionId": 137,
+   "prefix": "MATH",
+   "number": "8",
+   "title": "Calculus 2",
+   "units": 5
+  },
+  "137:MATH 7": {
+   "id": "137:MATH 7",
+   "institutionId": 137,
+   "prefix": "MATH",
+   "number": "7",
+   "title": "Calculus 1",
+   "units": 5
+  },
+  "137:PHYSCS 23": {
+   "id": "137:PHYSCS 23",
+   "institutionId": 137,
+   "prefix": "PHYSCS",
+   "number": "23",
+   "title": "Fluids, Waves, Thermodynamics, Optics with Lab",
+   "units": 5
+  },
+  "137:PHYSCS 22": {
+   "id": "137:PHYSCS 22",
+   "institutionId": 137,
+   "prefix": "PHYSCS",
+   "number": "22",
+   "title": "Electricity and Magnetism with Lab",
+   "units": 5
+  },
+  "137:PHYSCS 21": {
+   "id": "137:PHYSCS 21",
+   "institutionId": 137,
+   "prefix": "PHYSCS",
+   "number": "21",
+   "title": "Mechanics with Lab",
+   "units": 5
+  },
+  "137:PHYSCS 24": {
+   "id": "137:PHYSCS 24",
+   "institutionId": 137,
+   "prefix": "PHYSCS",
+   "number": "24",
+   "title": "Modern Physics with Lab",
+   "units": 3
+  },
+  "49:MATH 010H": {
+   "id": "49:MATH 010H",
+   "institutionId": 49,
+   "prefix": "MATH",
+   "number": "010H",
+   "title": "Honors Linear Algebra and Applications",
+   "units": 4
+  },
+  "49:MATH 010": {
+   "id": "49:MATH 010",
+   "institutionId": 49,
+   "prefix": "MATH",
+   "number": "010",
+   "title": "Linear Algebra and Applications",
+   "units": 4
+  },
+  "49:MATH 005C": {
+   "id": "49:MATH 005C",
+   "institutionId": 49,
+   "prefix": "MATH",
+   "number": "005C",
+   "title": "Multivariable Calculus",
+   "units": 5
+  },
+  "49:MATH 005CH": {
+   "id": "49:MATH 005CH",
+   "institutionId": 49,
+   "prefix": "MATH",
+   "number": "005CH",
+   "title": "Honors Multivariable Calculus",
+   "units": 5
+  },
+  "49:MATH 055": {
+   "id": "49:MATH 055",
+   "institutionId": 49,
+   "prefix": "MATH",
+   "number": "055",
+   "title": "Differential Equations",
+   "units": 4
+  },
+  "49:MATH 055H": {
+   "id": "49:MATH 055H",
+   "institutionId": 49,
+   "prefix": "MATH",
+   "number": "055H",
+   "title": "Honors Differential Equations",
+   "units": 4
+  },
+  "49:MATH 005AH": {
+   "id": "49:MATH 005AH",
+   "institutionId": 49,
+   "prefix": "MATH",
+   "number": "005AH",
+   "title": "Honors Single Variable Calculus I",
+   "units": 5
+  },
+  "49:MATH 005A": {
+   "id": "49:MATH 005A",
+   "institutionId": 49,
+   "prefix": "MATH",
+   "number": "005A",
+   "title": "Single Variable Calculus I",
+   "units": 5
+  },
+  "49:MATH 005AE": {
+   "id": "49:MATH 005AE",
+   "institutionId": 49,
+   "prefix": "MATH",
+   "number": "005AE",
+   "title": "Single Variable Calculus I with Embedded Support",
+   "units": 5.5
+  },
+  "49:MATH 005BH": {
+   "id": "49:MATH 005BH",
+   "institutionId": 49,
+   "prefix": "MATH",
+   "number": "005BH",
+   "title": "Honors Single Variable Calculus II",
+   "units": 5
+  },
+  "49:MATH 005B": {
+   "id": "49:MATH 005B",
+   "institutionId": 49,
+   "prefix": "MATH",
+   "number": "005B",
+   "title": "Single Variable Calculus II",
+   "units": 5
+  },
+  "49:MATH 005BE": {
+   "id": "49:MATH 005BE",
+   "institutionId": 49,
+   "prefix": "MATH",
+   "number": "005BE",
+   "title": "Single Variable Calculus II with Embedded Support",
+   "units": 5.5
+  },
+  "49:PHYS 008C": {
+   "id": "49:PHYS 008C",
+   "institutionId": 49,
+   "prefix": "PHYS",
+   "number": "008C",
+   "title": "Physics for Scientists and Engineers III: Thermodynamics, Optics, and Modern Physics",
+   "units": 5
+  },
+  "49:PHYS 008A": {
+   "id": "49:PHYS 008A",
+   "institutionId": 49,
+   "prefix": "PHYS",
+   "number": "008A",
+   "title": "Physics for Scientists and Engineers I: Mechanics",
+   "units": 5
+  },
+  "49:PHYS 008B": {
+   "id": "49:PHYS 008B",
+   "institutionId": 49,
+   "prefix": "PHYS",
+   "number": "008B",
+   "title": "Physics for Scientists and Engineers II: Waves, Electricity & Magnetism",
+   "units": 5
+  },
+  "114:MATH 194": {
+   "id": "114:MATH 194",
+   "institutionId": 114,
+   "prefix": "MATH",
+   "number": "194",
+   "title": "Linear Algebra",
+   "units": 3
+  },
+  "114:MATH 292": {
+   "id": "114:MATH 292",
+   "institutionId": 114,
+   "prefix": "MATH",
+   "number": "292",
+   "title": "Analytic Geometry and Calculus III",
+   "units": 5
+  },
+  "114:MATH 294": {
+   "id": "114:MATH 294",
+   "institutionId": 114,
+   "prefix": "MATH",
+   "number": "294",
+   "title": "Differential Equations",
+   "units": 5
+  },
+  "114:MATH 192": {
+   "id": "114:MATH 192",
+   "institutionId": 114,
+   "prefix": "MATH",
+   "number": "192",
+   "title": "Analytic Geometry and Calculus I",
+   "units": 5
+  },
+  "114:MATH 193": {
+   "id": "114:MATH 193",
+   "institutionId": 114,
+   "prefix": "MATH",
+   "number": "193",
+   "title": "Analytic Geometry and Calculus II",
+   "units": 5
+  },
+  "114:PHYS 231": {
+   "id": "114:PHYS 231",
+   "institutionId": 114,
+   "prefix": "PHYS",
+   "number": "231",
+   "title": "Physics for Engineers and Scientists C: Optics and Modern Physics",
+   "units": 4
+  },
+  "114:PHYS 230": {
+   "id": "114:PHYS 230",
+   "institutionId": 114,
+   "prefix": "PHYS",
+   "number": "230",
+   "title": "Physics for Engineers and Scientists B: Heat and Electro-Magnetism",
+   "units": 4
+  },
+  "114:PHYS 130": {
+   "id": "114:PHYS 130",
+   "institutionId": 114,
+   "prefix": "PHYS",
+   "number": "130",
+   "title": "Physics for Engineers and Scientists A: Mechanics and Wave Motion",
+   "units": 4
+  },
+  "124:CS 40A": {
+   "id": "124:CS 40A",
+   "institutionId": 124,
+   "prefix": "CS",
+   "number": "40A",
+   "title": "Computer Organization and Assembly Language I",
+   "units": 3
+  },
+  "124:CS 40B": {
+   "id": "124:CS 40B",
+   "institutionId": 124,
+   "prefix": "CS",
+   "number": "40B",
+   "title": "Computer Organization and Assembly Language II",
+   "units": 3
+  },
+  "124:MATH 26": {
+   "id": "124:MATH 26",
+   "institutionId": 124,
+   "prefix": "MATH",
+   "number": "26",
+   "title": "Introduction to Linear Algebra",
+   "units": 4
+  },
+  "124:MATH 4A": {
+   "id": "124:MATH 4A",
+   "institutionId": 124,
+   "prefix": "MATH",
+   "number": "4A",
+   "title": "Analytic Geometry and Calculus III",
+   "units": 5
+  },
+  "124:MATH 24H": {
+   "id": "124:MATH 24H",
+   "institutionId": 124,
+   "prefix": "MATH",
+   "number": "24H",
+   "title": "Elementary Differential Equations Honors",
+   "units": 4
+  },
+  "124:MATH 24": {
+   "id": "124:MATH 24",
+   "institutionId": 124,
+   "prefix": "MATH",
+   "number": "24",
+   "title": "Elementary Differential Equations",
+   "units": 4
+  },
+  "124:MATH 3A": {
+   "id": "124:MATH 3A",
+   "institutionId": 124,
+   "prefix": "MATH",
+   "number": "3A",
+   "title": "Analytic Geometry and Calculus I",
+   "units": 5
+  },
+  "124:MATH 3AH": {
+   "id": "124:MATH 3AH",
+   "institutionId": 124,
+   "prefix": "MATH",
+   "number": "3AH",
+   "title": "Analytic Geometry and Calculus I Honors",
+   "units": 5
+  },
+  "124:MATH 3B": {
+   "id": "124:MATH 3B",
+   "institutionId": 124,
+   "prefix": "MATH",
+   "number": "3B",
+   "title": "Analytic Geometry and Calculus II",
+   "units": 5
+  },
+  "124:MATH 3BH": {
+   "id": "124:MATH 3BH",
+   "institutionId": 124,
+   "prefix": "MATH",
+   "number": "3BH",
+   "title": "Analytic Geometry and Calculus II Honors",
+   "units": 5
+  },
+  "124:PHYS 4C": {
+   "id": "124:PHYS 4C",
+   "institutionId": 124,
+   "prefix": "PHYS",
+   "number": "4C",
+   "title": "General Physics",
+   "units": 4
+  },
+  "124:PHYS 4B": {
+   "id": "124:PHYS 4B",
+   "institutionId": 124,
+   "prefix": "PHYS",
+   "number": "4B",
+   "title": "General Physics",
+   "units": 4
+  },
+  "124:PHYS 4A": {
+   "id": "124:PHYS 4A",
+   "institutionId": 124,
+   "prefix": "PHYS",
+   "number": "4A",
+   "title": "General Physics",
+   "units": 4
+  },
+  "74:MATH A235": {
+   "id": "74:MATH A235",
+   "institutionId": 74,
+   "prefix": "MATH",
+   "number": "A235",
+   "title": "Applied Linear Algebra",
+   "units": 3
+  },
+  "74:MATH A285": {
+   "id": "74:MATH A285",
+   "institutionId": 74,
+   "prefix": "MATH",
+   "number": "A285",
+   "title": "Introduction to Linear Algebra and Differential Equations",
+   "units": 5
+  },
+  "74:MATH A285H": {
+   "id": "74:MATH A285H",
+   "institutionId": 74,
+   "prefix": "MATH",
+   "number": "A285H",
+   "title": "Introduction to Linear Algebra and Differential Equations Honors",
+   "units": 6
+  },
+  "74:MATH A280H": {
+   "id": "74:MATH A280H",
+   "institutionId": 74,
+   "prefix": "MATH",
+   "number": "A280H",
+   "title": "Calculus 3 Honors  ",
+   "units": 6
+  },
+  "74:MATH A280": {
+   "id": "74:MATH A280",
+   "institutionId": 74,
+   "prefix": "MATH",
+   "number": "A280",
+   "title": "Calculus 3",
+   "units": 5
+  },
+  "74:MATH A180": {
+   "id": "74:MATH A180",
+   "institutionId": 74,
+   "prefix": "MATH",
+   "number": "A180",
+   "title": "Calculus 1",
+   "units": 5
+  },
+  "74:MATH A182H": {
+   "id": "74:MATH A182H",
+   "institutionId": 74,
+   "prefix": "MATH",
+   "number": "A182H",
+   "title": "Calculus 1 and 2 Honors  ",
+   "units": 5
+  },
+  "74:MATH A180H": {
+   "id": "74:MATH A180H",
+   "institutionId": 74,
+   "prefix": "MATH",
+   "number": "A180H",
+   "title": "Calculus 1 Honors  ",
+   "units": 5
+  },
+  "74:MATH A185": {
+   "id": "74:MATH A185",
+   "institutionId": 74,
+   "prefix": "MATH",
+   "number": "A185",
+   "title": "Calculus 2",
+   "units": 5
+  },
+  "74:MATH A185H": {
+   "id": "74:MATH A185H",
+   "institutionId": 74,
+   "prefix": "MATH",
+   "number": "A185H",
+   "title": "Calculus 2 Honors",
+   "units": 5
+  },
+  "74:PHYS A285": {
+   "id": "74:PHYS A285",
+   "institutionId": 74,
+   "prefix": "PHYS",
+   "number": "A285",
+   "title": "Calculus Based Physics: Modern with Lab",
+   "units": 5
+  },
+  "74:PHYS A280": {
+   "id": "74:PHYS A280",
+   "institutionId": 74,
+   "prefix": "PHYS",
+   "number": "A280",
+   "title": "Calculus Based Physics: Electricty/Magnetism with Lab",
+   "units": 5
+  },
+  "74:PHYS A185": {
+   "id": "74:PHYS A185",
+   "institutionId": 74,
+   "prefix": "PHYS",
+   "number": "A185",
+   "title": "Calculus Based Physics: Mechanics with Lab",
+   "units": 5
+  },
+  "103:MATH 270": {
+   "id": "103:MATH 270",
+   "institutionId": 103,
+   "prefix": "MATH",
+   "number": "270",
+   "title": "Differential Equations with Linear Algebra",
+   "units": 5
+  },
+  "103:MATH 220": {
+   "id": "103:MATH 220",
+   "institutionId": 103,
+   "prefix": "MATH",
+   "number": "220",
+   "title": "Multi-Variable Calculus",
+   "units": 5
+  },
+  "103:MATH 190": {
+   "id": "103:MATH 190",
+   "institutionId": 103,
+   "prefix": "MATH",
+   "number": "190",
+   "title": "Single Variable Calculus and Analytic Geometry I",
+   "units": 5
+  },
+  "103:MATH 191": {
+   "id": "103:MATH 191",
+   "institutionId": 103,
+   "prefix": "MATH",
+   "number": "191",
+   "title": "Single Variable Calculus and Analytic Geometry II",
+   "units": 5
+  },
+  "103:PHYS 1B": {
+   "id": "103:PHYS 1B",
+   "institutionId": 103,
+   "prefix": "PHYS",
+   "number": "1B",
+   "title": "Fluids, Heat and Sound",
+   "units": 3
+  },
+  "103:PHYS 1C": {
+   "id": "103:PHYS 1C",
+   "institutionId": 103,
+   "prefix": "PHYS",
+   "number": "1C",
+   "title": "Electricity and Magnetism",
+   "units": 4
+  },
+  "103:PHYS 1A": {
+   "id": "103:PHYS 1A",
+   "institutionId": 103,
+   "prefix": "PHYS",
+   "number": "1A",
+   "title": "Mechanics of Solids",
+   "units": 4
+  },
+  "103:PHYS 1D": {
+   "id": "103:PHYS 1D",
+   "institutionId": 103,
+   "prefix": "PHYS",
+   "number": "1D",
+   "title": "Optics and Modern Physics",
+   "units": 4
+  },
+  "58:MATH 3E": {
+   "id": "58:MATH 3E",
+   "institutionId": 58,
+   "prefix": "MATH",
+   "number": "3E",
+   "title": "Linear Algebra",
+   "units": 3
+  },
+  "58:MATH 3C": {
+   "id": "58:MATH 3C",
+   "institutionId": 58,
+   "prefix": "MATH",
+   "number": "3C",
+   "title": "Calculus III",
+   "units": 5
+  },
+  "58:MATH 3F": {
+   "id": "58:MATH 3F",
+   "institutionId": 58,
+   "prefix": "MATH",
+   "number": "3F",
+   "title": "Differential Equations",
+   "units": 3
+  },
+  "58:MATH 3A": {
+   "id": "58:MATH 3A",
+   "institutionId": 58,
+   "prefix": "MATH",
+   "number": "3A",
+   "title": "Calculus I",
+   "units": 5
+  },
+  "58:MATH 3B": {
+   "id": "58:MATH 3B",
+   "institutionId": 58,
+   "prefix": "MATH",
+   "number": "3B",
+   "title": "Calculus II",
+   "units": 5
+  },
+  "58:PHYS 4C": {
+   "id": "58:PHYS 4C",
+   "institutionId": 58,
+   "prefix": "PHYS",
+   "number": "4C",
+   "title": "General Physics with Calculus",
+   "units": 5
+  },
+  "58:PHYS 4A": {
+   "id": "58:PHYS 4A",
+   "institutionId": 58,
+   "prefix": "PHYS",
+   "number": "4A",
+   "title": "General Physics with Calculus",
+   "units": 5
+  },
+  "58:PHYS 4B": {
+   "id": "58:PHYS 4B",
+   "institutionId": 58,
+   "prefix": "PHYS",
+   "number": "4B",
+   "title": "General Physics with Calculus",
+   "units": 5
+  },
+  "33:CS 270": {
+   "id": "33:CS 270",
+   "institutionId": 33,
+   "prefix": "CS",
+   "number": "270",
+   "title": "Computer Architecture with Assembly Language",
+   "units": 4
+  },
+  "33:MATH 130": {
+   "id": "33:MATH 130",
+   "institutionId": 33,
+   "prefix": "MATH",
+   "number": "130",
+   "title": "Linear Algebra and Differential Equations",
+   "units": 5
+  },
+  "33:MATH 120": {
+   "id": "33:MATH 120",
+   "institutionId": 33,
+   "prefix": "MATH",
+   "number": "120",
+   "title": "Linear Algebra",
+   "units": 3
+  },
+  "33:MATH 110C": {
+   "id": "33:MATH 110C",
+   "institutionId": 33,
+   "prefix": "MATH",
+   "number": "110C",
+   "title": "Calculus III",
+   "units": 5
+  },
+  "33:MATH 125": {
+   "id": "33:MATH 125",
+   "institutionId": 33,
+   "prefix": "MATH",
+   "number": "125",
+   "title": "Differential Equations",
+   "units": 3
+  },
+  "33:MATH 110A": {
+   "id": "33:MATH 110A",
+   "institutionId": 33,
+   "prefix": "MATH",
+   "number": "110A",
+   "title": "Calculus I",
+   "units": 5
+  },
+  "33:MATH 110B": {
+   "id": "33:MATH 110B",
+   "institutionId": 33,
+   "prefix": "MATH",
+   "number": "110B",
+   "title": "Calculus II",
+   "units": 5
+  },
+  "33:PHYC 4C": {
+   "id": "33:PHYC 4C",
+   "institutionId": 33,
+   "prefix": "PHYC",
+   "number": "4C",
+   "title": "Waves and Thermodynamics for Scientists and Engineers",
+   "units": 3
+  },
+  "33:PHYC 4B": {
+   "id": "33:PHYC 4B",
+   "institutionId": 33,
+   "prefix": "PHYC",
+   "number": "4B",
+   "title": "Electromagnetism for Scientists and Engineers",
+   "units": 3
+  },
+  "33:PHYC 4A": {
+   "id": "33:PHYC 4A",
+   "institutionId": 33,
+   "prefix": "PHYC",
+   "number": "4A",
+   "title": "Classical Mechanics for Scientists and Engineers",
+   "units": 3
+  },
+  "33:PHYC 4D": {
+   "id": "33:PHYC 4D",
+   "institutionId": 33,
+   "prefix": "PHYC",
+   "number": "4D",
+   "title": "Modern Physics for Scientists and Engineers",
+   "units": 3
+  },
+  "136:MATH 079": {
+   "id": "136:MATH 079",
+   "institutionId": 136,
+   "prefix": "MATH",
+   "number": "079",
+   "title": "Linear Algebra",
+   "units": 3
+  },
+  "136:MATH 073": {
+   "id": "136:MATH 073",
+   "institutionId": 136,
+   "prefix": "MATH",
+   "number": "073",
+   "title": "Multivariable Calculus",
+   "units": 5
+  },
+  "136:MATH 078": {
+   "id": "136:MATH 078",
+   "institutionId": 136,
+   "prefix": "MATH",
+   "number": "078",
+   "title": "Differential Equations",
+   "units": 4
+  },
+  "136:MATH 071": {
+   "id": "136:MATH 071",
+   "institutionId": 136,
+   "prefix": "MATH",
+   "number": "071",
+   "title": "Calculus I with Analytic Geometry",
+   "units": 5
+  },
+  "136:MATH 072": {
+   "id": "136:MATH 072",
+   "institutionId": 136,
+   "prefix": "MATH",
+   "number": "072",
+   "title": "Calculus II with Analytic Geometry",
+   "units": 5
+  },
+  "136:PHYS 004C": {
+   "id": "136:PHYS 004C",
+   "institutionId": 136,
+   "prefix": "PHYS",
+   "number": "004C",
+   "title": "General Physics",
+   "units": 5
+  },
+  "136:PHYS 004B": {
+   "id": "136:PHYS 004B",
+   "institutionId": 136,
+   "prefix": "PHYS",
+   "number": "004B",
+   "title": "General Physics",
+   "units": 5
+  },
+  "136:PHYS 004A": {
+   "id": "136:PHYS 004A",
+   "institutionId": 136,
+   "prefix": "PHYS",
+   "number": "004A",
+   "title": "General Physics",
+   "units": 5
+  },
+  "92:MATH 210": {
+   "id": "92:MATH 210",
+   "institutionId": 92,
+   "prefix": "MATH",
+   "number": "210",
+   "title": "Linear Algebra",
+   "units": 4
+  },
+  "92:MATH 200": {
+   "id": "92:MATH 200",
+   "institutionId": 92,
+   "prefix": "MATH",
+   "number": "200",
+   "title": "Multivariable Calculus",
+   "units": 4
+  },
+  "92:MATH 220": {
+   "id": "92:MATH 220",
+   "institutionId": 92,
+   "prefix": "MATH",
+   "number": "220",
+   "title": "Differential Equations",
+   "units": 4
+  },
+  "92:MATH 150": {
+   "id": "92:MATH 150",
+   "institutionId": 92,
+   "prefix": "MATH",
+   "number": "150",
+   "title": "Calculus with Analytic Geometry I",
+   "units": 5
+  },
+  "92:MATH 160": {
+   "id": "92:MATH 160",
+   "institutionId": 92,
+   "prefix": "MATH",
+   "number": "160",
+   "title": "Calculus with Analytic Geometry II",
+   "units": 5
+  },
+  "92:PHYS 123": {
+   "id": "92:PHYS 123",
+   "institutionId": 92,
+   "prefix": "PHYS",
+   "number": "123",
+   "title": "Heat, Light and Modern Physics",
+   "units": 5
+  },
+  "92:PHYS 122": {
+   "id": "92:PHYS 122",
+   "institutionId": 92,
+   "prefix": "PHYS",
+   "number": "122",
+   "title": "Electricity and Magnetism",
+   "units": 5
+  },
+  "92:PHYS 121": {
+   "id": "92:PHYS 121",
+   "institutionId": 92,
+   "prefix": "PHYS",
+   "number": "121",
+   "title": "Mechanics of Solids and Fluids",
+   "units": 5
+  },
+  "65:MATH 26": {
+   "id": "65:MATH 26",
+   "institutionId": 65,
+   "prefix": "MATH",
+   "number": "26",
+   "title": "Introduction to Linear Algebra",
+   "units": 4
+  },
+  "65:MATH 3C": {
+   "id": "65:MATH 3C",
+   "institutionId": 65,
+   "prefix": "MATH",
+   "number": "3C",
+   "title": "Analytic Geometry and Calculus",
+   "units": 5
+  },
+  "65:MATH 24": {
+   "id": "65:MATH 24",
+   "institutionId": 65,
+   "prefix": "MATH",
+   "number": "24",
+   "title": "Elementary Differential Equations",
+   "units": 4
+  },
+  "65:MATH 3AH": {
+   "id": "65:MATH 3AH",
+   "institutionId": 65,
+   "prefix": "MATH",
+   "number": "3AH",
+   "title": "Honors Analytic Geometry and Calculus",
+   "units": 5
+  },
+  "65:MATH 3A": {
+   "id": "65:MATH 3A",
+   "institutionId": 65,
+   "prefix": "MATH",
+   "number": "3A",
+   "title": "Analytic Geometry and Calculus",
+   "units": 5
+  },
+  "65:MATH 3B": {
+   "id": "65:MATH 3B",
+   "institutionId": 65,
+   "prefix": "MATH",
+   "number": "3B",
+   "title": "Analytic Geometry and Calculus",
+   "units": 5
+  },
+  "65:PHYS 4C": {
+   "id": "65:PHYS 4C",
+   "institutionId": 65,
+   "prefix": "PHYS",
+   "number": "4C",
+   "title": "General Physics",
+   "units": 5
+  },
+  "65:PHYS 4B": {
+   "id": "65:PHYS 4B",
+   "institutionId": 65,
+   "prefix": "PHYS",
+   "number": "4B",
+   "title": "General Physics",
+   "units": 5
+  },
+  "65:PHYS 4A": {
+   "id": "65:PHYS 4A",
+   "institutionId": 65,
+   "prefix": "PHYS",
+   "number": "4A",
+   "title": "General Physics",
+   "units": 5
+  },
+  "80:MATH 004C": {
+   "id": "80:MATH 004C",
+   "institutionId": 80,
+   "prefix": "MATH",
+   "number": "004C",
+   "title": "Linear Algebra",
+   "units": 4
+  },
+  "80:MATH 004A": {
+   "id": "80:MATH 004A",
+   "institutionId": 80,
+   "prefix": "MATH",
+   "number": "004A",
+   "title": "Intermediate Calculus",
+   "units": 5
+  },
+  "80:MATH 004B": {
+   "id": "80:MATH 004B",
+   "institutionId": 80,
+   "prefix": "MATH",
+   "number": "004B",
+   "title": "Differential Equations",
+   "units": 4
+  },
+  "80:MATH 003AH": {
+   "id": "80:MATH 003AH",
+   "institutionId": 80,
+   "prefix": "MATH",
+   "number": "003AH",
+   "title": "Honors Calculus and Analytical Geometry",
+   "units": 5
+  },
+  "80:MATH 003A": {
+   "id": "80:MATH 003A",
+   "institutionId": 80,
+   "prefix": "MATH",
+   "number": "003A",
+   "title": "Calculus and Analytic Geometry",
+   "units": 5
+  },
+  "80:MATH 003BH": {
+   "id": "80:MATH 003BH",
+   "institutionId": 80,
+   "prefix": "MATH",
+   "number": "003BH",
+   "title": "Honors Calculus and Analytical Geometry",
+   "units": 5
+  },
+  "80:MATH 003B": {
+   "id": "80:MATH 003B",
+   "institutionId": 80,
+   "prefix": "MATH",
+   "number": "003B",
+   "title": "Calculus and Analytic Geometry",
+   "units": 5
+  },
+  "80:PHYS 004C": {
+   "id": "80:PHYS 004C",
+   "institutionId": 80,
+   "prefix": "PHYS",
+   "number": "004C",
+   "title": "Engineering Physics - Light, Heat and Waves",
+   "units": 5
+  },
+  "80:PHYS 004B": {
+   "id": "80:PHYS 004B",
+   "institutionId": 80,
+   "prefix": "PHYS",
+   "number": "004B",
+   "title": "Engineering Physics - Electricity and Magnetism",
+   "units": 5
+  },
+  "80:PHYS 004A": {
+   "id": "80:PHYS 004A",
+   "institutionId": 80,
+   "prefix": "PHYS",
+   "number": "004A",
+   "title": "Engineering Physics - Mechanics",
+   "units": 5
+  },
+  "32:MAT 004C": {
+   "id": "32:MAT 004C",
+   "institutionId": 32,
+   "prefix": "MAT",
+   "number": "004C",
+   "title": "Linear Algebra",
+   "units": 4
+  },
+  "32:MAT 004A": {
+   "id": "32:MAT 004A",
+   "institutionId": 32,
+   "prefix": "MAT",
+   "number": "004A",
+   "title": "Multivariable Calculus",
+   "units": 5
+  },
+  "32:MAT 004B": {
+   "id": "32:MAT 004B",
+   "institutionId": 32,
+   "prefix": "MAT",
+   "number": "004B",
+   "title": "Differential Equations",
+   "units": 4
+  },
+  "32:MAT 003B": {
+   "id": "32:MAT 003B",
+   "institutionId": 32,
+   "prefix": "MAT",
+   "number": "003B",
+   "title": "Analytic Geometry and Calculus II",
+   "units": 5
+  },
+  "32:MAT 003A": {
+   "id": "32:MAT 003A",
+   "institutionId": 32,
+   "prefix": "MAT",
+   "number": "003A",
+   "title": "Analytic Geometry and Calculus I",
+   "units": 5
+  },
+  "32:MAT 003AH": {
+   "id": "32:MAT 003AH",
+   "institutionId": 32,
+   "prefix": "MAT",
+   "number": "003AH",
+   "title": "Analytic Geometry and Calculus I - Honors",
+   "units": 5
+  },
+  "32:PHY 004C": {
+   "id": "32:PHY 004C",
+   "institutionId": 32,
+   "prefix": "PHY",
+   "number": "004C",
+   "title": "Engineering Physics - Light and Heat",
+   "units": 4
+  },
+  "32:PHY 004B": {
+   "id": "32:PHY 004B",
+   "institutionId": 32,
+   "prefix": "PHY",
+   "number": "004B",
+   "title": "Engineering Physics - Electricity and Magnetism",
+   "units": 4
+  },
+  "32:PHY 004A": {
+   "id": "32:PHY 004A",
+   "institutionId": 32,
+   "prefix": "PHY",
+   "number": "004A",
+   "title": "Engineering Physics - Mechanics",
+   "units": 5
+  }
+ }
+}

@@ -1,0 +1,4714 @@
+{
+ "receivingId": 79,
+ "major": "Electrical Engineering & Computer Sciences, B.S.",
+ "year": "2025-2026",
+ "sendingIds": [
+  113,
+  51,
+  137,
+  49,
+  114,
+  124,
+  74,
+  103,
+  58,
+  33,
+  136,
+  92,
+  65,
+  80,
+  32
+ ],
+ "root": {
+  "kind": "node",
+  "type": "AND",
+  "required": true,
+  "children": [
+   {
+    "kind": "node",
+    "type": "AND",
+    "title": "REQUIRED COURSES FOR ADMISSION",
+    "required": true,
+    "children": [
+     {
+      "kind": "node",
+      "type": "AND",
+      "required": true,
+      "children": [
+       {
+        "kind": "req",
+        "id": "MATH 51",
+        "label": "Calculus I",
+        "units": 4,
+        "groups": [
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:MATH 1B",
+           "113:MATH 1A"
+          ]
+         },
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:MATH 1AH",
+           "113:MATH 1BH"
+          ]
+         },
+         {
+          "institutionId": 51,
+          "courses": [
+           "51:MATH 1AH"
+          ]
+         },
+         {
+          "institutionId": 51,
+          "courses": [
+           "51:MATH 1A"
+          ]
+         },
+         {
+          "institutionId": 137,
+          "courses": [
+           "137:MATH 7"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:MATH 005A"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:MATH 005AH"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:MATH 005AE"
+          ]
+         },
+         {
+          "institutionId": 114,
+          "courses": [
+           "114:MATH 192"
+          ]
+         },
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:MATH 3A"
+          ]
+         },
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:MATH 3AH"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:MATH A182H"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:MATH A180H"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:MATH A180"
+          ]
+         },
+         {
+          "institutionId": 103,
+          "courses": [
+           "103:MATH 190"
+          ]
+         },
+         {
+          "institutionId": 58,
+          "courses": [
+           "58:MATH 3A"
+          ]
+         },
+         {
+          "institutionId": 33,
+          "courses": [
+           "33:MATH 110A"
+          ]
+         },
+         {
+          "institutionId": 136,
+          "courses": [
+           "136:MATH 071"
+          ]
+         },
+         {
+          "institutionId": 92,
+          "courses": [
+           "92:MATH 150"
+          ]
+         },
+         {
+          "institutionId": 65,
+          "courses": [
+           "65:MATH 3AH"
+          ]
+         },
+         {
+          "institutionId": 65,
+          "courses": [
+           "65:MATH 3A"
+          ]
+         },
+         {
+          "institutionId": 80,
+          "courses": [
+           "80:MATH 003AH"
+          ]
+         },
+         {
+          "institutionId": 80,
+          "courses": [
+           "80:MATH 003A"
+          ]
+         },
+         {
+          "institutionId": 32,
+          "courses": [
+           "32:MAT 003A"
+          ]
+         },
+         {
+          "institutionId": 32,
+          "courses": [
+           "32:MAT 003AH"
+          ]
+         }
+        ]
+       },
+       {
+        "kind": "req",
+        "id": "MATH 52",
+        "label": "Calculus II",
+        "units": 4,
+        "groups": [
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:MATH 1BH",
+           "113:MATH 1CH"
+          ]
+         },
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:MATH 1C",
+           "113:MATH 1B"
+          ]
+         },
+         {
+          "institutionId": 51,
+          "courses": [
+           "51:MATH 1C",
+           "51:MATH 1B"
+          ]
+         },
+         {
+          "institutionId": 137,
+          "courses": [
+           "137:MATH 8"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:MATH 055H",
+           "49:MATH 005BH"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:MATH 055",
+           "49:MATH 005B"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:MATH 005BE",
+           "49:MATH 055"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:MATH 005BE",
+           "49:MATH 055H"
+          ]
+         },
+         {
+          "institutionId": 114,
+          "courses": [
+           "114:MATH 193"
+          ]
+         },
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:MATH 3B"
+          ]
+         },
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:MATH 3BH"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:MATH A182H"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:MATH A185H"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:MATH A185"
+          ]
+         },
+         {
+          "institutionId": 103,
+          "courses": [
+           "103:MATH 191"
+          ]
+         },
+         {
+          "institutionId": 58,
+          "courses": [
+           "58:MATH 3B"
+          ]
+         },
+         {
+          "institutionId": 33,
+          "courses": [
+           "33:MATH 110B"
+          ]
+         },
+         {
+          "institutionId": 136,
+          "courses": [
+           "136:MATH 072"
+          ]
+         },
+         {
+          "institutionId": 92,
+          "courses": [
+           "92:MATH 160"
+          ]
+         },
+         {
+          "institutionId": 65,
+          "courses": [
+           "65:MATH 3B"
+          ]
+         },
+         {
+          "institutionId": 80,
+          "courses": [
+           "80:MATH 003B"
+          ]
+         },
+         {
+          "institutionId": 80,
+          "courses": [
+           "80:MATH 003BH"
+          ]
+         },
+         {
+          "institutionId": 32,
+          "courses": [
+           "32:MAT 003B"
+          ]
+         }
+        ]
+       },
+       {
+        "kind": "req",
+        "id": "MATH 53",
+        "label": "Multivariable Calculus",
+        "units": 4,
+        "groups": [
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:MATH 1C",
+           "113:MATH 1D"
+          ]
+         },
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:MATH 1DH",
+           "113:MATH 1CH"
+          ]
+         },
+         {
+          "institutionId": 51,
+          "courses": [
+           "51:MATH 1C",
+           "51:MATH 1D"
+          ]
+         },
+         {
+          "institutionId": 137,
+          "courses": [
+           "137:MATH 11"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:MATH 005CH"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:MATH 005C"
+          ]
+         },
+         {
+          "institutionId": 114,
+          "courses": [
+           "114:MATH 292"
+          ]
+         },
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:MATH 4A"
+          ]
+         },
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:MATH 4AH"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:MATH A280"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:MATH A280H"
+          ]
+         },
+         {
+          "institutionId": 103,
+          "courses": [
+           "103:MATH 220"
+          ]
+         },
+         {
+          "institutionId": 58,
+          "courses": [
+           "58:MATH 3C"
+          ]
+         },
+         {
+          "institutionId": 33,
+          "courses": [
+           "33:MATH 110C"
+          ]
+         },
+         {
+          "institutionId": 136,
+          "courses": [
+           "136:MATH 073"
+          ]
+         },
+         {
+          "institutionId": 92,
+          "courses": [
+           "92:MATH 200"
+          ]
+         },
+         {
+          "institutionId": 65,
+          "courses": [
+           "65:MATH 3C"
+          ]
+         },
+         {
+          "institutionId": 80,
+          "courses": [
+           "80:MATH 004A"
+          ]
+         },
+         {
+          "institutionId": 32,
+          "courses": [
+           "32:MAT 004A"
+          ]
+         }
+        ]
+       },
+       {
+        "kind": "req",
+        "id": "MATH 54",
+        "label": "Linear Algebra and Differential Equations",
+        "units": 4,
+        "groups": [
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:MATH 2AH",
+           "113:MATH 2BH"
+          ]
+         },
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:MATH 2B",
+           "113:MATH 2A"
+          ]
+         },
+         {
+          "institutionId": 51,
+          "courses": [
+           "51:MATH 2A",
+           "51:MATH 2B"
+          ]
+         },
+         {
+          "institutionId": 137,
+          "courses": [
+           "137:MATH 15",
+           "137:MATH 13"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:MATH 055H",
+           "49:MATH 010H"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:MATH 055",
+           "49:MATH 010"
+          ]
+         },
+         {
+          "institutionId": 114,
+          "courses": [
+           "114:MATH 294",
+           "114:MATH 194"
+          ]
+         },
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:MATH 24H",
+           "124:MATH 26"
+          ]
+         },
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:MATH 26",
+           "124:MATH 24"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:MATH A285H"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:MATH A285"
+          ]
+         },
+         {
+          "institutionId": 103,
+          "courses": [
+           "103:MATH 270"
+          ]
+         },
+         {
+          "institutionId": 58,
+          "courses": [
+           "58:MATH 3F",
+           "58:MATH 3E"
+          ]
+         },
+         {
+          "institutionId": 33,
+          "courses": [
+           "33:MATH 130"
+          ]
+         },
+         {
+          "institutionId": 33,
+          "courses": [
+           "33:MATH 120",
+           "33:MATH 125"
+          ]
+         },
+         {
+          "institutionId": 136,
+          "courses": [
+           "136:MATH 079",
+           "136:MATH 078"
+          ]
+         },
+         {
+          "institutionId": 92,
+          "courses": [
+           "92:MATH 210",
+           "92:MATH 220"
+          ]
+         },
+         {
+          "institutionId": 65,
+          "courses": [
+           "65:MATH 26",
+           "65:MATH 24"
+          ]
+         },
+         {
+          "institutionId": 80,
+          "courses": [
+           "80:MATH 004B",
+           "80:MATH 004C"
+          ]
+         },
+         {
+          "institutionId": 32,
+          "courses": [
+           "32:MAT 004C",
+           "32:MAT 004B"
+          ]
+         }
+        ]
+       },
+       {
+        "kind": "req",
+        "id": "PHYSICS 7A",
+        "label": "Physics for Scientists and Engineers",
+        "units": 4,
+        "groups": [
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:PHYS 4A"
+          ]
+         },
+         {
+          "institutionId": 51,
+          "courses": [
+           "51:PHYS 4A"
+          ]
+         },
+         {
+          "institutionId": 137,
+          "courses": [
+           "137:PHYSCS 21",
+           "137:PHYSCS 23"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:PHYS 008A"
+          ]
+         },
+         {
+          "institutionId": 114,
+          "courses": [
+           "114:PHYS 130"
+          ]
+         },
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:PHYS 4A"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:PHYS A185"
+          ]
+         },
+         {
+          "institutionId": 103,
+          "courses": [
+           "103:PHYS 1A",
+           "103:PHYS 1B"
+          ]
+         },
+         {
+          "institutionId": 58,
+          "courses": [
+           "58:PHYS 4A"
+          ]
+         },
+         {
+          "institutionId": 33,
+          "courses": [
+           "33:PHYC 4A",
+           "33:PHYC 4AL"
+          ]
+         },
+         {
+          "institutionId": 136,
+          "courses": [
+           "136:PHYS 004A"
+          ]
+         },
+         {
+          "institutionId": 92,
+          "courses": [
+           "92:PHYS 121"
+          ]
+         },
+         {
+          "institutionId": 65,
+          "courses": [
+           "65:PHYS 4A"
+          ]
+         },
+         {
+          "institutionId": 80,
+          "courses": [
+           "80:PHYS 004A"
+          ]
+         },
+         {
+          "institutionId": 32,
+          "courses": [
+           "32:PHY 004A"
+          ]
+         }
+        ]
+       },
+       {
+        "kind": "req",
+        "id": "PHYSICS 7B",
+        "label": "Physics for Scientists and Engineers",
+        "units": 4,
+        "groups": [
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:PHYS 4C",
+           "113:PHYS 4B"
+          ]
+         },
+         {
+          "institutionId": 51,
+          "courses": [
+           "51:PHYS 4C",
+           "51:PHYS 4B"
+          ]
+         },
+         {
+          "institutionId": 137,
+          "courses": [
+           "137:PHYSCS 22",
+           "137:PHYSCS 23"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:PHYS 008B"
+          ]
+         },
+         {
+          "institutionId": 114,
+          "courses": [
+           "114:PHYS 230"
+          ]
+         },
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:PHYS 4B"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:PHYS A280"
+          ]
+         },
+         {
+          "institutionId": 103,
+          "courses": [
+           "103:PHYS 1C",
+           "103:PHYS 1B"
+          ]
+         },
+         {
+          "institutionId": 58,
+          "courses": [
+           "58:PHYS 4B"
+          ]
+         },
+         {
+          "institutionId": 33,
+          "courses": [
+           "33:PHYC 4BL",
+           "33:PHYC 4B"
+          ]
+         },
+         {
+          "institutionId": 136,
+          "courses": [
+           "136:PHYS 004B"
+          ]
+         },
+         {
+          "institutionId": 92,
+          "courses": [
+           "92:PHYS 122"
+          ]
+         },
+         {
+          "institutionId": 65,
+          "courses": [
+           "65:PHYS 4B"
+          ]
+         },
+         {
+          "institutionId": 80,
+          "courses": [
+           "80:PHYS 004C",
+           "80:PHYS 004B"
+          ]
+         },
+         {
+          "institutionId": 32,
+          "courses": [
+           "32:PHY 004C",
+           "32:PHY 004B"
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "kind": "node",
+      "type": "N_OF",
+      "n": 1,
+      "required": true,
+      "children": [
+       {
+        "kind": "req",
+        "id": "ASTRON 7A",
+        "label": "Introduction to Astrophysics",
+        "units": 4,
+        "groups": [
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:ASTR A103"
+          ]
+         }
+        ]
+       },
+       {
+        "kind": "req",
+        "id": "ASTRON 7B",
+        "label": "ASTRON 7B",
+        "units": 0,
+        "groups": [],
+        "noArticulation": {
+         "32": "No articulation listed",
+         "33": "No articulation listed",
+         "49": "No articulation listed",
+         "51": "No articulation listed",
+         "58": "No articulation listed",
+         "65": "No articulation listed",
+         "74": "No articulation listed",
+         "80": "No articulation listed",
+         "92": "No articulation listed",
+         "103": "No articulation listed",
+         "113": "No articulation listed",
+         "114": "No articulation listed",
+         "124": "No articulation listed",
+         "136": "No articulation listed",
+         "137": "No articulation listed"
+        }
+       },
+       {
+        "kind": "req",
+        "id": "BIOLOGY 1A, BIOLOGY 1AL",
+        "label": "BIOLOGY 1A, BIOLOGY 1AL",
+        "units": 5,
+        "groups": [
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:BIOL 6A",
+           "113:BIOL 6B"
+          ]
+         },
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:BIOL 6B",
+           "113:BIOL 6AH"
+          ]
+         },
+         {
+          "institutionId": 51,
+          "courses": [
+           "51:BIOL 1A",
+           "51:BIOL 1B"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:BIOL 010C",
+           "49:BIOL 010A"
+          ]
+         },
+         {
+          "institutionId": 114,
+          "courses": [
+           "114:BIOSC 130"
+          ]
+         },
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:BIO 81H"
+          ]
+         },
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:BIO 81"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:BIOL A185",
+           "74:BIOL A180"
+          ]
+         },
+         {
+          "institutionId": 58,
+          "courses": [
+           "58:BIOL 1A"
+          ]
+         },
+         {
+          "institutionId": 33,
+          "courses": [
+           "33:BIO 100A"
+          ]
+         },
+         {
+          "institutionId": 136,
+          "courses": [
+           "136:BIOL 004A",
+           "136:BIOL 004B"
+          ]
+         },
+         {
+          "institutionId": 80,
+          "courses": [
+           "80:BIOL 043",
+           "80:BIOL 041"
+          ]
+         },
+         {
+          "institutionId": 32,
+          "courses": [
+           "32:BIO 001AH"
+          ]
+         },
+         {
+          "institutionId": 32,
+          "courses": [
+           "32:BIO 001A"
+          ]
+         }
+        ]
+       },
+       {
+        "kind": "req",
+        "id": "BIOLOGY 1B",
+        "label": "General Biology (Plant Form & Function, Ecology, Evolution)",
+        "units": 4,
+        "groups": [
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:BIOL 6AH",
+           "113:BIOL 6C"
+          ]
+         },
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:BIOL 6A",
+           "113:BIOL 6C"
+          ]
+         },
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:BIOL 6A",
+           "113:BIOL 6CH"
+          ]
+         },
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:BIOL 6CH",
+           "113:BIOL 6AH"
+          ]
+         },
+         {
+          "institutionId": 51,
+          "courses": [
+           "51:BIOL 1C",
+           "51:BIOL 1B"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:BIOL 010B",
+           "49:BIOL 010C"
+          ]
+         },
+         {
+          "institutionId": 114,
+          "courses": [
+           "114:BIOSC 131"
+          ]
+         },
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:BIO 80H"
+          ]
+         },
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:BIO 80"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:BIOL A183",
+           "74:BIOL A183L",
+           "74:BIOL A185"
+          ]
+         },
+         {
+          "institutionId": 58,
+          "courses": [
+           "58:BIOL 1B"
+          ]
+         },
+         {
+          "institutionId": 33,
+          "courses": [
+           "33:BIO 100B"
+          ]
+         },
+         {
+          "institutionId": 136,
+          "courses": [
+           "136:BIOL 004B"
+          ]
+         },
+         {
+          "institutionId": 80,
+          "courses": [
+           "80:BIOL 042",
+           "80:BIOL 041"
+          ]
+         },
+         {
+          "institutionId": 32,
+          "courses": [
+           "32:BIO 001B"
+          ]
+         }
+        ]
+       },
+       {
+        "kind": "req",
+        "id": "CHEM 1A, CHEM 1AL, CHEM 1B",
+        "label": "CHEM 1A, CHEM 1AL, CHEM 1B",
+        "units": 9,
+        "groups": [
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:CHEM 1B",
+           "113:CHEM 1A",
+           "113:CHEM 1C"
+          ]
+         },
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:CHEM 1BH",
+           "113:CHEM 1AH",
+           "113:CHEM 1CH"
+          ]
+         },
+         {
+          "institutionId": 137,
+          "courses": [
+           "137:CHEM 12",
+           "137:CHEM 11"
+          ]
+         }
+        ]
+       },
+       {
+        "kind": "req",
+        "id": "CHEM 3A, CHEM 3AL",
+        "label": "CHEM 3A, CHEM 3AL",
+        "units": 5,
+        "groups": [
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:CHEM 12B",
+           "113:CHEM 12A"
+          ]
+         },
+         {
+          "institutionId": 51,
+          "courses": [
+           "51:CHEM 12AL",
+           "51:CHEM 12A",
+           "51:CHEM 12B",
+           "51:CHEM 12BL"
+          ]
+         },
+         {
+          "institutionId": 137,
+          "courses": [
+           "137:CHEM 21"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:CHEM 008A"
+          ]
+         },
+         {
+          "institutionId": 114,
+          "courses": [
+           "114:CHEM 226"
+          ]
+         },
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:CHEM 12A"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:CHEM A220L",
+           "74:CHEM A220"
+          ]
+         },
+         {
+          "institutionId": 103,
+          "courses": [
+           "103:CHEM 7A"
+          ]
+         },
+         {
+          "institutionId": 33,
+          "courses": [
+           "33:CHEM 212A"
+          ]
+         },
+         {
+          "institutionId": 136,
+          "courses": [
+           "136:CHEM 012A"
+          ]
+         },
+         {
+          "institutionId": 92,
+          "courses": [
+           "92:CHEM 211",
+           "92:CHEM 221"
+          ]
+         },
+         {
+          "institutionId": 65,
+          "courses": [
+           "65:CHEM 12A"
+          ]
+         },
+         {
+          "institutionId": 80,
+          "courses": [
+           "80:CHEM 012A"
+          ]
+         }
+        ]
+       },
+       {
+        "kind": "req",
+        "id": "CHEM 3B, CHEM 3BL",
+        "label": "CHEM 3B, CHEM 3BL",
+        "units": 5,
+        "groups": [
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:CHEM 12C",
+           "113:CHEM 12B"
+          ]
+         },
+         {
+          "institutionId": 51,
+          "courses": [
+           "51:CHEM 12B",
+           "51:CHEM 12CL",
+           "51:CHEM 12BL",
+           "51:CHEM 12C"
+          ]
+         },
+         {
+          "institutionId": 137,
+          "courses": [
+           "137:CHEM 22",
+           "137:CHEM 24"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:CHEM 008B"
+          ]
+         },
+         {
+          "institutionId": 114,
+          "courses": [
+           "114:CHEM 227"
+          ]
+         },
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:CHEM 12B"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:CHEM A225L",
+           "74:CHEM A225"
+          ]
+         },
+         {
+          "institutionId": 103,
+          "courses": [
+           "103:CHEM 7B"
+          ]
+         },
+         {
+          "institutionId": 33,
+          "courses": [
+           "33:CHEM 212B"
+          ]
+         },
+         {
+          "institutionId": 136,
+          "courses": [
+           "136:CHEM 012B"
+          ]
+         },
+         {
+          "institutionId": 92,
+          "courses": [
+           "92:CHEM 212",
+           "92:CHEM 222"
+          ]
+         },
+         {
+          "institutionId": 65,
+          "courses": [
+           "65:CHEM 12B"
+          ]
+         },
+         {
+          "institutionId": 80,
+          "courses": [
+           "80:CHEM 012B"
+          ]
+         }
+        ]
+       },
+       {
+        "kind": "req",
+        "id": "PHYSICS 7C",
+        "label": "Physics for Scientists and Engineers",
+        "units": 4,
+        "groups": [
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:PHYS 4C",
+           "113:PHYS 4D"
+          ]
+         },
+         {
+          "institutionId": 51,
+          "courses": [
+           "51:PHYS 4C",
+           "51:PHYS 4D"
+          ]
+         },
+         {
+          "institutionId": 137,
+          "courses": [
+           "137:PHYSCS 23",
+           "137:PHYSCS 24"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:PHYS 008C"
+          ]
+         },
+         {
+          "institutionId": 114,
+          "courses": [
+           "114:PHYS 231"
+          ]
+         },
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:PHYS 4C"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:PHYS A285"
+          ]
+         },
+         {
+          "institutionId": 103,
+          "courses": [
+           "103:PHYS 1D"
+          ]
+         },
+         {
+          "institutionId": 58,
+          "courses": [
+           "58:PHYS 4C"
+          ]
+         },
+         {
+          "institutionId": 33,
+          "courses": [
+           "33:PHYC 4DL",
+           "33:PHYC 4C",
+           "33:PHYC 4CL",
+           "33:PHYC 4D"
+          ]
+         },
+         {
+          "institutionId": 136,
+          "courses": [
+           "136:PHYS 004C"
+          ]
+         },
+         {
+          "institutionId": 92,
+          "courses": [
+           "92:PHYS 123"
+          ]
+         },
+         {
+          "institutionId": 65,
+          "courses": [
+           "65:PHYS 4C"
+          ]
+         },
+         {
+          "institutionId": 80,
+          "courses": [
+           "80:PHYS 005",
+           "80:PHYS 004C"
+          ]
+         },
+         {
+          "institutionId": 32,
+          "courses": [
+           "32:PHY 004D",
+           "32:PHY 004C"
+          ]
+         }
+        ]
+       },
+       {
+        "kind": "req",
+        "id": "MCELLBI 32, MCELLBI 32L",
+        "label": "MCELLBI 32, MCELLBI 32L",
+        "units": 5,
+        "groups": [
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:BIOL 40C",
+           "113:BIOL 40A",
+           "113:BIOL 40B"
+          ]
+         },
+         {
+          "institutionId": 51,
+          "courses": [
+           "51:BIOL 40C",
+           "51:BIOL 40A",
+           "51:BIOL 40B"
+          ]
+         },
+         {
+          "institutionId": 137,
+          "courses": [
+           "137:PHYS 3"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:PYSO 001"
+          ]
+         },
+         {
+          "institutionId": 114,
+          "courses": [
+           "114:BIOSC 140"
+          ]
+         },
+         {
+          "institutionId": 114,
+          "courses": [
+           "114:BIOSC 120"
+          ]
+         },
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:BIO 12"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:BIOL A225"
+          ]
+         },
+         {
+          "institutionId": 103,
+          "courses": [
+           "103:PHYO 31"
+          ]
+         },
+         {
+          "institutionId": 58,
+          "courses": [
+           "58:BIOL 4"
+          ]
+         },
+         {
+          "institutionId": 33,
+          "courses": [
+           "33:BIO 111"
+          ]
+         },
+         {
+          "institutionId": 92,
+          "courses": [
+           "92:BMS 108"
+          ]
+         },
+         {
+          "institutionId": 65,
+          "courses": [
+           "65:BIO 12"
+          ]
+         },
+         {
+          "institutionId": 80,
+          "courses": [
+           "80:BIOL 048"
+          ]
+         },
+         {
+          "institutionId": 32,
+          "courses": [
+           "32:BIO 048"
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "kind": "node",
+    "type": "AND",
+    "title": "STRONGLY RECOMMENDED COURSES",
+    "required": false,
+    "children": [
+     {
+      "kind": "req",
+      "id": "COMPSCI 61A",
+      "label": "The Structure and Interpretation of Computer Programs",
+      "units": 4,
+      "groups": [
+       {
+        "institutionId": 114,
+        "courses": [
+         "114:COMSC 140"
+        ]
+       },
+       {
+        "institutionId": 114,
+        "courses": [
+         "114:COMSC 240",
+         "114:MATH 192"
+        ]
+       },
+       {
+        "institutionId": 80,
+        "courses": [
+         "80:CIST 005A",
+         "80:CIST 005B"
+        ]
+       }
+      ]
+     },
+     {
+      "kind": "req",
+      "id": "EECS 16A",
+      "label": "Designing Information Devices and Systems I",
+      "units": 4,
+      "groups": [
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:MATH 2B",
+         "113:ENGR 37",
+         "113:MATH 2A"
+        ]
+       },
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:MATH 2BH",
+         "113:ENGR 37",
+         "113:MATH 2AH"
+        ]
+       },
+       {
+        "institutionId": 137,
+        "courses": [
+         "137:ENGR 21",
+         "137:ENGR 22"
+        ]
+       },
+       {
+        "institutionId": 49,
+        "courses": [
+         "49:ENGR 016",
+         "49:ENGR 016L",
+         "49:MATH 010"
+        ]
+       },
+       {
+        "institutionId": 49,
+        "courses": [
+         "49:ENGR 016",
+         "49:ENGR 016L",
+         "49:MATH 010H"
+        ]
+       },
+       {
+        "institutionId": 74,
+        "courses": [
+         "74:MATH A285",
+         "74:ENGR A285"
+        ]
+       },
+       {
+        "institutionId": 74,
+        "courses": [
+         "74:MATH A285H",
+         "74:ENGR A285"
+        ]
+       }
+      ]
+     },
+     {
+      "kind": "req",
+      "id": "EECS 16B",
+      "label": "Designing Information Devices and Systems II",
+      "units": 4,
+      "groups": [
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:ENGR 37",
+         "113:ENGR 37L"
+        ]
+       },
+       {
+        "institutionId": 114,
+        "courses": [
+         "114:ENGIN 230",
+         "114:MATH 194"
+        ]
+       },
+       {
+        "institutionId": 32,
+        "courses": [
+         "32:EGR 024",
+         "32:EGR 024L",
+         "32:MAT 004C"
+        ]
+       }
+      ]
+     },
+     {
+      "kind": "req",
+      "id": "COMPSCI 61B",
+      "label": "Data Structures",
+      "units": 4,
+      "groups": [
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:CIS 22CH"
+        ]
+       },
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:CIS 26B"
+        ]
+       },
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:CIS 22C"
+        ]
+       },
+       {
+        "institutionId": 51,
+        "courses": [
+         "51:C S 1B"
+        ]
+       },
+       {
+        "institutionId": 51,
+        "courses": [
+         "51:C S 1C"
+        ]
+       },
+       {
+        "institutionId": 51,
+        "courses": [
+         "51:C S 2C"
+        ]
+       },
+       {
+        "institutionId": 51,
+        "courses": [
+         "51:C S 3C"
+        ]
+       },
+       {
+        "institutionId": 137,
+        "courses": [
+         "137:CS 20A",
+         "137:CS 20B"
+        ]
+       },
+       {
+        "institutionId": 49,
+        "courses": [
+         "49:CS 003B",
+         "49:CS 033",
+         "49:CS 003BL"
+        ]
+       },
+       {
+        "institutionId": 49,
+        "courses": [
+         "49:CS 003C",
+         "49:CS 034",
+         "49:CS 003CL"
+        ]
+       },
+       {
+        "institutionId": 49,
+        "courses": [
+         "49:CS 008",
+         "49:CS 008L"
+        ]
+       },
+       {
+        "institutionId": 114,
+        "courses": [
+         "114:COMSC 210"
+        ]
+       },
+       {
+        "institutionId": 124,
+        "courses": [
+         "124:CS 41"
+        ]
+       },
+       {
+        "institutionId": 74,
+        "courses": [
+         "74:CS A250",
+         "74:CS A200"
+        ]
+       },
+       {
+        "institutionId": 103,
+        "courses": [
+         "103:CSCI 2",
+         "103:CSCI 30"
+        ]
+       },
+       {
+        "institutionId": 58,
+        "courses": [
+         "58:CIS 25",
+         "58:CIS 27"
+        ]
+       },
+       {
+        "institutionId": 58,
+        "courses": [
+         "58:CIS 27",
+         "58:CIS 36A"
+        ]
+       },
+       {
+        "institutionId": 33,
+        "courses": [
+         "33:CS 110C"
+        ]
+       },
+       {
+        "institutionId": 33,
+        "courses": [
+         "33:CS 111C"
+        ]
+       },
+       {
+        "institutionId": 136,
+        "courses": [
+         "136:CIS 055"
+        ]
+       },
+       {
+        "institutionId": 92,
+        "courses": [
+         "92:CS 106"
+        ]
+       },
+       {
+        "institutionId": 65,
+        "courses": [
+         "65:CS 1D"
+        ]
+       },
+       {
+        "institutionId": 80,
+        "courses": [
+         "80:CIST 004B"
+        ]
+       },
+       {
+        "institutionId": 32,
+        "courses": [
+         "32:CIS 044"
+        ]
+       }
+      ]
+     },
+     {
+      "kind": "req",
+      "id": "COMPSCI 61C",
+      "label": "Machine Structures",
+      "units": 4,
+      "groups": [
+       {
+        "institutionId": 114,
+        "courses": [
+         "114:COMSC 260"
+        ]
+       },
+       {
+        "institutionId": 74,
+        "courses": [
+         "74:CS A216"
+        ]
+       },
+       {
+        "institutionId": 58,
+        "courses": [
+         "58:CIS 20"
+        ]
+       },
+       {
+        "institutionId": 33,
+        "courses": [
+         "33:CS 270"
+        ]
+       }
+      ],
+      "noArticulation": {
+       "137": "No Course Articulated"
+      }
+     },
+     {
+      "kind": "req",
+      "id": "COMPSCI 70",
+      "label": "Discrete Mathematics and Probability Theory",
+      "units": 4,
+      "groups": [],
+      "noArticulation": {
+       "32": "This course must be taken at the university after transfer",
+       "33": "This course must be taken at the university after transfer",
+       "49": "This course must be taken at the university after transfer",
+       "51": "This course must be taken at the university after transfer",
+       "58": "This course must be taken at the university after transfer",
+       "65": "This course must be taken at the university after transfer",
+       "74": "This course must be taken at the university after transfer",
+       "80": "This course must be taken at the university after transfer",
+       "92": "This course must be taken at the university after transfer",
+       "103": "This course must be taken at the university after transfer",
+       "113": "This course must be taken at the university after transfer",
+       "114": "This course must be taken at the university after transfer",
+       "124": "This course must be taken at the university after transfer",
+       "136": "This course must be taken at the university after transfer",
+       "137": "This course must be taken at the university after transfer"
+      }
+     }
+    ]
+   }
+  ]
+ },
+ "catalog": {
+  "113:MATH 1B": {
+   "id": "113:MATH 1B",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "1B",
+   "title": "Calculus II",
+   "units": 5
+  },
+  "113:MATH 1A": {
+   "id": "113:MATH 1A",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "1A",
+   "title": "Calculus I",
+   "units": 5
+  },
+  "113:MATH 1AH": {
+   "id": "113:MATH 1AH",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "1AH",
+   "title": "Calculus I - HONORS",
+   "units": 5
+  },
+  "113:MATH 1BH": {
+   "id": "113:MATH 1BH",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "1BH",
+   "title": "Calculus II - HONORS",
+   "units": 5
+  },
+  "113:MATH 1CH": {
+   "id": "113:MATH 1CH",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "1CH",
+   "title": "Calculus III - HONORS",
+   "units": 5
+  },
+  "113:MATH 1C": {
+   "id": "113:MATH 1C",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "1C",
+   "title": "Calculus III",
+   "units": 5
+  },
+  "113:MATH 1D": {
+   "id": "113:MATH 1D",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "1D",
+   "title": "Calculus IV",
+   "units": 5
+  },
+  "113:MATH 1DH": {
+   "id": "113:MATH 1DH",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "1DH",
+   "title": "Calculus IV - HONORS",
+   "units": 5
+  },
+  "113:MATH 2AH": {
+   "id": "113:MATH 2AH",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "2AH",
+   "title": "Differential Equations - HONORS",
+   "units": 5
+  },
+  "113:MATH 2BH": {
+   "id": "113:MATH 2BH",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "2BH",
+   "title": "Linear Algebra - HONORS",
+   "units": 5
+  },
+  "113:MATH 2B": {
+   "id": "113:MATH 2B",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "2B",
+   "title": "Linear Algebra",
+   "units": 5
+  },
+  "113:MATH 2A": {
+   "id": "113:MATH 2A",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "2A",
+   "title": "Differential Equations",
+   "units": 5
+  },
+  "113:PHYS 4A": {
+   "id": "113:PHYS 4A",
+   "institutionId": 113,
+   "prefix": "PHYS",
+   "number": "4A",
+   "title": "Physics for Scientists and Engineers: Mechanics",
+   "units": 6
+  },
+  "113:PHYS 4C": {
+   "id": "113:PHYS 4C",
+   "institutionId": 113,
+   "prefix": "PHYS",
+   "number": "4C",
+   "title": "Physics for Scientists and Engineers: Fluids, Waves, Optics and Thermodynamics",
+   "units": 6
+  },
+  "113:PHYS 4B": {
+   "id": "113:PHYS 4B",
+   "institutionId": 113,
+   "prefix": "PHYS",
+   "number": "4B",
+   "title": "Physics for Scientists and Engineers: Electricity and Magnetism",
+   "units": 6
+  },
+  "113:BIOL 6AH": {
+   "id": "113:BIOL 6AH",
+   "institutionId": 113,
+   "prefix": "BIOL",
+   "number": "6AH",
+   "title": "Form and Function in the Biological World - HONORS",
+   "units": 6
+  },
+  "113:BIOL 6C": {
+   "id": "113:BIOL 6C",
+   "institutionId": 113,
+   "prefix": "BIOL",
+   "number": "6C",
+   "title": "Ecology and Evolution",
+   "units": 6
+  },
+  "113:BIOL 6A": {
+   "id": "113:BIOL 6A",
+   "institutionId": 113,
+   "prefix": "BIOL",
+   "number": "6A",
+   "title": "Form and Function in the Biological World",
+   "units": 6
+  },
+  "113:BIOL 6CH": {
+   "id": "113:BIOL 6CH",
+   "institutionId": 113,
+   "prefix": "BIOL",
+   "number": "6CH",
+   "title": "Ecology and Evolution - HONORS",
+   "units": 6
+  },
+  "113:PHYS 4D": {
+   "id": "113:PHYS 4D",
+   "institutionId": 113,
+   "prefix": "PHYS",
+   "number": "4D",
+   "title": "Physics for Scientists and Engineers: Modern Physics",
+   "units": 6
+  },
+  "113:ENGR 37": {
+   "id": "113:ENGR 37",
+   "institutionId": 113,
+   "prefix": "ENGR",
+   "number": "37",
+   "title": "Introduction to Circuit Analysis",
+   "units": 5
+  },
+  "113:ENGR 37L": {
+   "id": "113:ENGR 37L",
+   "institutionId": 113,
+   "prefix": "ENGR",
+   "number": "37L",
+   "title": "Introduction to Circuit Analysis Laboratory",
+   "units": 2
+  },
+  "113:CIS 22CH": {
+   "id": "113:CIS 22CH",
+   "institutionId": 113,
+   "prefix": "CIS",
+   "number": "22CH",
+   "title": "Data Abstraction and Structures - HONORS",
+   "units": 4.5
+  },
+  "113:CIS 26B": {
+   "id": "113:CIS 26B",
+   "institutionId": 113,
+   "prefix": "CIS",
+   "number": "26B",
+   "title": "Advanced C Programming",
+   "units": 4.5
+  },
+  "113:CIS 22C": {
+   "id": "113:CIS 22C",
+   "institutionId": 113,
+   "prefix": "CIS",
+   "number": "22C",
+   "title": "Data Abstraction and Structures",
+   "units": 4.5
+  },
+  "113:BIOL 6B": {
+   "id": "113:BIOL 6B",
+   "institutionId": 113,
+   "prefix": "BIOL",
+   "number": "6B",
+   "title": "Cell and Molecular Biology",
+   "units": 6
+  },
+  "113:CHEM 1B": {
+   "id": "113:CHEM 1B",
+   "institutionId": 113,
+   "prefix": "CHEM",
+   "number": "1B",
+   "title": "General Chemistry II",
+   "units": 5
+  },
+  "113:CHEM 1A": {
+   "id": "113:CHEM 1A",
+   "institutionId": 113,
+   "prefix": "CHEM",
+   "number": "1A",
+   "title": "General Chemistry I",
+   "units": 5
+  },
+  "113:CHEM 1C": {
+   "id": "113:CHEM 1C",
+   "institutionId": 113,
+   "prefix": "CHEM",
+   "number": "1C",
+   "title": "General Chemistry III",
+   "units": 5
+  },
+  "113:CHEM 1BH": {
+   "id": "113:CHEM 1BH",
+   "institutionId": 113,
+   "prefix": "CHEM",
+   "number": "1BH",
+   "title": "General Chemistry II - HONORS",
+   "units": 5
+  },
+  "113:CHEM 1AH": {
+   "id": "113:CHEM 1AH",
+   "institutionId": 113,
+   "prefix": "CHEM",
+   "number": "1AH",
+   "title": "General Chemistry I - HONORS",
+   "units": 5
+  },
+  "113:CHEM 1CH": {
+   "id": "113:CHEM 1CH",
+   "institutionId": 113,
+   "prefix": "CHEM",
+   "number": "1CH",
+   "title": "General Chemistry III - HONORS",
+   "units": 5
+  },
+  "113:CHEM 12B": {
+   "id": "113:CHEM 12B",
+   "institutionId": 113,
+   "prefix": "CHEM",
+   "number": "12B",
+   "title": "Organic Chemistry II",
+   "units": 5
+  },
+  "113:CHEM 12A": {
+   "id": "113:CHEM 12A",
+   "institutionId": 113,
+   "prefix": "CHEM",
+   "number": "12A",
+   "title": "Organic Chemistry I",
+   "units": 5
+  },
+  "113:CHEM 12C": {
+   "id": "113:CHEM 12C",
+   "institutionId": 113,
+   "prefix": "CHEM",
+   "number": "12C",
+   "title": "Organic Chemistry III",
+   "units": 5
+  },
+  "113:BIOL 40C": {
+   "id": "113:BIOL 40C",
+   "institutionId": 113,
+   "prefix": "BIOL",
+   "number": "40C",
+   "title": "Human Anatomy and Physiology III",
+   "units": 5
+  },
+  "113:BIOL 40A": {
+   "id": "113:BIOL 40A",
+   "institutionId": 113,
+   "prefix": "BIOL",
+   "number": "40A",
+   "title": "Human Anatomy and Physiology I",
+   "units": 5
+  },
+  "113:BIOL 40B": {
+   "id": "113:BIOL 40B",
+   "institutionId": 113,
+   "prefix": "BIOL",
+   "number": "40B",
+   "title": "Human Anatomy and Physiology II",
+   "units": 5
+  },
+  "51:MATH 1AH": {
+   "id": "51:MATH 1AH",
+   "institutionId": 51,
+   "prefix": "MATH",
+   "number": "1AH",
+   "title": "Honors Calculus I ",
+   "units": 5
+  },
+  "51:MATH 1A": {
+   "id": "51:MATH 1A",
+   "institutionId": 51,
+   "prefix": "MATH",
+   "number": "1A",
+   "title": "Calculus",
+   "units": 5
+  },
+  "51:MATH 1C": {
+   "id": "51:MATH 1C",
+   "institutionId": 51,
+   "prefix": "MATH",
+   "number": "1C",
+   "title": "Calculus",
+   "units": 5
+  },
+  "51:MATH 1B": {
+   "id": "51:MATH 1B",
+   "institutionId": 51,
+   "prefix": "MATH",
+   "number": "1B",
+   "title": "Calculus",
+   "units": 5
+  },
+  "51:PHYS 4C": {
+   "id": "51:PHYS 4C",
+   "institutionId": 51,
+   "prefix": "PHYS",
+   "number": "4C",
+   "title": "General Physics (Calculus)",
+   "units": 6
+  },
+  "51:PHYS 4B": {
+   "id": "51:PHYS 4B",
+   "institutionId": 51,
+   "prefix": "PHYS",
+   "number": "4B",
+   "title": "General Physics (Calculus)",
+   "units": 6
+  },
+  "51:MATH 1D": {
+   "id": "51:MATH 1D",
+   "institutionId": 51,
+   "prefix": "MATH",
+   "number": "1D",
+   "title": "Calculus",
+   "units": 5
+  },
+  "51:PHYS 4A": {
+   "id": "51:PHYS 4A",
+   "institutionId": 51,
+   "prefix": "PHYS",
+   "number": "4A",
+   "title": "General Physics (Calculus)",
+   "units": 6
+  },
+  "51:MATH 2A": {
+   "id": "51:MATH 2A",
+   "institutionId": 51,
+   "prefix": "MATH",
+   "number": "2A",
+   "title": "Differential Equations",
+   "units": 5
+  },
+  "51:MATH 2B": {
+   "id": "51:MATH 2B",
+   "institutionId": 51,
+   "prefix": "MATH",
+   "number": "2B",
+   "title": "Linear Algebra",
+   "units": 5
+  },
+  "51:BIOL 1C": {
+   "id": "51:BIOL 1C",
+   "institutionId": 51,
+   "prefix": "BIOL",
+   "number": "1C",
+   "title": "Evolution, Systematics & Ecology",
+   "units": 6
+  },
+  "51:BIOL 1B": {
+   "id": "51:BIOL 1B",
+   "institutionId": 51,
+   "prefix": "BIOL",
+   "number": "1B",
+   "title": "Form & Function in Plants & Animals",
+   "units": 6
+  },
+  "51:CHEM 1B": {
+   "id": "51:CHEM 1B",
+   "institutionId": 51,
+   "prefix": "CHEM",
+   "number": "1B",
+   "title": "General Chemistry",
+   "units": 5
+  },
+  "51:CHEM 1C": {
+   "id": "51:CHEM 1C",
+   "institutionId": 51,
+   "prefix": "CHEM",
+   "number": "1C",
+   "title": "General Chemistry & Qualitative Analysis",
+   "units": 5
+  },
+  "51:PHYS 4D": {
+   "id": "51:PHYS 4D",
+   "institutionId": 51,
+   "prefix": "PHYS",
+   "number": "4D",
+   "title": "General Physics (Calculus)",
+   "units": 6
+  },
+  "51:C S 1B": {
+   "id": "51:C S 1B",
+   "institutionId": 51,
+   "prefix": "C S",
+   "number": "1B",
+   "title": "Intermediate Software Design in JAVA",
+   "units": 4.5
+  },
+  "51:C S 1C": {
+   "id": "51:C S 1C",
+   "institutionId": 51,
+   "prefix": "C S",
+   "number": "1C",
+   "title": "Advanced Data Structures & Algorithims in JAVA",
+   "units": 4.5
+  },
+  "51:C S 2C": {
+   "id": "51:C S 2C",
+   "institutionId": 51,
+   "prefix": "C S",
+   "number": "2C",
+   "title": "Advanced Data Structures & Algorithims in C++",
+   "units": 4.5
+  },
+  "51:C S 3C": {
+   "id": "51:C S 3C",
+   "institutionId": 51,
+   "prefix": "C S",
+   "number": "3C",
+   "title": "Advanced Data Structures & Algorithms in Python",
+   "units": 4.5
+  },
+  "51:BIOL 1A": {
+   "id": "51:BIOL 1A",
+   "institutionId": 51,
+   "prefix": "BIOL",
+   "number": "1A",
+   "title": "Principles of Cell Biology",
+   "units": 6
+  },
+  "51:CHEM 1A": {
+   "id": "51:CHEM 1A",
+   "institutionId": 51,
+   "prefix": "CHEM",
+   "number": "1A",
+   "title": "General Chemistry",
+   "units": 5
+  },
+  "51:CHEM 12AL": {
+   "id": "51:CHEM 12AL",
+   "institutionId": 51,
+   "prefix": "CHEM",
+   "number": "12AL",
+   "title": "Organic Chemistry Laboratory",
+   "units": 2
+  },
+  "51:CHEM 12A": {
+   "id": "51:CHEM 12A",
+   "institutionId": 51,
+   "prefix": "CHEM",
+   "number": "12A",
+   "title": "Organic Chemistry",
+   "units": 4
+  },
+  "51:CHEM 12B": {
+   "id": "51:CHEM 12B",
+   "institutionId": 51,
+   "prefix": "CHEM",
+   "number": "12B",
+   "title": "Organic Chemistry",
+   "units": 4
+  },
+  "51:CHEM 12BL": {
+   "id": "51:CHEM 12BL",
+   "institutionId": 51,
+   "prefix": "CHEM",
+   "number": "12BL",
+   "title": "Organic Chemistry Laboratory",
+   "units": 2
+  },
+  "51:CHEM 12CL": {
+   "id": "51:CHEM 12CL",
+   "institutionId": 51,
+   "prefix": "CHEM",
+   "number": "12CL",
+   "title": "Organic Chemistry Laboratory",
+   "units": 2
+  },
+  "51:CHEM 12C": {
+   "id": "51:CHEM 12C",
+   "institutionId": 51,
+   "prefix": "CHEM",
+   "number": "12C",
+   "title": "Organic Chemistry",
+   "units": 4
+  },
+  "51:BIOL 40C": {
+   "id": "51:BIOL 40C",
+   "institutionId": 51,
+   "prefix": "BIOL",
+   "number": "40C",
+   "title": "Human Anatomy & Physiology III",
+   "units": 5
+  },
+  "51:BIOL 40A": {
+   "id": "51:BIOL 40A",
+   "institutionId": 51,
+   "prefix": "BIOL",
+   "number": "40A",
+   "title": "Human Anatomy & Physiology I",
+   "units": 5
+  },
+  "51:BIOL 40B": {
+   "id": "51:BIOL 40B",
+   "institutionId": 51,
+   "prefix": "BIOL",
+   "number": "40B",
+   "title": "Human Anatomy & Physiology II",
+   "units": 5
+  },
+  "137:MATH 7": {
+   "id": "137:MATH 7",
+   "institutionId": 137,
+   "prefix": "MATH",
+   "number": "7",
+   "title": "Calculus 1",
+   "units": 5
+  },
+  "137:MATH 8": {
+   "id": "137:MATH 8",
+   "institutionId": 137,
+   "prefix": "MATH",
+   "number": "8",
+   "title": "Calculus 2",
+   "units": 5
+  },
+  "137:MATH 11": {
+   "id": "137:MATH 11",
+   "institutionId": 137,
+   "prefix": "MATH",
+   "number": "11",
+   "title": "Multivariable Calculus",
+   "units": 5
+  },
+  "137:MATH 15": {
+   "id": "137:MATH 15",
+   "institutionId": 137,
+   "prefix": "MATH",
+   "number": "15",
+   "title": "Differential Equations",
+   "units": 3
+  },
+  "137:MATH 13": {
+   "id": "137:MATH 13",
+   "institutionId": 137,
+   "prefix": "MATH",
+   "number": "13",
+   "title": "Linear Algebra",
+   "units": 3
+  },
+  "137:PHYSCS 21": {
+   "id": "137:PHYSCS 21",
+   "institutionId": 137,
+   "prefix": "PHYSCS",
+   "number": "21",
+   "title": "Mechanics with Lab",
+   "units": 5
+  },
+  "137:PHYSCS 23": {
+   "id": "137:PHYSCS 23",
+   "institutionId": 137,
+   "prefix": "PHYSCS",
+   "number": "23",
+   "title": "Fluids, Waves, Thermodynamics, Optics with Lab",
+   "units": 5
+  },
+  "137:PHYSCS 22": {
+   "id": "137:PHYSCS 22",
+   "institutionId": 137,
+   "prefix": "PHYSCS",
+   "number": "22",
+   "title": "Electricity and Magnetism with Lab",
+   "units": 5
+  },
+  "137:PHYSCS 24": {
+   "id": "137:PHYSCS 24",
+   "institutionId": 137,
+   "prefix": "PHYSCS",
+   "number": "24",
+   "title": "Modern Physics with Lab",
+   "units": 3
+  },
+  "137:ENGR 21": {
+   "id": "137:ENGR 21",
+   "institutionId": 137,
+   "prefix": "ENGR",
+   "number": "21",
+   "title": "Circuit Analysis",
+   "units": 3
+  },
+  "137:ENGR 22": {
+   "id": "137:ENGR 22",
+   "institutionId": 137,
+   "prefix": "ENGR",
+   "number": "22",
+   "title": "Circuit Analysis Lab",
+   "units": 1
+  },
+  "137:CS 20A": {
+   "id": "137:CS 20A",
+   "institutionId": 137,
+   "prefix": "CS",
+   "number": "20A",
+   "title": "Data Structures with C++",
+   "units": 3
+  },
+  "137:CS 20B": {
+   "id": "137:CS 20B",
+   "institutionId": 137,
+   "prefix": "CS",
+   "number": "20B",
+   "title": "Data Structures with JAVA",
+   "units": 3
+  },
+  "137:BIOL 21": {
+   "id": "137:BIOL 21",
+   "institutionId": 137,
+   "prefix": "BIOL",
+   "number": "21",
+   "title": "Cell Biology and Evolution",
+   "units": 4
+  },
+  "137:BIOL 23": {
+   "id": "137:BIOL 23",
+   "institutionId": 137,
+   "prefix": "BIOL",
+   "number": "23",
+   "title": "Organismal and Environmental Biology",
+   "units": 5
+  },
+  "137:BIOL 22": {
+   "id": "137:BIOL 22",
+   "institutionId": 137,
+   "prefix": "BIOL",
+   "number": "22",
+   "title": "Genetics and Molecular Biology",
+   "units": 4
+  },
+  "137:CHEM 12": {
+   "id": "137:CHEM 12",
+   "institutionId": 137,
+   "prefix": "CHEM",
+   "number": "12",
+   "title": "General Chemistry II",
+   "units": 5
+  },
+  "137:CHEM 11": {
+   "id": "137:CHEM 11",
+   "institutionId": 137,
+   "prefix": "CHEM",
+   "number": "11",
+   "title": "General Chemistry I",
+   "units": 5
+  },
+  "137:CHEM 21": {
+   "id": "137:CHEM 21",
+   "institutionId": 137,
+   "prefix": "CHEM",
+   "number": "21",
+   "title": "Organic Chemistry I",
+   "units": 5
+  },
+  "137:CHEM 22": {
+   "id": "137:CHEM 22",
+   "institutionId": 137,
+   "prefix": "CHEM",
+   "number": "22",
+   "title": "Organic Chemistry II",
+   "units": 4
+  },
+  "137:CHEM 24": {
+   "id": "137:CHEM 24",
+   "institutionId": 137,
+   "prefix": "CHEM",
+   "number": "24",
+   "title": "Organic Chemistry II Laboratory",
+   "units": 2
+  },
+  "137:PHYS 3": {
+   "id": "137:PHYS 3",
+   "institutionId": 137,
+   "prefix": "PHYS",
+   "number": "3",
+   "title": "Human Physiology",
+   "units": 4
+  },
+  "49:MATH 005A": {
+   "id": "49:MATH 005A",
+   "institutionId": 49,
+   "prefix": "MATH",
+   "number": "005A",
+   "title": "Single Variable Calculus I",
+   "units": 5
+  },
+  "49:MATH 005AH": {
+   "id": "49:MATH 005AH",
+   "institutionId": 49,
+   "prefix": "MATH",
+   "number": "005AH",
+   "title": "Honors Single Variable Calculus I",
+   "units": 5
+  },
+  "49:MATH 005AE": {
+   "id": "49:MATH 005AE",
+   "institutionId": 49,
+   "prefix": "MATH",
+   "number": "005AE",
+   "title": "Single Variable Calculus I with Embedded Support",
+   "units": 5.5
+  },
+  "49:MATH 055H": {
+   "id": "49:MATH 055H",
+   "institutionId": 49,
+   "prefix": "MATH",
+   "number": "055H",
+   "title": "Honors Differential Equations",
+   "units": 4
+  },
+  "49:MATH 005BH": {
+   "id": "49:MATH 005BH",
+   "institutionId": 49,
+   "prefix": "MATH",
+   "number": "005BH",
+   "title": "Honors Single Variable Calculus II",
+   "units": 5
+  },
+  "49:MATH 055": {
+   "id": "49:MATH 055",
+   "institutionId": 49,
+   "prefix": "MATH",
+   "number": "055",
+   "title": "Differential Equations",
+   "units": 4
+  },
+  "49:MATH 005B": {
+   "id": "49:MATH 005B",
+   "institutionId": 49,
+   "prefix": "MATH",
+   "number": "005B",
+   "title": "Single Variable Calculus II",
+   "units": 5
+  },
+  "49:MATH 005BE": {
+   "id": "49:MATH 005BE",
+   "institutionId": 49,
+   "prefix": "MATH",
+   "number": "005BE",
+   "title": "Single Variable Calculus II with Embedded Support",
+   "units": 5.5
+  },
+  "49:PHYS 008B": {
+   "id": "49:PHYS 008B",
+   "institutionId": 49,
+   "prefix": "PHYS",
+   "number": "008B",
+   "title": "Physics for Scientists and Engineers II: Waves, Electricity & Magnetism",
+   "units": 5
+  },
+  "49:MATH 005CH": {
+   "id": "49:MATH 005CH",
+   "institutionId": 49,
+   "prefix": "MATH",
+   "number": "005CH",
+   "title": "Honors Multivariable Calculus",
+   "units": 5
+  },
+  "49:MATH 005C": {
+   "id": "49:MATH 005C",
+   "institutionId": 49,
+   "prefix": "MATH",
+   "number": "005C",
+   "title": "Multivariable Calculus",
+   "units": 5
+  },
+  "49:PHYS 008A": {
+   "id": "49:PHYS 008A",
+   "institutionId": 49,
+   "prefix": "PHYS",
+   "number": "008A",
+   "title": "Physics for Scientists and Engineers I: Mechanics",
+   "units": 5
+  },
+  "49:MATH 010H": {
+   "id": "49:MATH 010H",
+   "institutionId": 49,
+   "prefix": "MATH",
+   "number": "010H",
+   "title": "Honors Linear Algebra and Applications",
+   "units": 4
+  },
+  "49:MATH 010": {
+   "id": "49:MATH 010",
+   "institutionId": 49,
+   "prefix": "MATH",
+   "number": "010",
+   "title": "Linear Algebra and Applications",
+   "units": 4
+  },
+  "49:BIOL 010B": {
+   "id": "49:BIOL 010B",
+   "institutionId": 49,
+   "prefix": "BIOL",
+   "number": "010B",
+   "title": "The Diversity of Life on Earth: Structure, Function and Ecology",
+   "units": 4
+  },
+  "49:BIOL 010C": {
+   "id": "49:BIOL 010C",
+   "institutionId": 49,
+   "prefix": "BIOL",
+   "number": "010C",
+   "title": "Genetics",
+   "units": 3
+  },
+  "49:CHEM 001B": {
+   "id": "49:CHEM 001B",
+   "institutionId": 49,
+   "prefix": "CHEM",
+   "number": "001B",
+   "title": "General Chemistry and Chemical Analysis II",
+   "units": 5
+  },
+  "49:PHYS 008C": {
+   "id": "49:PHYS 008C",
+   "institutionId": 49,
+   "prefix": "PHYS",
+   "number": "008C",
+   "title": "Physics for Scientists and Engineers III: Thermodynamics, Optics, and Modern Physics",
+   "units": 5
+  },
+  "49:ENGR 016": {
+   "id": "49:ENGR 016",
+   "institutionId": 49,
+   "prefix": "ENGR",
+   "number": "016",
+   "title": "Engineering Circuits",
+   "units": 3
+  },
+  "49:ENGR 016L": {
+   "id": "49:ENGR 016L",
+   "institutionId": 49,
+   "prefix": "ENGR",
+   "number": "016L",
+   "title": "Engineering Circuits Laboratory",
+   "units": 1
+  },
+  "49:CS 003B": {
+   "id": "49:CS 003B",
+   "institutionId": 49,
+   "prefix": "CS",
+   "number": "003B",
+   "title": "Fundamentals of Computer Science (JAVA)",
+   "units": 3
+  },
+  "49:CS 033": {
+   "id": "49:CS 033",
+   "institutionId": 49,
+   "prefix": "CS",
+   "number": "033",
+   "title": "Advanced JAVA Programming and Algorithm with Data Structures",
+   "units": 3
+  },
+  "49:CS 003BL": {
+   "id": "49:CS 003BL",
+   "institutionId": 49,
+   "prefix": "CS",
+   "number": "003BL",
+   "title": "Fundamentals of Computer Science (JAVA) Lab",
+   "units": 1
+  },
+  "49:CS 003C": {
+   "id": "49:CS 003C",
+   "institutionId": 49,
+   "prefix": "CS",
+   "number": "003C",
+   "title": "Fundamentals of Computer Science (Python)",
+   "units": 3
+  },
+  "49:CS 034": {
+   "id": "49:CS 034",
+   "institutionId": 49,
+   "prefix": "CS",
+   "number": "034",
+   "title": "Advanced Python Programming and Basic Data Structures",
+   "units": 3
+  },
+  "49:CS 003CL": {
+   "id": "49:CS 003CL",
+   "institutionId": 49,
+   "prefix": "CS",
+   "number": "003CL",
+   "title": "Fundamentals of Computer Science (Python) Lab",
+   "units": 1
+  },
+  "49:CS 008": {
+   "id": "49:CS 008",
+   "institutionId": 49,
+   "prefix": "CS",
+   "number": "008",
+   "title": "Fundamentals of Computer Science III (C++) with Data Structures",
+   "units": 3
+  },
+  "49:CS 008L": {
+   "id": "49:CS 008L",
+   "institutionId": 49,
+   "prefix": "CS",
+   "number": "008L",
+   "title": "Fundamentals of Computer Science III (C++) with Data Structures Lab",
+   "units": 1
+  },
+  "49:BIOL 010A": {
+   "id": "49:BIOL 010A",
+   "institutionId": 49,
+   "prefix": "BIOL",
+   "number": "010A",
+   "title": "Cellular Biology, Genetics and Evolution",
+   "units": 5
+  },
+  "49:CHEM 001A": {
+   "id": "49:CHEM 001A",
+   "institutionId": 49,
+   "prefix": "CHEM",
+   "number": "001A",
+   "title": "General Chemistry and Chemical Analysis I",
+   "units": 5
+  },
+  "49:CHEM 008A": {
+   "id": "49:CHEM 008A",
+   "institutionId": 49,
+   "prefix": "CHEM",
+   "number": "008A",
+   "title": "Organic Chemistry I",
+   "units": 5
+  },
+  "49:CHEM 008B": {
+   "id": "49:CHEM 008B",
+   "institutionId": 49,
+   "prefix": "CHEM",
+   "number": "008B",
+   "title": "Organic Chemistry II",
+   "units": 5
+  },
+  "49:PYSO 001": {
+   "id": "49:PYSO 001",
+   "institutionId": 49,
+   "prefix": "PYSO",
+   "number": "001",
+   "title": "Human Physiology",
+   "units": 4
+  },
+  "114:MATH 192": {
+   "id": "114:MATH 192",
+   "institutionId": 114,
+   "prefix": "MATH",
+   "number": "192",
+   "title": "Analytic Geometry and Calculus I",
+   "units": 5
+  },
+  "114:MATH 193": {
+   "id": "114:MATH 193",
+   "institutionId": 114,
+   "prefix": "MATH",
+   "number": "193",
+   "title": "Analytic Geometry and Calculus II",
+   "units": 5
+  },
+  "114:PHYS 230": {
+   "id": "114:PHYS 230",
+   "institutionId": 114,
+   "prefix": "PHYS",
+   "number": "230",
+   "title": "Physics for Engineers and Scientists B: Heat and Electro-Magnetism",
+   "units": 4
+  },
+  "114:MATH 292": {
+   "id": "114:MATH 292",
+   "institutionId": 114,
+   "prefix": "MATH",
+   "number": "292",
+   "title": "Analytic Geometry and Calculus III",
+   "units": 5
+  },
+  "114:PHYS 130": {
+   "id": "114:PHYS 130",
+   "institutionId": 114,
+   "prefix": "PHYS",
+   "number": "130",
+   "title": "Physics for Engineers and Scientists A: Mechanics and Wave Motion",
+   "units": 4
+  },
+  "114:MATH 294": {
+   "id": "114:MATH 294",
+   "institutionId": 114,
+   "prefix": "MATH",
+   "number": "294",
+   "title": "Differential Equations",
+   "units": 5
+  },
+  "114:MATH 194": {
+   "id": "114:MATH 194",
+   "institutionId": 114,
+   "prefix": "MATH",
+   "number": "194",
+   "title": "Linear Algebra",
+   "units": 3
+  },
+  "114:BIOSC 131": {
+   "id": "114:BIOSC 131",
+   "institutionId": 114,
+   "prefix": "BIOSC",
+   "number": "131",
+   "title": "Principles of Organismal Biology, Evolution, and Ecology",
+   "units": 5
+  },
+  "114:CHEM 121": {
+   "id": "114:CHEM 121",
+   "institutionId": 114,
+   "prefix": "CHEM",
+   "number": "121",
+   "title": "General College Chemistry II",
+   "units": 5
+  },
+  "114:PHYS 231": {
+   "id": "114:PHYS 231",
+   "institutionId": 114,
+   "prefix": "PHYS",
+   "number": "231",
+   "title": "Physics for Engineers and Scientists C: Optics and Modern Physics",
+   "units": 4
+  },
+  "114:COMSC 140": {
+   "id": "114:COMSC 140",
+   "institutionId": 114,
+   "prefix": "COMSC",
+   "number": "140",
+   "title": "Python Programming",
+   "units": 3
+  },
+  "114:COMSC 240": {
+   "id": "114:COMSC 240",
+   "institutionId": 114,
+   "prefix": "COMSC",
+   "number": "240",
+   "title": "Advanced Python Programming",
+   "units": 3
+  },
+  "114:ENGIN 230": {
+   "id": "114:ENGIN 230",
+   "institutionId": 114,
+   "prefix": "ENGIN",
+   "number": "230",
+   "title": "Introduction to Circuits and Devices",
+   "units": 4
+  },
+  "114:COMSC 210": {
+   "id": "114:COMSC 210",
+   "institutionId": 114,
+   "prefix": "COMSC",
+   "number": "210",
+   "title": "Program Design and Data Structures",
+   "units": 4
+  },
+  "114:COMSC 260": {
+   "id": "114:COMSC 260",
+   "institutionId": 114,
+   "prefix": "COMSC",
+   "number": "260",
+   "title": "Assembly Language Programming/Computer Organization",
+   "units": 4
+  },
+  "114:BIOSC 130": {
+   "id": "114:BIOSC 130",
+   "institutionId": 114,
+   "prefix": "BIOSC",
+   "number": "130",
+   "title": "Principles of Cellular and Molecular Biology",
+   "units": 5
+  },
+  "114:CHEM 120": {
+   "id": "114:CHEM 120",
+   "institutionId": 114,
+   "prefix": "CHEM",
+   "number": "120",
+   "title": "General College Chemistry I",
+   "units": 5
+  },
+  "114:CHEM 226": {
+   "id": "114:CHEM 226",
+   "institutionId": 114,
+   "prefix": "CHEM",
+   "number": "226",
+   "title": "Organic Chemistry I",
+   "units": 5
+  },
+  "114:CHEM 227": {
+   "id": "114:CHEM 227",
+   "institutionId": 114,
+   "prefix": "CHEM",
+   "number": "227",
+   "title": "Organic Chemistry II",
+   "units": 5
+  },
+  "114:BIOSC 140": {
+   "id": "114:BIOSC 140",
+   "institutionId": 114,
+   "prefix": "BIOSC",
+   "number": "140",
+   "title": "Human Physiology",
+   "units": 5
+  },
+  "114:BIOSC 120": {
+   "id": "114:BIOSC 120",
+   "institutionId": 114,
+   "prefix": "BIOSC",
+   "number": "120",
+   "title": "Introduction to Human Anatomy and Physiology",
+   "units": 5
+  },
+  "124:MATH 3A": {
+   "id": "124:MATH 3A",
+   "institutionId": 124,
+   "prefix": "MATH",
+   "number": "3A",
+   "title": "Analytic Geometry and Calculus I",
+   "units": 5
+  },
+  "124:MATH 3AH": {
+   "id": "124:MATH 3AH",
+   "institutionId": 124,
+   "prefix": "MATH",
+   "number": "3AH",
+   "title": "Analytic Geometry and Calculus I Honors",
+   "units": 5
+  },
+  "124:MATH 3B": {
+   "id": "124:MATH 3B",
+   "institutionId": 124,
+   "prefix": "MATH",
+   "number": "3B",
+   "title": "Analytic Geometry and Calculus II",
+   "units": 5
+  },
+  "124:MATH 3BH": {
+   "id": "124:MATH 3BH",
+   "institutionId": 124,
+   "prefix": "MATH",
+   "number": "3BH",
+   "title": "Analytic Geometry and Calculus II Honors",
+   "units": 5
+  },
+  "124:MATH 4A": {
+   "id": "124:MATH 4A",
+   "institutionId": 124,
+   "prefix": "MATH",
+   "number": "4A",
+   "title": "Analytic Geometry and Calculus III",
+   "units": 5
+  },
+  "124:MATH 4AH": {
+   "id": "124:MATH 4AH",
+   "institutionId": 124,
+   "prefix": "MATH",
+   "number": "4AH",
+   "title": "Analytic Geometry and Calculus III Honors",
+   "units": 5
+  },
+  "124:MATH 24H": {
+   "id": "124:MATH 24H",
+   "institutionId": 124,
+   "prefix": "MATH",
+   "number": "24H",
+   "title": "Elementary Differential Equations Honors",
+   "units": 4
+  },
+  "124:MATH 26": {
+   "id": "124:MATH 26",
+   "institutionId": 124,
+   "prefix": "MATH",
+   "number": "26",
+   "title": "Introduction to Linear Algebra",
+   "units": 4
+  },
+  "124:MATH 24": {
+   "id": "124:MATH 24",
+   "institutionId": 124,
+   "prefix": "MATH",
+   "number": "24",
+   "title": "Elementary Differential Equations",
+   "units": 4
+  },
+  "124:PHYS 4A": {
+   "id": "124:PHYS 4A",
+   "institutionId": 124,
+   "prefix": "PHYS",
+   "number": "4A",
+   "title": "General Physics",
+   "units": 4
+  },
+  "124:PHYS 4B": {
+   "id": "124:PHYS 4B",
+   "institutionId": 124,
+   "prefix": "PHYS",
+   "number": "4B",
+   "title": "General Physics",
+   "units": 4
+  },
+  "124:BIO 80H": {
+   "id": "124:BIO 80H",
+   "institutionId": 124,
+   "prefix": "BIO",
+   "number": "80H",
+   "title": "Integrated Biology: Organisms to Ecosystems Honors",
+   "units": 4
+  },
+  "124:BIO 80": {
+   "id": "124:BIO 80",
+   "institutionId": 124,
+   "prefix": "BIO",
+   "number": "80",
+   "title": "Integrated Biology: Organisms to Ecosystems",
+   "units": 4
+  },
+  "124:CHEM 1B": {
+   "id": "124:CHEM 1B",
+   "institutionId": 124,
+   "prefix": "CHEM",
+   "number": "1B",
+   "title": "General Chemistry II",
+   "units": 5
+  },
+  "124:PHYS 4C": {
+   "id": "124:PHYS 4C",
+   "institutionId": 124,
+   "prefix": "PHYS",
+   "number": "4C",
+   "title": "General Physics",
+   "units": 4
+  },
+  "124:CS 41": {
+   "id": "124:CS 41",
+   "institutionId": 124,
+   "prefix": "CS",
+   "number": "41",
+   "title": "Data Structures",
+   "units": 3
+  },
+  "124:BIO 81H": {
+   "id": "124:BIO 81H",
+   "institutionId": 124,
+   "prefix": "BIO",
+   "number": "81H",
+   "title": "Integrated Biology: From DNA to Organisms Honors",
+   "units": 4
+  },
+  "124:BIO 81": {
+   "id": "124:BIO 81",
+   "institutionId": 124,
+   "prefix": "BIO",
+   "number": "81",
+   "title": "Integrated Biology: From DNA to Organisms",
+   "units": 4
+  },
+  "124:BIO 51": {
+   "id": "124:BIO 51",
+   "institutionId": 124,
+   "prefix": "BIO",
+   "number": "51",
+   "title": "Foundations of Biology I",
+   "units": 4
+  },
+  "124:BIO 52": {
+   "id": "124:BIO 52",
+   "institutionId": 124,
+   "prefix": "BIO",
+   "number": "52",
+   "title": "Foundations of Biology II",
+   "units": 4
+  },
+  "124:BIO 51H": {
+   "id": "124:BIO 51H",
+   "institutionId": 124,
+   "prefix": "BIO",
+   "number": "51H",
+   "title": "Foundations of Biology I Honors",
+   "units": 4
+  },
+  "124:BIO 52H": {
+   "id": "124:BIO 52H",
+   "institutionId": 124,
+   "prefix": "BIO",
+   "number": "52H",
+   "title": "Foundations of Biology II Honors",
+   "units": 4
+  },
+  "124:CHEM 1AH": {
+   "id": "124:CHEM 1AH",
+   "institutionId": 124,
+   "prefix": "CHEM",
+   "number": "1AH",
+   "title": "General Chemistry 1 Honors",
+   "units": 5
+  },
+  "124:CHEM 1A": {
+   "id": "124:CHEM 1A",
+   "institutionId": 124,
+   "prefix": "CHEM",
+   "number": "1A",
+   "title": "General Chemistry I",
+   "units": 5
+  },
+  "124:CHEM 12A": {
+   "id": "124:CHEM 12A",
+   "institutionId": 124,
+   "prefix": "CHEM",
+   "number": "12A",
+   "title": "Organic Chemistry",
+   "units": 5
+  },
+  "124:CHEM 12B": {
+   "id": "124:CHEM 12B",
+   "institutionId": 124,
+   "prefix": "CHEM",
+   "number": "12B",
+   "title": "Organic Chemistry",
+   "units": 5
+  },
+  "124:BIO 12": {
+   "id": "124:BIO 12",
+   "institutionId": 124,
+   "prefix": "BIO",
+   "number": "12",
+   "title": "Human Physiology",
+   "units": 4
+  },
+  "74:MATH A182H": {
+   "id": "74:MATH A182H",
+   "institutionId": 74,
+   "prefix": "MATH",
+   "number": "A182H",
+   "title": "Calculus 1 and 2 Honors  ",
+   "units": 5
+  },
+  "74:MATH A180H": {
+   "id": "74:MATH A180H",
+   "institutionId": 74,
+   "prefix": "MATH",
+   "number": "A180H",
+   "title": "Calculus 1 Honors  ",
+   "units": 5
+  },
+  "74:MATH A180": {
+   "id": "74:MATH A180",
+   "institutionId": 74,
+   "prefix": "MATH",
+   "number": "A180",
+   "title": "Calculus 1",
+   "units": 5
+  },
+  "74:MATH A185H": {
+   "id": "74:MATH A185H",
+   "institutionId": 74,
+   "prefix": "MATH",
+   "number": "A185H",
+   "title": "Calculus 2 Honors",
+   "units": 5
+  },
+  "74:MATH A185": {
+   "id": "74:MATH A185",
+   "institutionId": 74,
+   "prefix": "MATH",
+   "number": "A185",
+   "title": "Calculus 2",
+   "units": 5
+  },
+  "74:PHYS A280": {
+   "id": "74:PHYS A280",
+   "institutionId": 74,
+   "prefix": "PHYS",
+   "number": "A280",
+   "title": "Calculus Based Physics: Electricty/Magnetism with Lab",
+   "units": 5
+  },
+  "74:MATH A280": {
+   "id": "74:MATH A280",
+   "institutionId": 74,
+   "prefix": "MATH",
+   "number": "A280",
+   "title": "Calculus 3",
+   "units": 5
+  },
+  "74:MATH A280H": {
+   "id": "74:MATH A280H",
+   "institutionId": 74,
+   "prefix": "MATH",
+   "number": "A280H",
+   "title": "Calculus 3 Honors  ",
+   "units": 6
+  },
+  "74:PHYS A185": {
+   "id": "74:PHYS A185",
+   "institutionId": 74,
+   "prefix": "PHYS",
+   "number": "A185",
+   "title": "Calculus Based Physics: Mechanics with Lab",
+   "units": 5
+  },
+  "74:MATH A285H": {
+   "id": "74:MATH A285H",
+   "institutionId": 74,
+   "prefix": "MATH",
+   "number": "A285H",
+   "title": "Introduction to Linear Algebra and Differential Equations Honors",
+   "units": 6
+  },
+  "74:MATH A285": {
+   "id": "74:MATH A285",
+   "institutionId": 74,
+   "prefix": "MATH",
+   "number": "A285",
+   "title": "Introduction to Linear Algebra and Differential Equations",
+   "units": 5
+  },
+  "74:ASTR A103": {
+   "id": "74:ASTR A103",
+   "institutionId": 74,
+   "prefix": "ASTR",
+   "number": "A103",
+   "title": "Cosmology",
+   "units": 3
+  },
+  "74:BIOL A183": {
+   "id": "74:BIOL A183",
+   "institutionId": 74,
+   "prefix": "BIOL",
+   "number": "A183",
+   "title": "Botany",
+   "units": 3
+  },
+  "74:BIOL A183L": {
+   "id": "74:BIOL A183L",
+   "institutionId": 74,
+   "prefix": "BIOL",
+   "number": "A183L",
+   "title": "Botany Lab",
+   "units": 1
+  },
+  "74:BIOL A185": {
+   "id": "74:BIOL A185",
+   "institutionId": 74,
+   "prefix": "BIOL",
+   "number": "A185",
+   "title": " Introduction to Biology for Majors 2: Ecology, Evolution, Diversity, and Physiology",
+   "units": 5
+  },
+  "74:CHEM A185": {
+   "id": "74:CHEM A185",
+   "institutionId": 74,
+   "prefix": "CHEM",
+   "number": "A185",
+   "title": "General Chemistry B",
+   "units": 5
+  },
+  "74:PHYS A285": {
+   "id": "74:PHYS A285",
+   "institutionId": 74,
+   "prefix": "PHYS",
+   "number": "A285",
+   "title": "Calculus Based Physics: Modern with Lab",
+   "units": 5
+  },
+  "74:ENGR A285": {
+   "id": "74:ENGR A285",
+   "institutionId": 74,
+   "prefix": "ENGR",
+   "number": "A285",
+   "title": "Engineering Circuits",
+   "units": 4
+  },
+  "74:CS A250": {
+   "id": "74:CS A250",
+   "institutionId": 74,
+   "prefix": "CS",
+   "number": "A250",
+   "title": "C++ Programming Language 2",
+   "units": 4
+  },
+  "74:CS A200": {
+   "id": "74:CS A200",
+   "institutionId": 74,
+   "prefix": "CS",
+   "number": "A200",
+   "title": "Data Structures",
+   "units": 4
+  },
+  "74:CS A216": {
+   "id": "74:CS A216",
+   "institutionId": 74,
+   "prefix": "CS",
+   "number": "A216",
+   "title": "Computer Architecture",
+   "units": 4
+  },
+  "74:BIOL A180": {
+   "id": "74:BIOL A180",
+   "institutionId": 74,
+   "prefix": "BIOL",
+   "number": "A180",
+   "title": "Introduction to Biology for Majors 1: Cell and Molecular Biology",
+   "units": 4
+  },
+  "74:CHEM A180": {
+   "id": "74:CHEM A180",
+   "institutionId": 74,
+   "prefix": "CHEM",
+   "number": "A180",
+   "title": "General Chemistry A",
+   "units": 5
+  },
+  "74:CHEM A220L": {
+   "id": "74:CHEM A220L",
+   "institutionId": 74,
+   "prefix": "CHEM",
+   "number": "A220L",
+   "title": "Organic Chemistry A Lab ",
+   "units": 2
+  },
+  "74:CHEM A220": {
+   "id": "74:CHEM A220",
+   "institutionId": 74,
+   "prefix": "CHEM",
+   "number": "A220",
+   "title": "Organic Chemistry A",
+   "units": 3
+  },
+  "74:CHEM A225L": {
+   "id": "74:CHEM A225L",
+   "institutionId": 74,
+   "prefix": "CHEM",
+   "number": "A225L",
+   "title": "Organic Chemistry B Laboratory  ",
+   "units": 2
+  },
+  "74:CHEM A225": {
+   "id": "74:CHEM A225",
+   "institutionId": 74,
+   "prefix": "CHEM",
+   "number": "A225",
+   "title": "Organic Chemistry B",
+   "units": 3
+  },
+  "74:BIOL A225": {
+   "id": "74:BIOL A225",
+   "institutionId": 74,
+   "prefix": "BIOL",
+   "number": "A225",
+   "title": "Human Physiology",
+   "units": 5
+  },
+  "103:MATH 190": {
+   "id": "103:MATH 190",
+   "institutionId": 103,
+   "prefix": "MATH",
+   "number": "190",
+   "title": "Single Variable Calculus and Analytic Geometry I",
+   "units": 5
+  },
+  "103:MATH 191": {
+   "id": "103:MATH 191",
+   "institutionId": 103,
+   "prefix": "MATH",
+   "number": "191",
+   "title": "Single Variable Calculus and Analytic Geometry II",
+   "units": 5
+  },
+  "103:MATH 220": {
+   "id": "103:MATH 220",
+   "institutionId": 103,
+   "prefix": "MATH",
+   "number": "220",
+   "title": "Multi-Variable Calculus",
+   "units": 5
+  },
+  "103:MATH 270": {
+   "id": "103:MATH 270",
+   "institutionId": 103,
+   "prefix": "MATH",
+   "number": "270",
+   "title": "Differential Equations with Linear Algebra",
+   "units": 5
+  },
+  "103:PHYS 1A": {
+   "id": "103:PHYS 1A",
+   "institutionId": 103,
+   "prefix": "PHYS",
+   "number": "1A",
+   "title": "Mechanics of Solids",
+   "units": 4
+  },
+  "103:PHYS 1B": {
+   "id": "103:PHYS 1B",
+   "institutionId": 103,
+   "prefix": "PHYS",
+   "number": "1B",
+   "title": "Fluids, Heat and Sound",
+   "units": 3
+  },
+  "103:PHYS 1C": {
+   "id": "103:PHYS 1C",
+   "institutionId": 103,
+   "prefix": "PHYS",
+   "number": "1C",
+   "title": "Electricity and Magnetism",
+   "units": 4
+  },
+  "103:PHYS 1D": {
+   "id": "103:PHYS 1D",
+   "institutionId": 103,
+   "prefix": "PHYS",
+   "number": "1D",
+   "title": "Optics and Modern Physics",
+   "units": 4
+  },
+  "103:CHEM 1B": {
+   "id": "103:CHEM 1B",
+   "institutionId": 103,
+   "prefix": "CHEM",
+   "number": "1B",
+   "title": "General Chemistry II",
+   "units": 5
+  },
+  "103:CSCI 2": {
+   "id": "103:CSCI 2",
+   "institutionId": 103,
+   "prefix": "CSCI",
+   "number": "2",
+   "title": "Introduction to Data Structures",
+   "units": 5
+  },
+  "103:CSCI 30": {
+   "id": "103:CSCI 30",
+   "institutionId": 103,
+   "prefix": "CSCI",
+   "number": "30",
+   "title": "Advanced Programming in C++",
+   "units": 4
+  },
+  "103:BIOL 130": {
+   "id": "103:BIOL 130",
+   "institutionId": 103,
+   "prefix": "BIOL",
+   "number": "130",
+   "title": "Fundamentals of Molecular Biology",
+   "units": 3
+  },
+  "103:BIOL 120": {
+   "id": "103:BIOL 120",
+   "institutionId": 103,
+   "prefix": "BIOL",
+   "number": "120",
+   "title": "Ecology Evolution, Diversity, and Physiology",
+   "units": 5
+  },
+  "103:BIOL 110": {
+   "id": "103:BIOL 110",
+   "institutionId": 103,
+   "prefix": "BIOL",
+   "number": "110",
+   "title": "Cell and Molecular Biology",
+   "units": 5
+  },
+  "103:CHEM 7A": {
+   "id": "103:CHEM 7A",
+   "institutionId": 103,
+   "prefix": "CHEM",
+   "number": "7A",
+   "title": "Organic Chemistry I",
+   "units": 5
+  },
+  "103:CHEM 7B": {
+   "id": "103:CHEM 7B",
+   "institutionId": 103,
+   "prefix": "CHEM",
+   "number": "7B",
+   "title": "Organic Chemistry II",
+   "units": 5
+  },
+  "103:CHEM 1A": {
+   "id": "103:CHEM 1A",
+   "institutionId": 103,
+   "prefix": "CHEM",
+   "number": "1A",
+   "title": "General Chemistry I",
+   "units": 5
+  },
+  "103:PHYO 31": {
+   "id": "103:PHYO 31",
+   "institutionId": 103,
+   "prefix": "PHYO",
+   "number": "31",
+   "title": "Human Physiology",
+   "units": 4
+  },
+  "58:MATH 3A": {
+   "id": "58:MATH 3A",
+   "institutionId": 58,
+   "prefix": "MATH",
+   "number": "3A",
+   "title": "Calculus I",
+   "units": 5
+  },
+  "58:MATH 3B": {
+   "id": "58:MATH 3B",
+   "institutionId": 58,
+   "prefix": "MATH",
+   "number": "3B",
+   "title": "Calculus II",
+   "units": 5
+  },
+  "58:MATH 3C": {
+   "id": "58:MATH 3C",
+   "institutionId": 58,
+   "prefix": "MATH",
+   "number": "3C",
+   "title": "Calculus III",
+   "units": 5
+  },
+  "58:MATH 3F": {
+   "id": "58:MATH 3F",
+   "institutionId": 58,
+   "prefix": "MATH",
+   "number": "3F",
+   "title": "Differential Equations",
+   "units": 3
+  },
+  "58:MATH 3E": {
+   "id": "58:MATH 3E",
+   "institutionId": 58,
+   "prefix": "MATH",
+   "number": "3E",
+   "title": "Linear Algebra",
+   "units": 3
+  },
+  "58:PHYS 4A": {
+   "id": "58:PHYS 4A",
+   "institutionId": 58,
+   "prefix": "PHYS",
+   "number": "4A",
+   "title": "General Physics with Calculus",
+   "units": 5
+  },
+  "58:PHYS 4B": {
+   "id": "58:PHYS 4B",
+   "institutionId": 58,
+   "prefix": "PHYS",
+   "number": "4B",
+   "title": "General Physics with Calculus",
+   "units": 5
+  },
+  "58:BIOL 1B": {
+   "id": "58:BIOL 1B",
+   "institutionId": 58,
+   "prefix": "BIOL",
+   "number": "1B",
+   "title": "General Biology",
+   "units": 5
+  },
+  "58:CHEM 1B": {
+   "id": "58:CHEM 1B",
+   "institutionId": 58,
+   "prefix": "CHEM",
+   "number": "1B",
+   "title": "General Chemistry",
+   "units": 5
+  },
+  "58:PHYS 4C": {
+   "id": "58:PHYS 4C",
+   "institutionId": 58,
+   "prefix": "PHYS",
+   "number": "4C",
+   "title": "General Physics with Calculus",
+   "units": 5
+  },
+  "58:CIS 25": {
+   "id": "58:CIS 25",
+   "institutionId": 58,
+   "prefix": "CIS",
+   "number": "25",
+   "title": "Object-Orientated Programming Using C++",
+   "units": 4
+  },
+  "58:CIS 27": {
+   "id": "58:CIS 27",
+   "institutionId": 58,
+   "prefix": "CIS",
+   "number": "27",
+   "title": "Data Structure and Algorithms",
+   "units": 4
+  },
+  "58:CIS 36A": {
+   "id": "58:CIS 36A",
+   "institutionId": 58,
+   "prefix": "CIS",
+   "number": "36A",
+   "title": "Java Programming Language I",
+   "units": 4
+  },
+  "58:CIS 20": {
+   "id": "58:CIS 20",
+   "institutionId": 58,
+   "prefix": "CIS",
+   "number": "20",
+   "title": "Microcomputer Assembly Language",
+   "units": 4
+  },
+  "58:BIOL 1A": {
+   "id": "58:BIOL 1A",
+   "institutionId": 58,
+   "prefix": "BIOL",
+   "number": "1A",
+   "title": "General Biology",
+   "units": 5
+  },
+  "58:CHEM 1A": {
+   "id": "58:CHEM 1A",
+   "institutionId": 58,
+   "prefix": "CHEM",
+   "number": "1A",
+   "title": "General Chemistry",
+   "units": 5
+  },
+  "58:CHEM 12A": {
+   "id": "58:CHEM 12A",
+   "institutionId": 58,
+   "prefix": "CHEM",
+   "number": "12A",
+   "title": "Organic Chemistry",
+   "units": 5
+  },
+  "58:CHEM 12B": {
+   "id": "58:CHEM 12B",
+   "institutionId": 58,
+   "prefix": "CHEM",
+   "number": "12B",
+   "title": "Organic Chemistry",
+   "units": 5
+  },
+  "58:BIOL 4": {
+   "id": "58:BIOL 4",
+   "institutionId": 58,
+   "prefix": "BIOL",
+   "number": "4",
+   "title": "Human Physiology",
+   "units": 5
+  },
+  "33:MATH 110A": {
+   "id": "33:MATH 110A",
+   "institutionId": 33,
+   "prefix": "MATH",
+   "number": "110A",
+   "title": "Calculus I",
+   "units": 5
+  },
+  "33:MATH 110B": {
+   "id": "33:MATH 110B",
+   "institutionId": 33,
+   "prefix": "MATH",
+   "number": "110B",
+   "title": "Calculus II",
+   "units": 5
+  },
+  "33:PHYC 4BL": {
+   "id": "33:PHYC 4BL",
+   "institutionId": 33,
+   "prefix": "PHYC",
+   "number": "4BL",
+   "title": "Electromagnetism Laboratory for Scientists and Engineers",
+   "units": 1
+  },
+  "33:PHYC 4B": {
+   "id": "33:PHYC 4B",
+   "institutionId": 33,
+   "prefix": "PHYC",
+   "number": "4B",
+   "title": "Electromagnetism for Scientists and Engineers",
+   "units": 3
+  },
+  "33:MATH 110C": {
+   "id": "33:MATH 110C",
+   "institutionId": 33,
+   "prefix": "MATH",
+   "number": "110C",
+   "title": "Calculus III",
+   "units": 5
+  },
+  "33:PHYC 4A": {
+   "id": "33:PHYC 4A",
+   "institutionId": 33,
+   "prefix": "PHYC",
+   "number": "4A",
+   "title": "Classical Mechanics for Scientists and Engineers",
+   "units": 3
+  },
+  "33:PHYC 4AL": {
+   "id": "33:PHYC 4AL",
+   "institutionId": 33,
+   "prefix": "PHYC",
+   "number": "4AL",
+   "title": "Mechanics Laboratory for Scientists and Engineers",
+   "units": 1
+  },
+  "33:MATH 130": {
+   "id": "33:MATH 130",
+   "institutionId": 33,
+   "prefix": "MATH",
+   "number": "130",
+   "title": "Linear Algebra and Differential Equations",
+   "units": 5
+  },
+  "33:MATH 120": {
+   "id": "33:MATH 120",
+   "institutionId": 33,
+   "prefix": "MATH",
+   "number": "120",
+   "title": "Linear Algebra",
+   "units": 3
+  },
+  "33:MATH 125": {
+   "id": "33:MATH 125",
+   "institutionId": 33,
+   "prefix": "MATH",
+   "number": "125",
+   "title": "Differential Equations",
+   "units": 3
+  },
+  "33:BIO 100B": {
+   "id": "33:BIO 100B",
+   "institutionId": 33,
+   "prefix": "BIO",
+   "number": "100B",
+   "title": "General Biology",
+   "units": 5
+  },
+  "33:CHEM 101B": {
+   "id": "33:CHEM 101B",
+   "institutionId": 33,
+   "prefix": "CHEM",
+   "number": "101B",
+   "title": "General College Chemistry",
+   "units": 5
+  },
+  "33:PHYC 4DL": {
+   "id": "33:PHYC 4DL",
+   "institutionId": 33,
+   "prefix": "PHYC",
+   "number": "4DL",
+   "title": "Modern Physics Laboratory for Scientists and Engineers",
+   "units": 1
+  },
+  "33:PHYC 4C": {
+   "id": "33:PHYC 4C",
+   "institutionId": 33,
+   "prefix": "PHYC",
+   "number": "4C",
+   "title": "Waves and Thermodynamics for Scientists and Engineers",
+   "units": 3
+  },
+  "33:PHYC 4CL": {
+   "id": "33:PHYC 4CL",
+   "institutionId": 33,
+   "prefix": "PHYC",
+   "number": "4CL",
+   "title": "Waves and Thermodynamics Laboratory for Scientists and Engineers",
+   "units": 1
+  },
+  "33:PHYC 4D": {
+   "id": "33:PHYC 4D",
+   "institutionId": 33,
+   "prefix": "PHYC",
+   "number": "4D",
+   "title": "Modern Physics for Scientists and Engineers",
+   "units": 3
+  },
+  "33:CS 110C": {
+   "id": "33:CS 110C",
+   "institutionId": 33,
+   "prefix": "CS",
+   "number": "110C",
+   "title": "Data Structures and Algorithms: C++",
+   "units": 4
+  },
+  "33:CS 111C": {
+   "id": "33:CS 111C",
+   "institutionId": 33,
+   "prefix": "CS",
+   "number": "111C",
+   "title": "Data Structures and Algorithms: Java",
+   "units": 4
+  },
+  "33:CS 270": {
+   "id": "33:CS 270",
+   "institutionId": 33,
+   "prefix": "CS",
+   "number": "270",
+   "title": "Computer Architecture with Assembly Language",
+   "units": 4
+  },
+  "33:BIO 100A": {
+   "id": "33:BIO 100A",
+   "institutionId": 33,
+   "prefix": "BIO",
+   "number": "100A",
+   "title": "General Biology",
+   "units": 5
+  },
+  "33:CHEM 101A": {
+   "id": "33:CHEM 101A",
+   "institutionId": 33,
+   "prefix": "CHEM",
+   "number": "101A",
+   "title": "General College Chemistry",
+   "units": 6
+  },
+  "33:CHEM 212A": {
+   "id": "33:CHEM 212A",
+   "institutionId": 33,
+   "prefix": "CHEM",
+   "number": "212A",
+   "title": "Organic Chemistry I",
+   "units": 6
+  },
+  "33:CHEM 212B": {
+   "id": "33:CHEM 212B",
+   "institutionId": 33,
+   "prefix": "CHEM",
+   "number": "212B",
+   "title": "Organic Chemistry II",
+   "units": 6
+  },
+  "33:BIO 111": {
+   "id": "33:BIO 111",
+   "institutionId": 33,
+   "prefix": "BIO",
+   "number": "111",
+   "title": "Human Physiology",
+   "units": 5
+  },
+  "136:MATH 071": {
+   "id": "136:MATH 071",
+   "institutionId": 136,
+   "prefix": "MATH",
+   "number": "071",
+   "title": "Calculus I with Analytic Geometry",
+   "units": 5
+  },
+  "136:MATH 072": {
+   "id": "136:MATH 072",
+   "institutionId": 136,
+   "prefix": "MATH",
+   "number": "072",
+   "title": "Calculus II with Analytic Geometry",
+   "units": 5
+  },
+  "136:PHYS 004B": {
+   "id": "136:PHYS 004B",
+   "institutionId": 136,
+   "prefix": "PHYS",
+   "number": "004B",
+   "title": "General Physics",
+   "units": 5
+  },
+  "136:MATH 073": {
+   "id": "136:MATH 073",
+   "institutionId": 136,
+   "prefix": "MATH",
+   "number": "073",
+   "title": "Multivariable Calculus",
+   "units": 5
+  },
+  "136:PHYS 004A": {
+   "id": "136:PHYS 004A",
+   "institutionId": 136,
+   "prefix": "PHYS",
+   "number": "004A",
+   "title": "General Physics",
+   "units": 5
+  },
+  "136:MATH 079": {
+   "id": "136:MATH 079",
+   "institutionId": 136,
+   "prefix": "MATH",
+   "number": "079",
+   "title": "Linear Algebra",
+   "units": 3
+  },
+  "136:MATH 078": {
+   "id": "136:MATH 078",
+   "institutionId": 136,
+   "prefix": "MATH",
+   "number": "078",
+   "title": "Differential Equations",
+   "units": 4
+  },
+  "136:BIOL 004B": {
+   "id": "136:BIOL 004B",
+   "institutionId": 136,
+   "prefix": "BIOL",
+   "number": "004B",
+   "title": "Biodiversity and Organismal Biology",
+   "units": 5
+  },
+  "136:CHEM 001B": {
+   "id": "136:CHEM 001B",
+   "institutionId": 136,
+   "prefix": "CHEM",
+   "number": "001B",
+   "title": "General Chemistry",
+   "units": 5
+  },
+  "136:PHYS 004C": {
+   "id": "136:PHYS 004C",
+   "institutionId": 136,
+   "prefix": "PHYS",
+   "number": "004C",
+   "title": "General Physics",
+   "units": 5
+  },
+  "136:CIS 055": {
+   "id": "136:CIS 055",
+   "institutionId": 136,
+   "prefix": "CIS",
+   "number": "055",
+   "title": "Data Structures: Programming",
+   "units": 3
+  },
+  "136:BIOL 004A": {
+   "id": "136:BIOL 004A",
+   "institutionId": 136,
+   "prefix": "BIOL",
+   "number": "004A",
+   "title": "General Principles and Cell Biology",
+   "units": 5
+  },
+  "136:CHEM 001A": {
+   "id": "136:CHEM 001A",
+   "institutionId": 136,
+   "prefix": "CHEM",
+   "number": "001A",
+   "title": "General Chemistry",
+   "units": 5
+  },
+  "136:CHEM 001AH": {
+   "id": "136:CHEM 001AH",
+   "institutionId": 136,
+   "prefix": "CHEM",
+   "number": "001AH",
+   "title": "Honors General Chemistry",
+   "units": 5
+  },
+  "136:CHEM 012A": {
+   "id": "136:CHEM 012A",
+   "institutionId": 136,
+   "prefix": "CHEM",
+   "number": "012A",
+   "title": "Organic Chemistry",
+   "units": 5
+  },
+  "136:CHEM 012B": {
+   "id": "136:CHEM 012B",
+   "institutionId": 136,
+   "prefix": "CHEM",
+   "number": "012B",
+   "title": "Organic Chemistry",
+   "units": 5
+  },
+  "92:MATH 150": {
+   "id": "92:MATH 150",
+   "institutionId": 92,
+   "prefix": "MATH",
+   "number": "150",
+   "title": "Calculus with Analytic Geometry I",
+   "units": 5
+  },
+  "92:MATH 160": {
+   "id": "92:MATH 160",
+   "institutionId": 92,
+   "prefix": "MATH",
+   "number": "160",
+   "title": "Calculus with Analytic Geometry II",
+   "units": 5
+  },
+  "92:MATH 200": {
+   "id": "92:MATH 200",
+   "institutionId": 92,
+   "prefix": "MATH",
+   "number": "200",
+   "title": "Multivariable Calculus",
+   "units": 4
+  },
+  "92:MATH 210": {
+   "id": "92:MATH 210",
+   "institutionId": 92,
+   "prefix": "MATH",
+   "number": "210",
+   "title": "Linear Algebra",
+   "units": 4
+  },
+  "92:MATH 220": {
+   "id": "92:MATH 220",
+   "institutionId": 92,
+   "prefix": "MATH",
+   "number": "220",
+   "title": "Differential Equations",
+   "units": 4
+  },
+  "92:PHYS 121": {
+   "id": "92:PHYS 121",
+   "institutionId": 92,
+   "prefix": "PHYS",
+   "number": "121",
+   "title": "Mechanics of Solids and Fluids",
+   "units": 5
+  },
+  "92:PHYS 122": {
+   "id": "92:PHYS 122",
+   "institutionId": 92,
+   "prefix": "PHYS",
+   "number": "122",
+   "title": "Electricity and Magnetism",
+   "units": 5
+  },
+  "92:PHYS 123": {
+   "id": "92:PHYS 123",
+   "institutionId": 92,
+   "prefix": "PHYS",
+   "number": "123",
+   "title": "Heat, Light and Modern Physics",
+   "units": 5
+  },
+  "92:CHEM 156": {
+   "id": "92:CHEM 156",
+   "institutionId": 92,
+   "prefix": "CHEM",
+   "number": "156",
+   "title": "General Chemistry II",
+   "units": 5
+  },
+  "92:CS 106": {
+   "id": "92:CS 106",
+   "institutionId": 92,
+   "prefix": "CS",
+   "number": "106",
+   "title": "Theory and Practice II",
+   "units": 3
+  },
+  "92:BIOL 101": {
+   "id": "92:BIOL 101",
+   "institutionId": 92,
+   "prefix": "BIOL",
+   "number": "101",
+   "title": "Plant Biology",
+   "units": 4
+  },
+  "92:BIOL 102": {
+   "id": "92:BIOL 102",
+   "institutionId": 92,
+   "prefix": "BIOL",
+   "number": "102",
+   "title": "Animal Biology",
+   "units": 5
+  },
+  "92:BIOL 103": {
+   "id": "92:BIOL 103",
+   "institutionId": 92,
+   "prefix": "BIOL",
+   "number": "103",
+   "title": "Cell and Molecular Biology",
+   "units": 5
+  },
+  "92:CHEM 211": {
+   "id": "92:CHEM 211",
+   "institutionId": 92,
+   "prefix": "CHEM",
+   "number": "211",
+   "title": "Organic Chemistry I",
+   "units": 3
+  },
+  "92:CHEM 221": {
+   "id": "92:CHEM 221",
+   "institutionId": 92,
+   "prefix": "CHEM",
+   "number": "221",
+   "title": "Organic Chemistry Laboratory I",
+   "units": 2.3
+  },
+  "92:CHEM 212": {
+   "id": "92:CHEM 212",
+   "institutionId": 92,
+   "prefix": "CHEM",
+   "number": "212",
+   "title": "Organic Chemistry II",
+   "units": 3
+  },
+  "92:CHEM 222": {
+   "id": "92:CHEM 222",
+   "institutionId": 92,
+   "prefix": "CHEM",
+   "number": "222",
+   "title": "Organic Chemistry Laboratory II",
+   "units": 2.5
+  },
+  "92:CHEM 155": {
+   "id": "92:CHEM 155",
+   "institutionId": 92,
+   "prefix": "CHEM",
+   "number": "155",
+   "title": "General Chemistry I",
+   "units": 5
+  },
+  "92:BMS 108": {
+   "id": "92:BMS 108",
+   "institutionId": 92,
+   "prefix": "BMS",
+   "number": "108",
+   "title": "Human Physiology",
+   "units": 4
+  },
+  "65:MATH 3AH": {
+   "id": "65:MATH 3AH",
+   "institutionId": 65,
+   "prefix": "MATH",
+   "number": "3AH",
+   "title": "Honors Analytic Geometry and Calculus",
+   "units": 5
+  },
+  "65:MATH 3A": {
+   "id": "65:MATH 3A",
+   "institutionId": 65,
+   "prefix": "MATH",
+   "number": "3A",
+   "title": "Analytic Geometry and Calculus",
+   "units": 5
+  },
+  "65:MATH 3B": {
+   "id": "65:MATH 3B",
+   "institutionId": 65,
+   "prefix": "MATH",
+   "number": "3B",
+   "title": "Analytic Geometry and Calculus",
+   "units": 5
+  },
+  "65:MATH 3C": {
+   "id": "65:MATH 3C",
+   "institutionId": 65,
+   "prefix": "MATH",
+   "number": "3C",
+   "title": "Analytic Geometry and Calculus",
+   "units": 5
+  },
+  "65:MATH 26": {
+   "id": "65:MATH 26",
+   "institutionId": 65,
+   "prefix": "MATH",
+   "number": "26",
+   "title": "Introduction to Linear Algebra",
+   "units": 4
+  },
+  "65:MATH 24": {
+   "id": "65:MATH 24",
+   "institutionId": 65,
+   "prefix": "MATH",
+   "number": "24",
+   "title": "Elementary Differential Equations",
+   "units": 4
+  },
+  "65:PHYS 4A": {
+   "id": "65:PHYS 4A",
+   "institutionId": 65,
+   "prefix": "PHYS",
+   "number": "4A",
+   "title": "General Physics",
+   "units": 5
+  },
+  "65:PHYS 4B": {
+   "id": "65:PHYS 4B",
+   "institutionId": 65,
+   "prefix": "PHYS",
+   "number": "4B",
+   "title": "General Physics",
+   "units": 5
+  },
+  "65:PHYS 4C": {
+   "id": "65:PHYS 4C",
+   "institutionId": 65,
+   "prefix": "PHYS",
+   "number": "4C",
+   "title": "General Physics",
+   "units": 5
+  },
+  "65:CHEM 1B": {
+   "id": "65:CHEM 1B",
+   "institutionId": 65,
+   "prefix": "CHEM",
+   "number": "1B",
+   "title": "General Chemistry",
+   "units": 5
+  },
+  "65:CS 1D": {
+   "id": "65:CS 1D",
+   "institutionId": 65,
+   "prefix": "CS",
+   "number": "1D",
+   "title": "Data Structures",
+   "units": 3.5
+  },
+  "65:BIO 4A": {
+   "id": "65:BIO 4A",
+   "institutionId": 65,
+   "prefix": "BIO",
+   "number": "4A",
+   "title": "Principles of Cellular Biology",
+   "units": 4
+  },
+  "65:BIO 4B": {
+   "id": "65:BIO 4B",
+   "institutionId": 65,
+   "prefix": "BIO",
+   "number": "4B",
+   "title": "Principles of Organismal Biology",
+   "units": 4
+  },
+  "65:CHEM 12A": {
+   "id": "65:CHEM 12A",
+   "institutionId": 65,
+   "prefix": "CHEM",
+   "number": "12A",
+   "title": "Organic Chemistry",
+   "units": 5
+  },
+  "65:CHEM 12B": {
+   "id": "65:CHEM 12B",
+   "institutionId": 65,
+   "prefix": "CHEM",
+   "number": "12B",
+   "title": "Organic Chemistry",
+   "units": 5
+  },
+  "65:CHEM 1A": {
+   "id": "65:CHEM 1A",
+   "institutionId": 65,
+   "prefix": "CHEM",
+   "number": "1A",
+   "title": "General Chemistry",
+   "units": 5
+  },
+  "65:BIO 12": {
+   "id": "65:BIO 12",
+   "institutionId": 65,
+   "prefix": "BIO",
+   "number": "12",
+   "title": "Human Physiology",
+   "units": 4
+  },
+  "80:MATH 003AH": {
+   "id": "80:MATH 003AH",
+   "institutionId": 80,
+   "prefix": "MATH",
+   "number": "003AH",
+   "title": "Honors Calculus and Analytical Geometry",
+   "units": 5
+  },
+  "80:MATH 003A": {
+   "id": "80:MATH 003A",
+   "institutionId": 80,
+   "prefix": "MATH",
+   "number": "003A",
+   "title": "Calculus and Analytic Geometry",
+   "units": 5
+  },
+  "80:MATH 003B": {
+   "id": "80:MATH 003B",
+   "institutionId": 80,
+   "prefix": "MATH",
+   "number": "003B",
+   "title": "Calculus and Analytic Geometry",
+   "units": 5
+  },
+  "80:MATH 003BH": {
+   "id": "80:MATH 003BH",
+   "institutionId": 80,
+   "prefix": "MATH",
+   "number": "003BH",
+   "title": "Honors Calculus and Analytical Geometry",
+   "units": 5
+  },
+  "80:PHYS 004C": {
+   "id": "80:PHYS 004C",
+   "institutionId": 80,
+   "prefix": "PHYS",
+   "number": "004C",
+   "title": "Engineering Physics - Light, Heat and Waves",
+   "units": 5
+  },
+  "80:PHYS 004B": {
+   "id": "80:PHYS 004B",
+   "institutionId": 80,
+   "prefix": "PHYS",
+   "number": "004B",
+   "title": "Engineering Physics - Electricity and Magnetism",
+   "units": 5
+  },
+  "80:MATH 004A": {
+   "id": "80:MATH 004A",
+   "institutionId": 80,
+   "prefix": "MATH",
+   "number": "004A",
+   "title": "Intermediate Calculus",
+   "units": 5
+  },
+  "80:PHYS 004A": {
+   "id": "80:PHYS 004A",
+   "institutionId": 80,
+   "prefix": "PHYS",
+   "number": "004A",
+   "title": "Engineering Physics - Mechanics",
+   "units": 5
+  },
+  "80:MATH 004B": {
+   "id": "80:MATH 004B",
+   "institutionId": 80,
+   "prefix": "MATH",
+   "number": "004B",
+   "title": "Differential Equations",
+   "units": 4
+  },
+  "80:MATH 004C": {
+   "id": "80:MATH 004C",
+   "institutionId": 80,
+   "prefix": "MATH",
+   "number": "004C",
+   "title": "Linear Algebra",
+   "units": 4
+  },
+  "80:BIOL 042": {
+   "id": "80:BIOL 042",
+   "institutionId": 80,
+   "prefix": "BIOL",
+   "number": "042",
+   "title": "Principles of Plant Biology",
+   "units": 5
+  },
+  "80:BIOL 041": {
+   "id": "80:BIOL 041",
+   "institutionId": 80,
+   "prefix": "BIOL",
+   "number": "041",
+   "title": "Principles of Animal Biology",
+   "units": 5
+  },
+  "80:CHEM 001B": {
+   "id": "80:CHEM 001B",
+   "institutionId": 80,
+   "prefix": "CHEM",
+   "number": "001B",
+   "title": "General Chemistry",
+   "units": 5
+  },
+  "80:PHYS 005": {
+   "id": "80:PHYS 005",
+   "institutionId": 80,
+   "prefix": "PHYS",
+   "number": "005",
+   "title": "Advanced Topics in Modern Physics",
+   "units": 3
+  },
+  "80:CIST 005A": {
+   "id": "80:CIST 005A",
+   "institutionId": 80,
+   "prefix": "CIST",
+   "number": "005A",
+   "title": "Introduction to Python",
+   "units": 4
+  },
+  "80:CIST 005B": {
+   "id": "80:CIST 005B",
+   "institutionId": 80,
+   "prefix": "CIST",
+   "number": "005B",
+   "title": "Advanced Python",
+   "units": 4
+  },
+  "80:CIST 004B": {
+   "id": "80:CIST 004B",
+   "institutionId": 80,
+   "prefix": "CIST",
+   "number": "004B",
+   "title": "Data Structures Using Advanced C++ ",
+   "units": 4
+  },
+  "80:BIOL 043": {
+   "id": "80:BIOL 043",
+   "institutionId": 80,
+   "prefix": "BIOL",
+   "number": "043",
+   "title": "Principles of Cell Biology",
+   "units": 5
+  },
+  "80:CHEM 001A": {
+   "id": "80:CHEM 001A",
+   "institutionId": 80,
+   "prefix": "CHEM",
+   "number": "001A",
+   "title": "General Chemistry",
+   "units": 5
+  },
+  "80:CHEM 012A": {
+   "id": "80:CHEM 012A",
+   "institutionId": 80,
+   "prefix": "CHEM",
+   "number": "012A",
+   "title": "Organic Chemistry",
+   "units": 5
+  },
+  "80:CHEM 012B": {
+   "id": "80:CHEM 012B",
+   "institutionId": 80,
+   "prefix": "CHEM",
+   "number": "012B",
+   "title": "Organic Chemistry",
+   "units": 5
+  },
+  "80:BIOL 048": {
+   "id": "80:BIOL 048",
+   "institutionId": 80,
+   "prefix": "BIOL",
+   "number": "048",
+   "title": "Human Physiology",
+   "units": 5
+  },
+  "32:MAT 003A": {
+   "id": "32:MAT 003A",
+   "institutionId": 32,
+   "prefix": "MAT",
+   "number": "003A",
+   "title": "Analytic Geometry and Calculus I",
+   "units": 5
+  },
+  "32:MAT 003AH": {
+   "id": "32:MAT 003AH",
+   "institutionId": 32,
+   "prefix": "MAT",
+   "number": "003AH",
+   "title": "Analytic Geometry and Calculus I - Honors",
+   "units": 5
+  },
+  "32:MAT 003B": {
+   "id": "32:MAT 003B",
+   "institutionId": 32,
+   "prefix": "MAT",
+   "number": "003B",
+   "title": "Analytic Geometry and Calculus II",
+   "units": 5
+  },
+  "32:MAT 004A": {
+   "id": "32:MAT 004A",
+   "institutionId": 32,
+   "prefix": "MAT",
+   "number": "004A",
+   "title": "Multivariable Calculus",
+   "units": 5
+  },
+  "32:MAT 004C": {
+   "id": "32:MAT 004C",
+   "institutionId": 32,
+   "prefix": "MAT",
+   "number": "004C",
+   "title": "Linear Algebra",
+   "units": 4
+  },
+  "32:MAT 004B": {
+   "id": "32:MAT 004B",
+   "institutionId": 32,
+   "prefix": "MAT",
+   "number": "004B",
+   "title": "Differential Equations",
+   "units": 4
+  },
+  "32:PHY 004A": {
+   "id": "32:PHY 004A",
+   "institutionId": 32,
+   "prefix": "PHY",
+   "number": "004A",
+   "title": "Engineering Physics - Mechanics",
+   "units": 5
+  },
+  "32:PHY 004C": {
+   "id": "32:PHY 004C",
+   "institutionId": 32,
+   "prefix": "PHY",
+   "number": "004C",
+   "title": "Engineering Physics - Light and Heat",
+   "units": 4
+  },
+  "32:PHY 004B": {
+   "id": "32:PHY 004B",
+   "institutionId": 32,
+   "prefix": "PHY",
+   "number": "004B",
+   "title": "Engineering Physics - Electricity and Magnetism",
+   "units": 4
+  },
+  "32:BIO 001B": {
+   "id": "32:BIO 001B",
+   "institutionId": 32,
+   "prefix": "BIO",
+   "number": "001B",
+   "title": "General Biology: Organisms",
+   "units": 5
+  },
+  "32:CHM 001B": {
+   "id": "32:CHM 001B",
+   "institutionId": 32,
+   "prefix": "CHM",
+   "number": "001B",
+   "title": "General Chemistry II",
+   "units": 5
+  },
+  "32:PHY 004D": {
+   "id": "32:PHY 004D",
+   "institutionId": 32,
+   "prefix": "PHY",
+   "number": "004D",
+   "title": "Engineering Physics - Atomic",
+   "units": 2
+  },
+  "32:EGR 024": {
+   "id": "32:EGR 024",
+   "institutionId": 32,
+   "prefix": "EGR",
+   "number": "024",
+   "title": "Introduction to Circuit Analysis",
+   "units": 3
+  },
+  "32:EGR 024L": {
+   "id": "32:EGR 024L",
+   "institutionId": 32,
+   "prefix": "EGR",
+   "number": "024L",
+   "title": "Introduction to Circuit Analysis Laboratory",
+   "units": 1
+  },
+  "32:CIS 044": {
+   "id": "32:CIS 044",
+   "institutionId": 32,
+   "prefix": "CIS",
+   "number": "044",
+   "title": "Introduction to Data Structures Using Java",
+   "units": 4
+  },
+  "32:BIO 001AH": {
+   "id": "32:BIO 001AH",
+   "institutionId": 32,
+   "prefix": "BIO",
+   "number": "001AH",
+   "title": "General Biology: Cells - Honors",
+   "units": 5
+  },
+  "32:BIO 001A": {
+   "id": "32:BIO 001A",
+   "institutionId": 32,
+   "prefix": "BIO",
+   "number": "001A",
+   "title": "General Biology: Cells",
+   "units": 5
+  },
+  "32:CHM 001A": {
+   "id": "32:CHM 001A",
+   "institutionId": 32,
+   "prefix": "CHM",
+   "number": "001A",
+   "title": "General Chemistry I",
+   "units": 5
+  },
+  "32:CHM 012BH": {
+   "id": "32:CHM 012BH",
+   "institutionId": 32,
+   "prefix": "CHM",
+   "number": "012BH",
+   "title": "Organic Chemistry II - Honors",
+   "units": 5
+  },
+  "32:CHM 012AH": {
+   "id": "32:CHM 012AH",
+   "institutionId": 32,
+   "prefix": "CHM",
+   "number": "012AH",
+   "title": "Organic Chemistry I - Honors",
+   "units": 5
+  },
+  "32:CHM 012B": {
+   "id": "32:CHM 012B",
+   "institutionId": 32,
+   "prefix": "CHM",
+   "number": "012B",
+   "title": "Organic Chemistry II",
+   "units": 5
+  },
+  "32:CHM 012A": {
+   "id": "32:CHM 012A",
+   "institutionId": 32,
+   "prefix": "CHM",
+   "number": "012A",
+   "title": "Organic Chemistry I",
+   "units": 5
+  },
+  "32:BIO 048": {
+   "id": "32:BIO 048",
+   "institutionId": 32,
+   "prefix": "BIO",
+   "number": "048",
+   "title": "Human Physiology",
+   "units": 5
+  }
+ }
+}

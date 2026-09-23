@@ -1,0 +1,6888 @@
+{
+ "receivingId": 89,
+ "major": "Computer Science & Engineering B.S.",
+ "year": "2025-2026",
+ "sendingIds": [
+  113,
+  51,
+  137,
+  49,
+  114,
+  124,
+  74,
+  103,
+  58,
+  33,
+  136,
+  92,
+  65,
+  80,
+  32
+ ],
+ "root": {
+  "kind": "node",
+  "type": "AND",
+  "required": true,
+  "children": [
+   {
+    "kind": "node",
+    "type": "AND",
+    "title": "PREPARATION COURSES FOR THE MAJOR",
+    "required": true,
+    "children": [
+     {
+      "kind": "req",
+      "id": "CHE 002A",
+      "label": "General Chemistry",
+      "units": 5,
+      "groups": [
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:CHEM 1A"
+        ]
+       },
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:CHEM 1AH"
+        ]
+       },
+       {
+        "institutionId": 51,
+        "courses": [
+         "51:CHEM 1A"
+        ]
+       },
+       {
+        "institutionId": 137,
+        "courses": [
+         "137:CHEM 11"
+        ]
+       },
+       {
+        "institutionId": 49,
+        "courses": [
+         "49:CHEM 001A"
+        ]
+       },
+       {
+        "institutionId": 114,
+        "courses": [
+         "114:CHEM 120"
+        ]
+       },
+       {
+        "institutionId": 124,
+        "courses": [
+         "124:CHEM 1A"
+        ]
+       },
+       {
+        "institutionId": 124,
+        "courses": [
+         "124:CHEM 1AH"
+        ]
+       },
+       {
+        "institutionId": 74,
+        "courses": [
+         "74:CHEM A180"
+        ]
+       },
+       {
+        "institutionId": 103,
+        "courses": [
+         "103:CHEM 1A"
+        ]
+       },
+       {
+        "institutionId": 58,
+        "courses": [
+         "58:CHEM 1A"
+        ]
+       },
+       {
+        "institutionId": 33,
+        "courses": [
+         "33:CHEM 101A"
+        ]
+       },
+       {
+        "institutionId": 136,
+        "courses": [
+         "136:CHEM 001A"
+        ]
+       },
+       {
+        "institutionId": 65,
+        "courses": [
+         "65:CHEM 1A"
+        ]
+       },
+       {
+        "institutionId": 80,
+        "courses": [
+         "80:CHEM 001A"
+        ]
+       },
+       {
+        "institutionId": 80,
+        "courses": [
+         "80:CHEM 001AH"
+        ]
+       },
+       {
+        "institutionId": 32,
+        "courses": [
+         "32:CHM 001A"
+        ]
+       },
+       {
+        "institutionId": 32,
+        "courses": [
+         "32:CHM 001AH"
+        ]
+       }
+      ],
+      "noArticulation": {
+       "92": "No Course Articulated"
+      }
+     }
+    ]
+   },
+   {
+    "kind": "node",
+    "type": "AND",
+    "title": "REQUIRED FOR ADMISSION",
+    "required": true,
+    "children": [
+     {
+      "kind": "req",
+      "id": "CMN 001",
+      "label": "Introduction to Public Speaking",
+      "units": 4,
+      "groups": [
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:COMM C1000H"
+        ]
+       },
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:COMM C1000"
+        ]
+       },
+       {
+        "institutionId": 51,
+        "courses": [
+         "51:COMM C1000H"
+        ]
+       },
+       {
+        "institutionId": 51,
+        "courses": [
+         "51:COMM C1000"
+        ]
+       },
+       {
+        "institutionId": 137,
+        "courses": [
+         "137:COMM C1000"
+        ]
+       },
+       {
+        "institutionId": 49,
+        "courses": [
+         "49:COMM C1000"
+        ]
+       },
+       {
+        "institutionId": 49,
+        "courses": [
+         "49:COMM C1000H"
+        ]
+       },
+       {
+        "institutionId": 114,
+        "courses": [
+         "114:COMM C1000"
+        ]
+       },
+       {
+        "institutionId": 124,
+        "courses": [
+         "124:COMM C1000H"
+        ]
+       },
+       {
+        "institutionId": 124,
+        "courses": [
+         "124:COMM C1000"
+        ]
+       },
+       {
+        "institutionId": 74,
+        "courses": [
+         "74:COMM C1000"
+        ]
+       },
+       {
+        "institutionId": 103,
+        "courses": [
+         "103:COMM C1000"
+        ]
+       },
+       {
+        "institutionId": 103,
+        "courses": [
+         "103:COMM C1000H"
+        ]
+       },
+       {
+        "institutionId": 58,
+        "courses": [
+         "58:COMM 3"
+        ]
+       },
+       {
+        "institutionId": 58,
+        "courses": [
+         "58:COMM C1000"
+        ]
+       },
+       {
+        "institutionId": 33,
+        "courses": [
+         "33:COMM C1000"
+        ]
+       },
+       {
+        "institutionId": 136,
+        "courses": [
+         "136:COMM C1000"
+        ]
+       },
+       {
+        "institutionId": 136,
+        "courses": [
+         "136:COMM C1000H"
+        ]
+       },
+       {
+        "institutionId": 92,
+        "courses": [
+         "92:COMM C1000"
+        ]
+       },
+       {
+        "institutionId": 92,
+        "courses": [
+         "92:COMM C1000H"
+        ]
+       },
+       {
+        "institutionId": 65,
+        "courses": [
+         "65:COMM C1000"
+        ]
+       },
+       {
+        "institutionId": 65,
+        "courses": [
+         "65:COMM C1000H"
+        ]
+       },
+       {
+        "institutionId": 80,
+        "courses": [
+         "80:COMM C1000"
+        ]
+       },
+       {
+        "institutionId": 80,
+        "courses": [
+         "80:COMM C1000H"
+        ]
+       },
+       {
+        "institutionId": 32,
+        "courses": [
+         "32:COMM C1000"
+        ]
+       },
+       {
+        "institutionId": 32,
+        "courses": [
+         "32:COMM C1000H"
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "kind": "node",
+    "type": "AND",
+    "title": "CHEMISTRY",
+    "required": true,
+    "children": [
+     {
+      "kind": "req",
+      "id": "ECS 050",
+      "label": "Computer Organization & Machine-Dependent Programming ",
+      "units": 4,
+      "groups": [
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:CIS 21JA"
+        ]
+       },
+       {
+        "institutionId": 51,
+        "courses": [
+         "51:C S 10"
+        ]
+       },
+       {
+        "institutionId": 137,
+        "courses": [
+         "137:CS 17"
+        ]
+       },
+       {
+        "institutionId": 49,
+        "courses": [
+         "49:CS 066"
+        ]
+       },
+       {
+        "institutionId": 114,
+        "courses": [
+         "114:COMSC 260"
+        ]
+       },
+       {
+        "institutionId": 124,
+        "courses": [
+         "124:CS 40B"
+        ]
+       },
+       {
+        "institutionId": 124,
+        "courses": [
+         "124:CS 40A"
+        ]
+       },
+       {
+        "institutionId": 74,
+        "courses": [
+         "74:CS A216"
+        ]
+       },
+       {
+        "institutionId": 58,
+        "courses": [
+         "58:CIS 20"
+        ]
+       },
+       {
+        "institutionId": 33,
+        "courses": [
+         "33:CS 270"
+        ]
+       },
+       {
+        "institutionId": 92,
+        "courses": [
+         "92:CS 107"
+        ]
+       },
+       {
+        "institutionId": 65,
+        "courses": [
+         "65:CS 3B"
+        ]
+       },
+       {
+        "institutionId": 32,
+        "courses": [
+         "32:CIS 039"
+        ]
+       }
+      ],
+      "noArticulation": {
+       "80": "No Course Articulated"
+      }
+     },
+     {
+      "kind": "req",
+      "id": "ECS 020",
+      "label": "Discrete Mathematics For Computer Science ",
+      "units": 4,
+      "groups": [
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:MATH 22"
+        ]
+       },
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:MATH 22H"
+        ]
+       },
+       {
+        "institutionId": 51,
+        "courses": [
+         "51:C S 18"
+        ]
+       },
+       {
+        "institutionId": 51,
+        "courses": [
+         "51:MATH 22"
+        ]
+       },
+       {
+        "institutionId": 137,
+        "courses": [
+         "137:MATH 10"
+        ]
+       },
+       {
+        "institutionId": 49,
+        "courses": [
+         "49:MATH 022"
+        ]
+       },
+       {
+        "institutionId": 49,
+        "courses": [
+         "49:CS 045"
+        ]
+       },
+       {
+        "institutionId": 114,
+        "courses": [
+         "114:MATH 195"
+        ]
+       },
+       {
+        "institutionId": 114,
+        "courses": [
+         "114:COMSC 230"
+        ]
+       },
+       {
+        "institutionId": 124,
+        "courses": [
+         "124:MATH 6A"
+        ]
+       },
+       {
+        "institutionId": 124,
+        "courses": [
+         "124:CS 6A"
+        ]
+       },
+       {
+        "institutionId": 74,
+        "courses": [
+         "74:MATH A230"
+        ]
+       },
+       {
+        "institutionId": 103,
+        "courses": [
+         "103:MATH 210"
+        ]
+       },
+       {
+        "institutionId": 58,
+        "courses": [
+         "58:MATH 11"
+        ]
+       },
+       {
+        "institutionId": 33,
+        "courses": [
+         "33:MATH 115"
+        ]
+       },
+       {
+        "institutionId": 136,
+        "courses": [
+         "136:MATH 080"
+        ]
+       },
+       {
+        "institutionId": 136,
+        "courses": [
+         "136:MATH 070"
+        ]
+       },
+       {
+        "institutionId": 92,
+        "courses": [
+         "92:CS 108"
+        ]
+       },
+       {
+        "institutionId": 65,
+        "courses": [
+         "65:CS 30B"
+        ]
+       },
+       {
+        "institutionId": 65,
+        "courses": [
+         "65:CS 30A"
+        ]
+       },
+       {
+        "institutionId": 65,
+        "courses": [
+         "65:MATH 30A"
+        ]
+       },
+       {
+        "institutionId": 65,
+        "courses": [
+         "65:MATH 30B"
+        ]
+       },
+       {
+        "institutionId": 80,
+        "courses": [
+         "80:MATH 019"
+        ]
+       },
+       {
+        "institutionId": 32,
+        "courses": [
+         "32:MAT 020"
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "kind": "node",
+    "type": "OR",
+    "title": "COMMUNICATION",
+    "required": true,
+    "children": [
+     {
+      "kind": "node",
+      "type": "AND",
+      "required": true,
+      "children": [
+       {
+        "kind": "req",
+        "id": "ECS 032B",
+        "label": "Introduction to Data Structures",
+        "units": 4,
+        "groups": [
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:CIS 22CH"
+          ]
+         },
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:CIS 22C"
+          ]
+         },
+         {
+          "institutionId": 51,
+          "courses": [
+           "51:C S 3C"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:CS 033"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:CS 034"
+          ]
+         },
+         {
+          "institutionId": 103,
+          "courses": [
+           "103:CSCI 2"
+          ]
+         },
+         {
+          "institutionId": 92,
+          "courses": [
+           "92:CS 106"
+          ]
+         },
+         {
+          "institutionId": 80,
+          "courses": [
+           "80:CIST 005B"
+          ]
+         }
+        ]
+       },
+       {
+        "kind": "req",
+        "id": "ECS 032C",
+        "label": "ECS 032C",
+        "units": 0,
+        "groups": [],
+        "noArticulation": {
+         "32": "No articulation listed",
+         "33": "No articulation listed",
+         "49": "No articulation listed",
+         "51": "No articulation listed",
+         "58": "No articulation listed",
+         "65": "No articulation listed",
+         "74": "No articulation listed",
+         "80": "No articulation listed",
+         "92": "No articulation listed",
+         "103": "No articulation listed",
+         "113": "No articulation listed",
+         "114": "No articulation listed",
+         "124": "No articulation listed",
+         "136": "No articulation listed",
+         "137": "No articulation listed"
+        }
+       },
+       {
+        "kind": "req",
+        "id": "ECS 034",
+        "label": "Software Development in UNIX & C++",
+        "units": 4,
+        "groups": [],
+        "noArticulation": {
+         "32": "This Course is Never Articulated",
+         "33": "This Course is Never Articulated",
+         "49": "This Course is Never Articulated",
+         "51": "This Course is Never Articulated",
+         "58": "This Course is Never Articulated",
+         "65": "This Course is Never Articulated",
+         "74": "This Course is Never Articulated",
+         "80": "This Course is Never Articulated",
+         "92": "This Course is Never Articulated",
+         "103": "This Course is Never Articulated",
+         "113": "This Course is Never Articulated",
+         "114": "This Course is Never Articulated",
+         "124": "This Course is Never Articulated",
+         "136": "This Course is Never Articulated",
+         "137": "This Course is Never Articulated"
+        }
+       },
+       {
+        "kind": "req",
+        "id": "ECS 036A",
+        "label": "Programming & Problem Solving ",
+        "units": 4,
+        "groups": [
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:CIS 26B"
+          ]
+         },
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:CIS 26A"
+          ]
+         },
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:CIS 22B"
+          ]
+         },
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:CIS 35A"
+          ]
+         },
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:CIS 27"
+          ]
+         },
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:CIS 36A"
+          ]
+         },
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:CIS 22A"
+          ]
+         },
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:CIS 22BH"
+          ]
+         },
+         {
+          "institutionId": 51,
+          "courses": [
+           "51:C S 2A"
+          ]
+         },
+         {
+          "institutionId": 51,
+          "courses": [
+           "51:C S 1A"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:CS 002"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:CS 003B"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:CS 003C"
+          ]
+         },
+         {
+          "institutionId": 114,
+          "courses": [
+           "114:COMSC 255"
+          ]
+         },
+         {
+          "institutionId": 114,
+          "courses": [
+           "114:COMSC 110"
+          ]
+         },
+         {
+          "institutionId": 114,
+          "courses": [
+           "114:COMSC 165"
+          ]
+         },
+         {
+          "institutionId": 114,
+          "courses": [
+           "114:ENGIN 135"
+          ]
+         },
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:CS 36"
+          ]
+         },
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:CS 38"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:CS A140"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:CS A170"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:CS A131"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:CS A150"
+          ]
+         },
+         {
+          "institutionId": 103,
+          "courses": [
+           "103:CSCI 3"
+          ]
+         },
+         {
+          "institutionId": 103,
+          "courses": [
+           "103:CSCI 1"
+          ]
+         },
+         {
+          "institutionId": 33,
+          "courses": [
+           "33:CS 110B"
+          ]
+         },
+         {
+          "institutionId": 33,
+          "courses": [
+           "33:CS 110A"
+          ]
+         },
+         {
+          "institutionId": 136,
+          "courses": [
+           "136:CIS 054"
+          ]
+         },
+         {
+          "institutionId": 136,
+          "courses": [
+           "136:CIS 084"
+          ]
+         },
+         {
+          "institutionId": 136,
+          "courses": [
+           "136:CIS 059"
+          ]
+         },
+         {
+          "institutionId": 92,
+          "courses": [
+           "92:CS 140"
+          ]
+         },
+         {
+          "institutionId": 92,
+          "courses": [
+           "92:CS 137"
+          ]
+         },
+         {
+          "institutionId": 65,
+          "courses": [
+           "65:CS 1A"
+          ]
+         },
+         {
+          "institutionId": 65,
+          "courses": [
+           "65:CS 4A"
+          ]
+         },
+         {
+          "institutionId": 65,
+          "courses": [
+           "65:CS 1B"
+          ]
+         },
+         {
+          "institutionId": 65,
+          "courses": [
+           "65:CS 4B"
+          ]
+         },
+         {
+          "institutionId": 80,
+          "courses": [
+           "80:CIST 037"
+          ]
+         },
+         {
+          "institutionId": 80,
+          "courses": [
+           "80:CIST 004A1"
+          ]
+         },
+         {
+          "institutionId": 80,
+          "courses": [
+           "80:CIST 004A"
+          ]
+         },
+         {
+          "institutionId": 32,
+          "courses": [
+           "32:CIS 037A"
+          ]
+         },
+         {
+          "institutionId": 32,
+          "courses": [
+           "32:CIS 043"
+          ]
+         },
+         {
+          "institutionId": 32,
+          "courses": [
+           "32:EGR 030"
+          ]
+         },
+         {
+          "institutionId": 32,
+          "courses": [
+           "32:CIS 040"
+          ]
+         }
+        ],
+        "noArticulation": {
+         "58": "No Course Articulated"
+        }
+       }
+      ]
+     },
+     {
+      "kind": "node",
+      "type": "AND",
+      "required": true,
+      "children": [
+       {
+        "kind": "req",
+        "id": "ECS 036B",
+        "label": "Software Development & Object-Oriented Programming in C++",
+        "units": 4,
+        "groups": [
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:CIS 22BH"
+          ]
+         },
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:CIS 36B"
+          ]
+         },
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:CIS 35A"
+          ]
+         },
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:CIS 22B"
+          ]
+         },
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:CIS 29"
+          ]
+         },
+         {
+          "institutionId": 51,
+          "courses": [
+           "51:C S 2B"
+          ]
+         },
+         {
+          "institutionId": 51,
+          "courses": [
+           "51:C S 1B"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:CS 003A"
+          ]
+         },
+         {
+          "institutionId": 114,
+          "courses": [
+           "114:COMSC 200"
+          ]
+         },
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:CS 37"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:CS A250"
+          ]
+         },
+         {
+          "institutionId": 103,
+          "courses": [
+           "103:CSCI 30"
+          ]
+         },
+         {
+          "institutionId": 58,
+          "courses": [
+           "58:CIS 25"
+          ]
+         },
+         {
+          "institutionId": 58,
+          "courses": [
+           "58:CIS 36A"
+          ]
+         },
+         {
+          "institutionId": 136,
+          "courses": [
+           "136:CIS 055"
+          ]
+         },
+         {
+          "institutionId": 65,
+          "courses": [
+           "65:CS 1C"
+          ]
+         },
+         {
+          "institutionId": 32,
+          "courses": [
+           "32:CIS 043"
+          ]
+         }
+        ],
+        "noArticulation": {
+         "80": "No Course Articulated",
+         "92": "No Course Articulated"
+        }
+       },
+       {
+        "kind": "req",
+        "id": "ECS 036C",
+        "label": "Data Structures, Algorithms, & Programming ",
+        "units": 4,
+        "groups": [
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:CIS 22CH"
+          ]
+         },
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:CIS 22C"
+          ]
+         },
+         {
+          "institutionId": 51,
+          "courses": [
+           "51:C S 2C"
+          ]
+         },
+         {
+          "institutionId": 51,
+          "courses": [
+           "51:C S 1C"
+          ]
+         },
+         {
+          "institutionId": 137,
+          "courses": [
+           "137:CS 20A"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:CS 008",
+           "49:CS 008L"
+          ]
+         },
+         {
+          "institutionId": 114,
+          "courses": [
+           "114:COMSC 210"
+          ]
+         },
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:CS 41"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:CS A200"
+          ]
+         },
+         {
+          "institutionId": 103,
+          "courses": [
+           "103:CSCI 2"
+          ]
+         },
+         {
+          "institutionId": 58,
+          "courses": [
+           "58:CIS 27"
+          ]
+         },
+         {
+          "institutionId": 92,
+          "courses": [
+           "92:CS 106"
+          ]
+         },
+         {
+          "institutionId": 65,
+          "courses": [
+           "65:CS 1D"
+          ]
+         },
+         {
+          "institutionId": 80,
+          "courses": [
+           "80:CIST 004B"
+          ]
+         },
+         {
+          "institutionId": 80,
+          "courses": [
+           "80:CIST 004B1"
+          ]
+         },
+         {
+          "institutionId": 32,
+          "courses": [
+           "32:CIS 044"
+          ]
+         }
+        ],
+        "noArticulation": {
+         "136": "No Course Articulated"
+        }
+       },
+       {
+        "kind": "req",
+        "id": "ECS 036A",
+        "label": "Programming & Problem Solving ",
+        "units": 4,
+        "groups": [
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:CIS 26B"
+          ]
+         },
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:CIS 26A"
+          ]
+         },
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:CIS 22B"
+          ]
+         },
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:CIS 35A"
+          ]
+         },
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:CIS 27"
+          ]
+         },
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:CIS 36A"
+          ]
+         },
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:CIS 22A"
+          ]
+         },
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:CIS 22BH"
+          ]
+         },
+         {
+          "institutionId": 51,
+          "courses": [
+           "51:C S 2A"
+          ]
+         },
+         {
+          "institutionId": 51,
+          "courses": [
+           "51:C S 1A"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:CS 002"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:CS 003B"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:CS 003C"
+          ]
+         },
+         {
+          "institutionId": 114,
+          "courses": [
+           "114:COMSC 255"
+          ]
+         },
+         {
+          "institutionId": 114,
+          "courses": [
+           "114:COMSC 110"
+          ]
+         },
+         {
+          "institutionId": 114,
+          "courses": [
+           "114:COMSC 165"
+          ]
+         },
+         {
+          "institutionId": 114,
+          "courses": [
+           "114:ENGIN 135"
+          ]
+         },
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:CS 36"
+          ]
+         },
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:CS 38"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:CS A140"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:CS A170"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:CS A131"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:CS A150"
+          ]
+         },
+         {
+          "institutionId": 103,
+          "courses": [
+           "103:CSCI 3"
+          ]
+         },
+         {
+          "institutionId": 103,
+          "courses": [
+           "103:CSCI 1"
+          ]
+         },
+         {
+          "institutionId": 33,
+          "courses": [
+           "33:CS 110B"
+          ]
+         },
+         {
+          "institutionId": 33,
+          "courses": [
+           "33:CS 110A"
+          ]
+         },
+         {
+          "institutionId": 136,
+          "courses": [
+           "136:CIS 054"
+          ]
+         },
+         {
+          "institutionId": 136,
+          "courses": [
+           "136:CIS 084"
+          ]
+         },
+         {
+          "institutionId": 136,
+          "courses": [
+           "136:CIS 059"
+          ]
+         },
+         {
+          "institutionId": 92,
+          "courses": [
+           "92:CS 140"
+          ]
+         },
+         {
+          "institutionId": 92,
+          "courses": [
+           "92:CS 137"
+          ]
+         },
+         {
+          "institutionId": 65,
+          "courses": [
+           "65:CS 1A"
+          ]
+         },
+         {
+          "institutionId": 65,
+          "courses": [
+           "65:CS 4A"
+          ]
+         },
+         {
+          "institutionId": 65,
+          "courses": [
+           "65:CS 1B"
+          ]
+         },
+         {
+          "institutionId": 65,
+          "courses": [
+           "65:CS 4B"
+          ]
+         },
+         {
+          "institutionId": 80,
+          "courses": [
+           "80:CIST 037"
+          ]
+         },
+         {
+          "institutionId": 80,
+          "courses": [
+           "80:CIST 004A1"
+          ]
+         },
+         {
+          "institutionId": 80,
+          "courses": [
+           "80:CIST 004A"
+          ]
+         },
+         {
+          "institutionId": 32,
+          "courses": [
+           "32:CIS 037A"
+          ]
+         },
+         {
+          "institutionId": 32,
+          "courses": [
+           "32:CIS 043"
+          ]
+         },
+         {
+          "institutionId": 32,
+          "courses": [
+           "32:EGR 030"
+          ]
+         },
+         {
+          "institutionId": 32,
+          "courses": [
+           "32:CIS 040"
+          ]
+         }
+        ],
+        "noArticulation": {
+         "58": "No Course Articulated"
+        }
+       }
+      ]
+     },
+     {
+      "kind": "node",
+      "type": "AND",
+      "required": true,
+      "children": [
+       {
+        "kind": "req",
+        "id": "ECS 032B",
+        "label": "Introduction to Data Structures",
+        "units": 4,
+        "groups": [
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:CIS 22CH"
+          ]
+         },
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:CIS 22C"
+          ]
+         },
+         {
+          "institutionId": 51,
+          "courses": [
+           "51:C S 3C"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:CS 033"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:CS 034"
+          ]
+         },
+         {
+          "institutionId": 103,
+          "courses": [
+           "103:CSCI 2"
+          ]
+         },
+         {
+          "institutionId": 92,
+          "courses": [
+           "92:CS 106"
+          ]
+         },
+         {
+          "institutionId": 80,
+          "courses": [
+           "80:CIST 005B"
+          ]
+         }
+        ]
+       },
+       {
+        "kind": "req",
+        "id": "ECS 034",
+        "label": "Software Development in UNIX & C++",
+        "units": 4,
+        "groups": [],
+        "noArticulation": {
+         "32": "This Course is Never Articulated",
+         "33": "This Course is Never Articulated",
+         "49": "This Course is Never Articulated",
+         "51": "This Course is Never Articulated",
+         "58": "This Course is Never Articulated",
+         "65": "This Course is Never Articulated",
+         "74": "This Course is Never Articulated",
+         "80": "This Course is Never Articulated",
+         "92": "This Course is Never Articulated",
+         "103": "This Course is Never Articulated",
+         "113": "This Course is Never Articulated",
+         "114": "This Course is Never Articulated",
+         "124": "This Course is Never Articulated",
+         "136": "This Course is Never Articulated",
+         "137": "This Course is Never Articulated"
+        }
+       },
+       {
+        "kind": "req",
+        "id": "ECS 032A",
+        "label": "Introduction to Programming",
+        "units": 4,
+        "groups": [
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:CIS 41A"
+          ]
+         },
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:CIS 36A"
+          ]
+         },
+         {
+          "institutionId": 51,
+          "courses": [
+           "51:C S 3A"
+          ]
+         },
+         {
+          "institutionId": 137,
+          "courses": [
+           "137:CS 55"
+          ]
+         },
+         {
+          "institutionId": 137,
+          "courses": [
+           "137:CS 15"
+          ]
+         },
+         {
+          "institutionId": 137,
+          "courses": [
+           "137:CS 87A"
+          ]
+         },
+         {
+          "institutionId": 137,
+          "courses": [
+           "137:CS 50"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:CS 002"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:CS 003C"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:CS 003B"
+          ]
+         },
+         {
+          "institutionId": 114,
+          "courses": [
+           "114:COMSC 140"
+          ]
+         },
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:CS 10"
+          ]
+         },
+         {
+          "institutionId": 103,
+          "courses": [
+           "103:CSCI 14"
+          ]
+         },
+         {
+          "institutionId": 58,
+          "courses": [
+           "58:CIS 6"
+          ]
+         },
+         {
+          "institutionId": 136,
+          "courses": [
+           "136:CIS 024C"
+          ]
+         },
+         {
+          "institutionId": 92,
+          "courses": [
+           "92:CS 105"
+          ]
+         },
+         {
+          "institutionId": 92,
+          "courses": [
+           "92:CS 104"
+          ]
+         },
+         {
+          "institutionId": 80,
+          "courses": [
+           "80:CIST 005A"
+          ]
+         }
+        ]
+       },
+       {
+        "kind": "req",
+        "id": "ECS 032C",
+        "label": "ECS 032C",
+        "units": 0,
+        "groups": [],
+        "noArticulation": {
+         "32": "No articulation listed",
+         "33": "No articulation listed",
+         "49": "No articulation listed",
+         "51": "No articulation listed",
+         "58": "No articulation listed",
+         "65": "No articulation listed",
+         "74": "No articulation listed",
+         "80": "No articulation listed",
+         "92": "No articulation listed",
+         "103": "No articulation listed",
+         "113": "No articulation listed",
+         "114": "No articulation listed",
+         "124": "No articulation listed",
+         "136": "No articulation listed",
+         "137": "No articulation listed"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "kind": "node",
+    "type": "AND",
+    "title": "COMPUTER SCIENCE ENGINEERING",
+    "required": true,
+    "children": [
+     {
+      "kind": "req",
+      "id": "ENG 017",
+      "label": "Circuits I ",
+      "units": 4,
+      "groups": [
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:ENGR 37"
+        ]
+       },
+       {
+        "institutionId": 51,
+        "courses": [
+         "51:ENGR 37",
+         "51:ENGR 37L"
+        ]
+       },
+       {
+        "institutionId": 137,
+        "courses": [
+         "137:ENGR 22",
+         "137:ENGR 21"
+        ]
+       },
+       {
+        "institutionId": 49,
+        "courses": [
+         "49:ENGR 016"
+        ]
+       },
+       {
+        "institutionId": 114,
+        "courses": [
+         "114:ENGIN 230"
+        ]
+       },
+       {
+        "institutionId": 124,
+        "courses": [
+         "124:ENGR 70"
+        ]
+       },
+       {
+        "institutionId": 74,
+        "courses": [
+         "74:ENGR A285"
+        ]
+       },
+       {
+        "institutionId": 103,
+        "courses": [
+         "103:ENGR 11",
+         "103:ENGR 12"
+        ]
+       },
+       {
+        "institutionId": 33,
+        "courses": [
+         "33:ENGN 20",
+         "33:ENGN 20L"
+        ]
+       },
+       {
+        "institutionId": 136,
+        "courses": [
+         "136:ENGR 033"
+        ]
+       },
+       {
+        "institutionId": 92,
+        "courses": [
+         "92:ENGR 117L",
+         "92:ENGR 117"
+        ]
+       },
+       {
+        "institutionId": 80,
+        "courses": [
+         "80:ENGR 098"
+        ]
+       },
+       {
+        "institutionId": 32,
+        "courses": [
+         "32:EGR 024L",
+         "32:EGR 024"
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "kind": "node",
+    "type": "AND",
+    "title": "ENGINEERING",
+    "required": true,
+    "children": [
+     {
+      "kind": "req",
+      "id": "COM 002",
+      "label": "Major Works of the Medieval & Early Modern World",
+      "units": 4,
+      "groups": [
+       {
+        "institutionId": 137,
+        "courses": [
+         "137:ENGL 3",
+         "137:ENGL 4"
+        ]
+       },
+       {
+        "institutionId": 49,
+        "courses": [
+         "49:ENGL 044B"
+        ]
+       },
+       {
+        "institutionId": 114,
+        "courses": [
+         "114:ENGL 273",
+         "114:ENGL 272"
+        ]
+       },
+       {
+        "institutionId": 74,
+        "courses": [
+         "74:ENGL A160",
+         "74:ENGL A161"
+        ]
+       },
+       {
+        "institutionId": 103,
+        "courses": [
+         "103:ENGL 35",
+         "103:ENGL 36"
+        ]
+       },
+       {
+        "institutionId": 33,
+        "courses": [
+         "33:ENGL 44A",
+         "33:ENGL 44B"
+        ]
+       },
+       {
+        "institutionId": 92,
+        "courses": [
+         "92:ENG 231",
+         "92:ENG 232"
+        ]
+       },
+       {
+        "institutionId": 65,
+        "courses": [
+         "65:ENG 21A",
+         "65:ENG 21B"
+        ]
+       },
+       {
+        "institutionId": 80,
+        "courses": [
+         "80:ENGL 006BH",
+         "80:ENGL 006A"
+        ]
+       },
+       {
+        "institutionId": 80,
+        "courses": [
+         "80:ENGL 006A",
+         "80:ENGL 006B"
+        ]
+       },
+       {
+        "institutionId": 80,
+        "courses": [
+         "80:ENGL 006BH",
+         "80:ENGL 006AH"
+        ]
+       },
+       {
+        "institutionId": 80,
+        "courses": [
+         "80:ENGL 006B",
+         "80:ENGL 006AH"
+        ]
+       }
+      ]
+     },
+     {
+      "kind": "req",
+      "id": "ENL 003",
+      "label": "Introduction to Literature ",
+      "units": 4,
+      "groups": [
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:EWRT 1C"
+        ]
+       },
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:EWRT 1BH"
+        ]
+       },
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:EWRT 1B"
+        ]
+       },
+       {
+        "institutionId": 51,
+        "courses": [
+         "51:ENGL 1BH"
+        ]
+       },
+       {
+        "institutionId": 51,
+        "courses": [
+         "51:ENGL 1B"
+        ]
+       },
+       {
+        "institutionId": 49,
+        "courses": [
+         "49:ENGL 001B"
+        ]
+       },
+       {
+        "institutionId": 49,
+        "courses": [
+         "49:ENGL 001BH"
+        ]
+       },
+       {
+        "institutionId": 114,
+        "courses": [
+         "114:ENGL 123A"
+        ]
+       },
+       {
+        "institutionId": 114,
+        "courses": [
+         "114:ENGL 123"
+        ]
+       },
+       {
+        "institutionId": 124,
+        "courses": [
+         "124:LIT 1"
+        ]
+       },
+       {
+        "institutionId": 124,
+        "courses": [
+         "124:LIT 1H"
+        ]
+       },
+       {
+        "institutionId": 74,
+        "courses": [
+         "74:ENGL A101H"
+        ]
+       },
+       {
+        "institutionId": 74,
+        "courses": [
+         "74:ENGL A101"
+        ]
+       },
+       {
+        "institutionId": 103,
+        "courses": [
+         "103:ENGL 1B"
+        ]
+       },
+       {
+        "institutionId": 103,
+        "courses": [
+         "103:ENGL 1BH"
+        ]
+       },
+       {
+        "institutionId": 58,
+        "courses": [
+         "58:ENGL 1B"
+        ]
+       },
+       {
+        "institutionId": 33,
+        "courses": [
+         "33:ENGL 1B"
+        ]
+       },
+       {
+        "institutionId": 136,
+        "courses": [
+         "136:ENGL 001B"
+        ]
+       },
+       {
+        "institutionId": 92,
+        "courses": [
+         "92:ENG 111"
+        ]
+       },
+       {
+        "institutionId": 92,
+        "courses": [
+         "92:ENG 111H"
+        ]
+       },
+       {
+        "institutionId": 65,
+        "courses": [
+         "65:ENG 25H"
+        ]
+       },
+       {
+        "institutionId": 65,
+        "courses": [
+         "65:ENG 25"
+        ]
+       },
+       {
+        "institutionId": 80,
+        "courses": [
+         "80:ENGL 001B"
+        ]
+       }
+      ],
+      "noArticulation": {
+       "32": "No Course Articulated",
+       "137": "No Course Articulated"
+      }
+     },
+     {
+      "kind": "req",
+      "id": "NAS 005",
+      "label": "Introduction to Native American Literature",
+      "units": 4,
+      "groups": [
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:NAIS 15"
+        ]
+       },
+       {
+        "institutionId": 49,
+        "courses": [
+         "49:ENGL 055"
+        ]
+       },
+       {
+        "institutionId": 49,
+        "courses": [
+         "49:ETH 055"
+        ]
+       },
+       {
+        "institutionId": 114,
+        "courses": [
+         "114:ENGL 164"
+        ]
+       },
+       {
+        "institutionId": 92,
+        "courses": [
+         "92:NATA 113"
+        ]
+       }
+      ]
+     },
+     {
+      "kind": "req",
+      "id": "COM 004",
+      "label": "Major Works of the Contemporary World ",
+      "units": 4,
+      "groups": [
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:ELIT 39"
+        ]
+       },
+       {
+        "institutionId": 137,
+        "courses": [
+         "137:ENGL 4"
+        ]
+       },
+       {
+        "institutionId": 136,
+        "courses": [
+         "136:HUMNT 002"
+        ]
+       }
+      ]
+     },
+     {
+      "kind": "req",
+      "id": "UWP 001",
+      "label": "Introduction to Academic Literacies ",
+      "units": 4,
+      "groups": [
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:COMM 9"
+        ]
+       },
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:COMM 9H"
+        ]
+       },
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:EWRT 1BH"
+        ]
+       },
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:ENGL C1000"
+        ]
+       },
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:EWRT 1B"
+        ]
+       },
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:ENGL C1000H"
+        ]
+       },
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:ESL 5"
+        ]
+       },
+       {
+        "institutionId": 51,
+        "courses": [
+         "51:ESLL 26"
+        ]
+       },
+       {
+        "institutionId": 51,
+        "courses": [
+         "51:ENGL C1000H"
+        ]
+       },
+       {
+        "institutionId": 51,
+        "courses": [
+         "51:ENGL C1000"
+        ]
+       },
+       {
+        "institutionId": 137,
+        "courses": [
+         "137:ENGL C1000"
+        ]
+       },
+       {
+        "institutionId": 49,
+        "courses": [
+         "49:ENGL C1000H"
+        ]
+       },
+       {
+        "institutionId": 49,
+        "courses": [
+         "49:ENGL C1000"
+        ]
+       },
+       {
+        "institutionId": 114,
+        "courses": [
+         "114:ENGL 122AL"
+        ]
+       },
+       {
+        "institutionId": 114,
+        "courses": [
+         "114:ENGL C1000"
+        ]
+       },
+       {
+        "institutionId": 114,
+        "courses": [
+         "114:ENGL C1000E"
+        ]
+       },
+       {
+        "institutionId": 124,
+        "courses": [
+         "124:ENGL C1000"
+        ]
+       },
+       {
+        "institutionId": 124,
+        "courses": [
+         "124:ENGL C1000H"
+        ]
+       },
+       {
+        "institutionId": 124,
+        "courses": [
+         "124:ESL 1"
+        ]
+       },
+       {
+        "institutionId": 74,
+        "courses": [
+         "74:ENGL C1000"
+        ]
+       },
+       {
+        "institutionId": 103,
+        "courses": [
+         "103:ENGL C1000H"
+        ]
+       },
+       {
+        "institutionId": 103,
+        "courses": [
+         "103:ENGL C1000"
+        ]
+       },
+       {
+        "institutionId": 58,
+        "courses": [
+         "58:ENGL C1000"
+        ]
+       },
+       {
+        "institutionId": 33,
+        "courses": [
+         "33:ENGL C1000"
+        ]
+       },
+       {
+        "institutionId": 136,
+        "courses": [
+         "136:ENGL C1000"
+        ]
+       },
+       {
+        "institutionId": 92,
+        "courses": [
+         "92:ENGL C1000E"
+        ]
+       },
+       {
+        "institutionId": 92,
+        "courses": [
+         "92:ENGL C1000H"
+        ]
+       },
+       {
+        "institutionId": 92,
+        "courses": [
+         "92:ENGL C1000"
+        ]
+       },
+       {
+        "institutionId": 65,
+        "courses": [
+         "65:ENGL C1000"
+        ]
+       },
+       {
+        "institutionId": 65,
+        "courses": [
+         "65:ENGL C1000H"
+        ]
+       },
+       {
+        "institutionId": 80,
+        "courses": [
+         "80:ENGL C1000"
+        ]
+       },
+       {
+        "institutionId": 32,
+        "courses": [
+         "32:ENGL C1000"
+        ]
+       },
+       {
+        "institutionId": 32,
+        "courses": [
+         "32:ENGL C1000E"
+        ]
+       }
+      ]
+     },
+     {
+      "kind": "req",
+      "id": "COM 001",
+      "label": "Major Works of the Ancient World",
+      "units": 4,
+      "groups": [
+       {
+        "institutionId": 137,
+        "courses": [
+         "137:ENGL 3"
+        ]
+       },
+       {
+        "institutionId": 49,
+        "courses": [
+         "49:ENGL 044A"
+        ]
+       },
+       {
+        "institutionId": 114,
+        "courses": [
+         "114:ENGL 272"
+        ]
+       },
+       {
+        "institutionId": 74,
+        "courses": [
+         "74:ENGL A160"
+        ]
+       },
+       {
+        "institutionId": 103,
+        "courses": [
+         "103:ENGL 35"
+        ]
+       },
+       {
+        "institutionId": 33,
+        "courses": [
+         "33:ENGL 44A"
+        ]
+       },
+       {
+        "institutionId": 92,
+        "courses": [
+         "92:ENG 231"
+        ]
+       },
+       {
+        "institutionId": 65,
+        "courses": [
+         "65:ENG 21A"
+        ]
+       },
+       {
+        "institutionId": 80,
+        "courses": [
+         "80:ENGL 006AH"
+        ]
+       },
+       {
+        "institutionId": 80,
+        "courses": [
+         "80:ENGL 006A"
+        ]
+       }
+      ]
+     },
+     {
+      "kind": "req",
+      "id": "COM 003",
+      "label": "Major Works of the Modern World",
+      "units": 4,
+      "groups": [
+       {
+        "institutionId": 137,
+        "courses": [
+         "137:ENGL 4"
+        ]
+       },
+       {
+        "institutionId": 49,
+        "courses": [
+         "49:ENGL 044C"
+        ]
+       },
+       {
+        "institutionId": 114,
+        "courses": [
+         "114:ENGL 273"
+        ]
+       },
+       {
+        "institutionId": 74,
+        "courses": [
+         "74:ENGL A161"
+        ]
+       },
+       {
+        "institutionId": 103,
+        "courses": [
+         "103:ENGL 36"
+        ]
+       },
+       {
+        "institutionId": 58,
+        "courses": [
+         "58:ENGL 44B"
+        ]
+       },
+       {
+        "institutionId": 33,
+        "courses": [
+         "33:ENGL 44B"
+        ]
+       },
+       {
+        "institutionId": 92,
+        "courses": [
+         "92:ENG 232"
+        ]
+       },
+       {
+        "institutionId": 65,
+        "courses": [
+         "65:ENG 21B"
+        ]
+       },
+       {
+        "institutionId": 80,
+        "courses": [
+         "80:ENGL 006B"
+        ]
+       },
+       {
+        "institutionId": 80,
+        "courses": [
+         "80:ENGL 006BH"
+        ]
+       },
+       {
+        "institutionId": 32,
+        "courses": [
+         "32:ENG 006B"
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "kind": "node",
+    "type": "AND",
+    "title": "COMPOSITION",
+    "required": true,
+    "children": [
+     {
+      "kind": "req",
+      "id": "MAT 021A",
+      "label": "Calculus",
+      "units": 4,
+      "groups": [
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:MATH 1A"
+        ]
+       },
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:MATH 1AH"
+        ]
+       },
+       {
+        "institutionId": 51,
+        "courses": [
+         "51:MATH 1A"
+        ]
+       },
+       {
+        "institutionId": 51,
+        "courses": [
+         "51:MATH 1AH",
+         "51:MATH 1AHP"
+        ]
+       },
+       {
+        "institutionId": 137,
+        "courses": [
+         "137:MATH 7"
+        ]
+       },
+       {
+        "institutionId": 49,
+        "courses": [
+         "49:MATH 005A"
+        ]
+       },
+       {
+        "institutionId": 49,
+        "courses": [
+         "49:MATH 005AH"
+        ]
+       },
+       {
+        "institutionId": 114,
+        "courses": [
+         "114:MATH 192"
+        ]
+       },
+       {
+        "institutionId": 103,
+        "courses": [
+         "103:MATH 190"
+        ]
+       },
+       {
+        "institutionId": 58,
+        "courses": [
+         "58:MATH 3A"
+        ]
+       },
+       {
+        "institutionId": 33,
+        "courses": [
+         "33:MATH 110A"
+        ]
+       },
+       {
+        "institutionId": 136,
+        "courses": [
+         "136:MATH 071H"
+        ]
+       },
+       {
+        "institutionId": 136,
+        "courses": [
+         "136:MATH 071"
+        ]
+       },
+       {
+        "institutionId": 92,
+        "courses": [
+         "92:MATH 150"
+        ]
+       },
+       {
+        "institutionId": 65,
+        "courses": [
+         "65:MATH 3AH"
+        ]
+       },
+       {
+        "institutionId": 65,
+        "courses": [
+         "65:MATH 3A"
+        ]
+       },
+       {
+        "institutionId": 80,
+        "courses": [
+         "80:MATH 003AH"
+        ]
+       },
+       {
+        "institutionId": 80,
+        "courses": [
+         "80:MATH 003A"
+        ]
+       }
+      ]
+     },
+     {
+      "kind": "req",
+      "id": "MAT 021B",
+      "label": "Calculus",
+      "units": 4,
+      "groups": [
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:MATH 1B"
+        ]
+       },
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:MATH 1BH"
+        ]
+       },
+       {
+        "institutionId": 51,
+        "courses": [
+         "51:MATH 1B"
+        ]
+       },
+       {
+        "institutionId": 137,
+        "courses": [
+         "137:MATH 8"
+        ]
+       },
+       {
+        "institutionId": 114,
+        "courses": [
+         "114:MATH 193"
+        ]
+       },
+       {
+        "institutionId": 103,
+        "courses": [
+         "103:MATH 190",
+         "103:MATH 191"
+        ]
+       },
+       {
+        "institutionId": 58,
+        "courses": [
+         "58:MATH 3A",
+         "58:MATH 3B"
+        ]
+       },
+       {
+        "institutionId": 33,
+        "courses": [
+         "33:MATH 110A",
+         "33:MATH 110B"
+        ]
+       },
+       {
+        "institutionId": 136,
+        "courses": [
+         "136:MATH 072"
+        ]
+       },
+       {
+        "institutionId": 92,
+        "courses": [
+         "92:MATH 150",
+         "92:MATH 160"
+        ]
+       },
+       {
+        "institutionId": 65,
+        "courses": [
+         "65:MATH 3A",
+         "65:MATH 3B"
+        ]
+       },
+       {
+        "institutionId": 65,
+        "courses": [
+         "65:MATH 3AH",
+         "65:MATH 3B"
+        ]
+       },
+       {
+        "institutionId": 80,
+        "courses": [
+         "80:MATH 003BH"
+        ]
+       },
+       {
+        "institutionId": 80,
+        "courses": [
+         "80:MATH 003B"
+        ]
+       }
+      ]
+     },
+     {
+      "kind": "req",
+      "id": "MAT 021C, MAT 021D",
+      "label": "MAT 021C, MAT 021D",
+      "units": 8,
+      "groups": [
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:MATH 1C",
+         "113:MATH 1D"
+        ]
+       },
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:MATH 1C",
+         "113:MATH 1DH"
+        ]
+       },
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:MATH 1CH",
+         "113:MATH 1D"
+        ]
+       },
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:MATH 1CH",
+         "113:MATH 1DH"
+        ]
+       },
+       {
+        "institutionId": 124,
+        "courses": [
+         "124:MATH 3B",
+         "124:MATH 4A"
+        ]
+       },
+       {
+        "institutionId": 124,
+        "courses": [
+         "124:MATH 3BH",
+         "124:MATH 4A"
+        ]
+       },
+       {
+        "institutionId": 136,
+        "courses": [
+         "136:MATH 073"
+        ]
+       },
+       {
+        "institutionId": 80,
+        "courses": [
+         "80:MATH 004A"
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "kind": "node",
+    "type": "AND",
+    "title": "MATHEMATICS",
+    "required": true,
+    "children": [
+     {
+      "kind": "req",
+      "id": "MAT 067",
+      "label": "MAT 067",
+      "units": 0,
+      "groups": [],
+      "noArticulation": {
+       "32": "No articulation listed",
+       "33": "No articulation listed",
+       "49": "No articulation listed",
+       "51": "No articulation listed",
+       "58": "No articulation listed",
+       "65": "No articulation listed",
+       "74": "No articulation listed",
+       "80": "No articulation listed",
+       "92": "No articulation listed",
+       "103": "No articulation listed",
+       "113": "No articulation listed",
+       "114": "No articulation listed",
+       "124": "No articulation listed",
+       "136": "No articulation listed",
+       "137": "No articulation listed"
+      }
+     },
+     {
+      "kind": "req",
+      "id": "MAT 027A",
+      "label": "MAT 027A",
+      "units": 0,
+      "groups": [],
+      "noArticulation": {
+       "32": "No articulation listed",
+       "33": "No articulation listed",
+       "49": "No articulation listed",
+       "51": "No articulation listed",
+       "58": "No articulation listed",
+       "65": "No articulation listed",
+       "74": "No articulation listed",
+       "80": "No articulation listed",
+       "92": "No articulation listed",
+       "103": "No articulation listed",
+       "113": "No articulation listed",
+       "114": "No articulation listed",
+       "124": "No articulation listed",
+       "136": "No articulation listed",
+       "137": "No articulation listed"
+      }
+     },
+     {
+      "kind": "req",
+      "id": "MAT 022A",
+      "label": "Linear Algebra ",
+      "units": 3,
+      "groups": [
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:MATH 2BH"
+        ]
+       },
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:MATH 2B"
+        ]
+       },
+       {
+        "institutionId": 51,
+        "courses": [
+         "51:MATH 2B"
+        ]
+       },
+       {
+        "institutionId": 137,
+        "courses": [
+         "137:MATH 13"
+        ]
+       },
+       {
+        "institutionId": 49,
+        "courses": [
+         "49:MATH 010H"
+        ]
+       },
+       {
+        "institutionId": 49,
+        "courses": [
+         "49:MATH 010"
+        ]
+       },
+       {
+        "institutionId": 114,
+        "courses": [
+         "114:MATH 194"
+        ]
+       },
+       {
+        "institutionId": 124,
+        "courses": [
+         "124:MATH 26"
+        ]
+       },
+       {
+        "institutionId": 74,
+        "courses": [
+         "74:MATH A235"
+        ]
+       },
+       {
+        "institutionId": 103,
+        "courses": [
+         "103:MATH 270"
+        ]
+       },
+       {
+        "institutionId": 58,
+        "courses": [
+         "58:MATH 3E"
+        ]
+       },
+       {
+        "institutionId": 136,
+        "courses": [
+         "136:MATH 079"
+        ]
+       },
+       {
+        "institutionId": 92,
+        "courses": [
+         "92:MATH 210"
+        ]
+       },
+       {
+        "institutionId": 65,
+        "courses": [
+         "65:MATH 26"
+        ]
+       },
+       {
+        "institutionId": 80,
+        "courses": [
+         "80:MATH 004C"
+        ]
+       },
+       {
+        "institutionId": 32,
+        "courses": [
+         "32:MAT 004C"
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "kind": "node",
+    "type": "AND",
+    "title": "PHYSICS",
+    "required": true,
+    "children": [
+     {
+      "kind": "req",
+      "id": "MAT 022B",
+      "label": "Differential Equations ",
+      "units": 3,
+      "groups": [
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:MATH 2AH"
+        ]
+       },
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:MATH 2A"
+        ]
+       },
+       {
+        "institutionId": 51,
+        "courses": [
+         "51:MATH 2A"
+        ]
+       },
+       {
+        "institutionId": 137,
+        "courses": [
+         "137:MATH 15"
+        ]
+       },
+       {
+        "institutionId": 49,
+        "courses": [
+         "49:MATH 055"
+        ]
+       },
+       {
+        "institutionId": 49,
+        "courses": [
+         "49:MATH 055H"
+        ]
+       },
+       {
+        "institutionId": 114,
+        "courses": [
+         "114:MATH 294"
+        ]
+       },
+       {
+        "institutionId": 124,
+        "courses": [
+         "124:MATH 24"
+        ]
+       },
+       {
+        "institutionId": 124,
+        "courses": [
+         "124:MATH 24H"
+        ]
+       },
+       {
+        "institutionId": 74,
+        "courses": [
+         "74:MATH A285H"
+        ]
+       },
+       {
+        "institutionId": 74,
+        "courses": [
+         "74:MATH A285"
+        ]
+       },
+       {
+        "institutionId": 103,
+        "courses": [
+         "103:MATH 270"
+        ]
+       },
+       {
+        "institutionId": 58,
+        "courses": [
+         "58:MATH 3F"
+        ]
+       },
+       {
+        "institutionId": 136,
+        "courses": [
+         "136:MATH 078"
+        ]
+       },
+       {
+        "institutionId": 92,
+        "courses": [
+         "92:MATH 220"
+        ]
+       },
+       {
+        "institutionId": 65,
+        "courses": [
+         "65:MATH 24"
+        ]
+       },
+       {
+        "institutionId": 80,
+        "courses": [
+         "80:MATH 004B"
+        ]
+       },
+       {
+        "institutionId": 32,
+        "courses": [
+         "32:MAT 004B"
+        ]
+       }
+      ]
+     },
+     {
+      "kind": "req",
+      "id": "MAT 027B",
+      "label": "MAT 027B",
+      "units": 0,
+      "groups": [],
+      "noArticulation": {
+       "32": "No articulation listed",
+       "33": "No articulation listed",
+       "49": "No articulation listed",
+       "51": "No articulation listed",
+       "58": "No articulation listed",
+       "65": "No articulation listed",
+       "74": "No articulation listed",
+       "80": "No articulation listed",
+       "92": "No articulation listed",
+       "103": "No articulation listed",
+       "113": "No articulation listed",
+       "114": "No articulation listed",
+       "124": "No articulation listed",
+       "136": "No articulation listed",
+       "137": "No articulation listed"
+      }
+     }
+    ]
+   },
+   {
+    "kind": "node",
+    "type": "AND",
+    "title": "",
+    "required": true,
+    "children": [
+     {
+      "kind": "req",
+      "id": "PHY 009C",
+      "label": "Classical Physics ",
+      "units": 5,
+      "groups": [
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:PHYS 4B"
+        ]
+       },
+       {
+        "institutionId": 51,
+        "courses": [
+         "51:PHYS 4B"
+        ]
+       },
+       {
+        "institutionId": 137,
+        "courses": [
+         "137:PHYSCS 22"
+        ]
+       },
+       {
+        "institutionId": 114,
+        "courses": [
+         "114:PHYS 230"
+        ]
+       },
+       {
+        "institutionId": 124,
+        "courses": [
+         "124:PHYS 4B"
+        ]
+       },
+       {
+        "institutionId": 74,
+        "courses": [
+         "74:PHYS A280",
+         "74:PHYS A185",
+         "74:PHYS A285"
+        ]
+       },
+       {
+        "institutionId": 103,
+        "courses": [
+         "103:PHYS 1C"
+        ]
+       },
+       {
+        "institutionId": 58,
+        "courses": [
+         "58:PHYS 4A",
+         "58:PHYS 4C",
+         "58:PHYS 4B"
+        ]
+       },
+       {
+        "institutionId": 33,
+        "courses": [
+         "33:PHYC 4B",
+         "33:PHYC 4BL"
+        ]
+       },
+       {
+        "institutionId": 136,
+        "courses": [
+         "136:PHYS 004B"
+        ]
+       },
+       {
+        "institutionId": 92,
+        "courses": [
+         "92:PHYS 122"
+        ]
+       },
+       {
+        "institutionId": 65,
+        "courses": [
+         "65:PHYS 4B"
+        ]
+       },
+       {
+        "institutionId": 80,
+        "courses": [
+         "80:PHYS 004C",
+         "80:PHYS 004B",
+         "80:PHYS 004A"
+        ]
+       },
+       {
+        "institutionId": 32,
+        "courses": [
+         "32:PHY 004B"
+        ]
+       }
+      ]
+     },
+     {
+      "kind": "req",
+      "id": "PHY 009B",
+      "label": "Classical Physics ",
+      "units": 5,
+      "groups": [
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:PHYS 4C"
+        ]
+       },
+       {
+        "institutionId": 51,
+        "courses": [
+         "51:PHYS 4C"
+        ]
+       },
+       {
+        "institutionId": 137,
+        "courses": [
+         "137:PHYSCS 23"
+        ]
+       },
+       {
+        "institutionId": 114,
+        "courses": [
+         "114:PHYS 230",
+         "114:PHYS 231"
+        ]
+       },
+       {
+        "institutionId": 124,
+        "courses": [
+         "124:PHYS 4C"
+        ]
+       },
+       {
+        "institutionId": 74,
+        "courses": [
+         "74:PHYS A285",
+         "74:PHYS A280",
+         "74:PHYS A185"
+        ]
+       },
+       {
+        "institutionId": 103,
+        "courses": [
+         "103:PHYS 1B",
+         "103:PHYS 1D"
+        ]
+       },
+       {
+        "institutionId": 58,
+        "courses": [
+         "58:PHYS 4B",
+         "58:PHYS 4A",
+         "58:PHYS 4C"
+        ]
+       },
+       {
+        "institutionId": 33,
+        "courses": [
+         "33:PHYC 4CL",
+         "33:PHYC 4C"
+        ]
+       },
+       {
+        "institutionId": 92,
+        "courses": [
+         "92:PHYS 123"
+        ]
+       },
+       {
+        "institutionId": 65,
+        "courses": [
+         "65:PHYS 4A",
+         "65:PHYS 4C"
+        ]
+       },
+       {
+        "institutionId": 80,
+        "courses": [
+         "80:PHYS 004C",
+         "80:PHYS 004B",
+         "80:PHYS 004A"
+        ]
+       },
+       {
+        "institutionId": 32,
+        "courses": [
+         "32:PHY 004C",
+         "32:PHY 004A"
+        ]
+       }
+      ]
+     },
+     {
+      "kind": "req",
+      "id": "PHY 009D",
+      "label": "Modern Physics ",
+      "units": 4,
+      "groups": [
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:PHYS 4D"
+        ]
+       },
+       {
+        "institutionId": 51,
+        "courses": [
+         "51:PHYS 4D"
+        ]
+       },
+       {
+        "institutionId": 137,
+        "courses": [
+         "137:PHYSCS 24"
+        ]
+       },
+       {
+        "institutionId": 114,
+        "courses": [
+         "114:PHYS 231"
+        ]
+       },
+       {
+        "institutionId": 103,
+        "courses": [
+         "103:PHYS 1D"
+        ]
+       },
+       {
+        "institutionId": 33,
+        "courses": [
+         "33:PHYC 4DL",
+         "33:PHYC 4D"
+        ]
+       },
+       {
+        "institutionId": 80,
+        "courses": [
+         "80:PHYS 005"
+        ]
+       },
+       {
+        "institutionId": 32,
+        "courses": [
+         "32:PHY 004D"
+        ]
+       }
+      ]
+     },
+     {
+      "kind": "req",
+      "id": "PHY 009A",
+      "label": "Classical Physics ",
+      "units": 5,
+      "groups": [
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:PHYS 4A"
+        ]
+       },
+       {
+        "institutionId": 51,
+        "courses": [
+         "51:PHYS 4A"
+        ]
+       },
+       {
+        "institutionId": 137,
+        "courses": [
+         "137:PHYSCS 21"
+        ]
+       },
+       {
+        "institutionId": 114,
+        "courses": [
+         "114:PHYS 130"
+        ]
+       },
+       {
+        "institutionId": 124,
+        "courses": [
+         "124:PHYS 4A"
+        ]
+       },
+       {
+        "institutionId": 74,
+        "courses": [
+         "74:PHYS A280",
+         "74:PHYS A285",
+         "74:PHYS A185"
+        ]
+       },
+       {
+        "institutionId": 103,
+        "courses": [
+         "103:PHYS 1A"
+        ]
+       },
+       {
+        "institutionId": 58,
+        "courses": [
+         "58:PHYS 4B",
+         "58:PHYS 4A",
+         "58:PHYS 4C"
+        ]
+       },
+       {
+        "institutionId": 33,
+        "courses": [
+         "33:PHYC 4A",
+         "33:PHYC 4AL"
+        ]
+       },
+       {
+        "institutionId": 92,
+        "courses": [
+         "92:PHYS 121"
+        ]
+       },
+       {
+        "institutionId": 65,
+        "courses": [
+         "65:PHYS 4A",
+         "65:PHYS 4C"
+        ]
+       },
+       {
+        "institutionId": 80,
+        "courses": [
+         "80:PHYS 004C",
+         "80:PHYS 004B",
+         "80:PHYS 004A"
+        ]
+       },
+       {
+        "institutionId": 32,
+        "courses": [
+         "32:PHY 004C",
+         "32:PHY 004A"
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "catalog": {
+  "113:MATH 2BH": {
+   "id": "113:MATH 2BH",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "2BH",
+   "title": "Linear Algebra - HONORS",
+   "units": 5
+  },
+  "113:MATH 2B": {
+   "id": "113:MATH 2B",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "2B",
+   "title": "Linear Algebra",
+   "units": 5
+  },
+  "113:COMM C1000H": {
+   "id": "113:COMM C1000H",
+   "institutionId": 113,
+   "prefix": "COMM",
+   "number": "C1000H",
+   "title": "Introduction to Public Speaking - Honors",
+   "units": 5
+  },
+  "113:COMM C1000": {
+   "id": "113:COMM C1000",
+   "institutionId": 113,
+   "prefix": "COMM",
+   "number": "C1000",
+   "title": "Introduction to Public Speaking",
+   "units": 5
+  },
+  "113:ENGR 37": {
+   "id": "113:ENGR 37",
+   "institutionId": 113,
+   "prefix": "ENGR",
+   "number": "37",
+   "title": "Introduction to Circuit Analysis",
+   "units": 5
+  },
+  "113:MATH 2AH": {
+   "id": "113:MATH 2AH",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "2AH",
+   "title": "Differential Equations - HONORS",
+   "units": 5
+  },
+  "113:MATH 2A": {
+   "id": "113:MATH 2A",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "2A",
+   "title": "Differential Equations",
+   "units": 5
+  },
+  "113:CIS 22CH": {
+   "id": "113:CIS 22CH",
+   "institutionId": 113,
+   "prefix": "CIS",
+   "number": "22CH",
+   "title": "Data Abstraction and Structures - HONORS",
+   "units": 4.5
+  },
+  "113:CIS 22C": {
+   "id": "113:CIS 22C",
+   "institutionId": 113,
+   "prefix": "CIS",
+   "number": "22C",
+   "title": "Data Abstraction and Structures",
+   "units": 4.5
+  },
+  "113:CIS 26B": {
+   "id": "113:CIS 26B",
+   "institutionId": 113,
+   "prefix": "CIS",
+   "number": "26B",
+   "title": "Advanced C Programming",
+   "units": 4.5
+  },
+  "113:CIS 26A": {
+   "id": "113:CIS 26A",
+   "institutionId": 113,
+   "prefix": "CIS",
+   "number": "26A",
+   "title": "C as a Second Programming Language",
+   "units": 4.5
+  },
+  "113:CIS 22B": {
+   "id": "113:CIS 22B",
+   "institutionId": 113,
+   "prefix": "CIS",
+   "number": "22B",
+   "title": "Intermediate Programming Methodologies in C++",
+   "units": 4.5
+  },
+  "113:CIS 35A": {
+   "id": "113:CIS 35A",
+   "institutionId": 113,
+   "prefix": "CIS",
+   "number": "35A",
+   "title": "Java Programming",
+   "units": 4.5
+  },
+  "113:CIS 27": {
+   "id": "113:CIS 27",
+   "institutionId": 113,
+   "prefix": "CIS",
+   "number": "27",
+   "title": "Programming in C++ for C/Java Programmers",
+   "units": 4.5
+  },
+  "113:CIS 36A": {
+   "id": "113:CIS 36A",
+   "institutionId": 113,
+   "prefix": "CIS",
+   "number": "36A",
+   "title": "Introduction to Computer Programming Using Java",
+   "units": 4.5
+  },
+  "113:CIS 22A": {
+   "id": "113:CIS 22A",
+   "institutionId": 113,
+   "prefix": "CIS",
+   "number": "22A",
+   "title": "Beginning Programming Methodologies in C++",
+   "units": 4.5
+  },
+  "113:CIS 22BH": {
+   "id": "113:CIS 22BH",
+   "institutionId": 113,
+   "prefix": "CIS",
+   "number": "22BH",
+   "title": "Intermediate Programming Methodologies in C++ - HONORS",
+   "units": 4.5
+  },
+  "113:CIS 36B": {
+   "id": "113:CIS 36B",
+   "institutionId": 113,
+   "prefix": "CIS",
+   "number": "36B",
+   "title": "Intermediate Problem Solving in Java",
+   "units": 4.5
+  },
+  "113:CIS 29": {
+   "id": "113:CIS 29",
+   "institutionId": 113,
+   "prefix": "CIS",
+   "number": "29",
+   "title": "Advanced C++ Programming",
+   "units": 4.5
+  },
+  "113:CIS 41A": {
+   "id": "113:CIS 41A",
+   "institutionId": 113,
+   "prefix": "CIS",
+   "number": "41A",
+   "title": "Python Programming",
+   "units": 4.5
+  },
+  "113:CIS 21JA": {
+   "id": "113:CIS 21JA",
+   "institutionId": 113,
+   "prefix": "CIS",
+   "number": "21JA",
+   "title": "Introduction to x86 Processor Assembly Language and Computer Architecture",
+   "units": 4.5
+  },
+  "113:MATH 22": {
+   "id": "113:MATH 22",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "22",
+   "title": "Discrete Mathematics",
+   "units": 5
+  },
+  "113:MATH 22H": {
+   "id": "113:MATH 22H",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "22H",
+   "title": "Discrete Mathematics - HONORS",
+   "units": 5
+  },
+  "113:CHEM 1A": {
+   "id": "113:CHEM 1A",
+   "institutionId": 113,
+   "prefix": "CHEM",
+   "number": "1A",
+   "title": "General Chemistry I",
+   "units": 5
+  },
+  "113:CHEM 1AH": {
+   "id": "113:CHEM 1AH",
+   "institutionId": 113,
+   "prefix": "CHEM",
+   "number": "1AH",
+   "title": "General Chemistry I - HONORS",
+   "units": 5
+  },
+  "113:PHYS 4B": {
+   "id": "113:PHYS 4B",
+   "institutionId": 113,
+   "prefix": "PHYS",
+   "number": "4B",
+   "title": "Physics for Scientists and Engineers: Electricity and Magnetism",
+   "units": 6
+  },
+  "113:PHYS 4C": {
+   "id": "113:PHYS 4C",
+   "institutionId": 113,
+   "prefix": "PHYS",
+   "number": "4C",
+   "title": "Physics for Scientists and Engineers: Fluids, Waves, Optics and Thermodynamics",
+   "units": 6
+  },
+  "113:PHYS 4D": {
+   "id": "113:PHYS 4D",
+   "institutionId": 113,
+   "prefix": "PHYS",
+   "number": "4D",
+   "title": "Physics for Scientists and Engineers: Modern Physics",
+   "units": 6
+  },
+  "113:PHYS 4A": {
+   "id": "113:PHYS 4A",
+   "institutionId": 113,
+   "prefix": "PHYS",
+   "number": "4A",
+   "title": "Physics for Scientists and Engineers: Mechanics",
+   "units": 6
+  },
+  "113:MATH 1A": {
+   "id": "113:MATH 1A",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "1A",
+   "title": "Calculus I",
+   "units": 5
+  },
+  "113:MATH 1AH": {
+   "id": "113:MATH 1AH",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "1AH",
+   "title": "Calculus I - HONORS",
+   "units": 5
+  },
+  "113:MATH 1B": {
+   "id": "113:MATH 1B",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "1B",
+   "title": "Calculus II",
+   "units": 5
+  },
+  "113:MATH 1BH": {
+   "id": "113:MATH 1BH",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "1BH",
+   "title": "Calculus II - HONORS",
+   "units": 5
+  },
+  "113:EWRT 1C": {
+   "id": "113:EWRT 1C",
+   "institutionId": 113,
+   "prefix": "EWRT",
+   "number": "1C",
+   "title": "Literature and Composition",
+   "units": 5
+  },
+  "113:EWRT 1BH": {
+   "id": "113:EWRT 1BH",
+   "institutionId": 113,
+   "prefix": "EWRT",
+   "number": "1BH",
+   "title": "Reading, Writing and Research - HONORS",
+   "units": 5
+  },
+  "113:EWRT 1B": {
+   "id": "113:EWRT 1B",
+   "institutionId": 113,
+   "prefix": "EWRT",
+   "number": "1B",
+   "title": "Reading, Writing and Research",
+   "units": 5
+  },
+  "113:NAIS 15": {
+   "id": "113:NAIS 15",
+   "institutionId": 113,
+   "prefix": "NAIS",
+   "number": "15",
+   "title": "Ethnic Studies and Native American Literature",
+   "units": 4
+  },
+  "113:ELIT 39": {
+   "id": "113:ELIT 39",
+   "institutionId": 113,
+   "prefix": "ELIT",
+   "number": "39",
+   "title": "Contemporary Literature",
+   "units": 4
+  },
+  "113:COMM 9": {
+   "id": "113:COMM 9",
+   "institutionId": 113,
+   "prefix": "COMM",
+   "number": "9",
+   "title": "Argumentation: Analysis of Oral and Written Communication",
+   "units": 5
+  },
+  "113:COMM 9H": {
+   "id": "113:COMM 9H",
+   "institutionId": 113,
+   "prefix": "COMM",
+   "number": "9H",
+   "title": "Argumentation: Analysis of Oral and Written Communication - HONORS",
+   "units": 5
+  },
+  "113:ENGL C1000": {
+   "id": "113:ENGL C1000",
+   "institutionId": 113,
+   "prefix": "ENGL",
+   "number": "C1000",
+   "title": "Academic Reading and Writing",
+   "units": 5
+  },
+  "113:ENGL C1000H": {
+   "id": "113:ENGL C1000H",
+   "institutionId": 113,
+   "prefix": "ENGL",
+   "number": "C1000H",
+   "title": "Academic Reading and Writing - HONORS",
+   "units": 5
+  },
+  "113:ESL 5": {
+   "id": "113:ESL 5",
+   "institutionId": 113,
+   "prefix": "ESL",
+   "number": "5",
+   "title": "Advanced Composition and Reading",
+   "units": 5
+  },
+  "113:MATH 1C": {
+   "id": "113:MATH 1C",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "1C",
+   "title": "Calculus III",
+   "units": 5
+  },
+  "113:MATH 1D": {
+   "id": "113:MATH 1D",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "1D",
+   "title": "Calculus IV",
+   "units": 5
+  },
+  "113:MATH 1DH": {
+   "id": "113:MATH 1DH",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "1DH",
+   "title": "Calculus IV - HONORS",
+   "units": 5
+  },
+  "113:MATH 1CH": {
+   "id": "113:MATH 1CH",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "1CH",
+   "title": "Calculus III - HONORS",
+   "units": 5
+  },
+  "51:MATH 2B": {
+   "id": "51:MATH 2B",
+   "institutionId": 51,
+   "prefix": "MATH",
+   "number": "2B",
+   "title": "Linear Algebra",
+   "units": 5
+  },
+  "51:COMM C1000H": {
+   "id": "51:COMM C1000H",
+   "institutionId": 51,
+   "prefix": "COMM",
+   "number": "C1000H",
+   "title": "Introduction to Public Speaking - Honors",
+   "units": 5
+  },
+  "51:COMM C1000": {
+   "id": "51:COMM C1000",
+   "institutionId": 51,
+   "prefix": "COMM",
+   "number": "C1000",
+   "title": "Introduction to Public Speaking",
+   "units": 5
+  },
+  "51:ENGR 37": {
+   "id": "51:ENGR 37",
+   "institutionId": 51,
+   "prefix": "ENGR",
+   "number": "37",
+   "title": "Introduction to Circuit Analysis",
+   "units": 5
+  },
+  "51:ENGR 37L": {
+   "id": "51:ENGR 37L",
+   "institutionId": 51,
+   "prefix": "ENGR",
+   "number": "37L",
+   "title": "Circuit Analysis Laboratory",
+   "units": 2
+  },
+  "51:MATH 2A": {
+   "id": "51:MATH 2A",
+   "institutionId": 51,
+   "prefix": "MATH",
+   "number": "2A",
+   "title": "Differential Equations",
+   "units": 5
+  },
+  "51:C S 3C": {
+   "id": "51:C S 3C",
+   "institutionId": 51,
+   "prefix": "C S",
+   "number": "3C",
+   "title": "Advanced Data Structures & Algorithms in Python",
+   "units": 4.5
+  },
+  "51:C S 2A": {
+   "id": "51:C S 2A",
+   "institutionId": 51,
+   "prefix": "C S",
+   "number": "2A",
+   "title": "Object-Oriented Programming Methodologies in C++",
+   "units": 4.5
+  },
+  "51:C S 1A": {
+   "id": "51:C S 1A",
+   "institutionId": 51,
+   "prefix": "C S",
+   "number": "1A",
+   "title": "Object-Oriented Programming Methodologies in JAVA",
+   "units": 4.5
+  },
+  "51:C S 2B": {
+   "id": "51:C S 2B",
+   "institutionId": 51,
+   "prefix": "C S",
+   "number": "2B",
+   "title": "Intermediate Software Design in C++",
+   "units": 4.5
+  },
+  "51:C S 1B": {
+   "id": "51:C S 1B",
+   "institutionId": 51,
+   "prefix": "C S",
+   "number": "1B",
+   "title": "Intermediate Software Design in JAVA",
+   "units": 4.5
+  },
+  "51:C S 2C": {
+   "id": "51:C S 2C",
+   "institutionId": 51,
+   "prefix": "C S",
+   "number": "2C",
+   "title": "Advanced Data Structures & Algorithims in C++",
+   "units": 4.5
+  },
+  "51:C S 1C": {
+   "id": "51:C S 1C",
+   "institutionId": 51,
+   "prefix": "C S",
+   "number": "1C",
+   "title": "Advanced Data Structures & Algorithims in JAVA",
+   "units": 4.5
+  },
+  "51:C S 3A": {
+   "id": "51:C S 3A",
+   "institutionId": 51,
+   "prefix": "C S",
+   "number": "3A",
+   "title": "Object-Oriented Programming Methodologies in PYTHON",
+   "units": 4.5
+  },
+  "51:C S 10": {
+   "id": "51:C S 10",
+   "institutionId": 51,
+   "prefix": "C S",
+   "number": "10",
+   "title": "Computer Architecture & Organization",
+   "units": 4.5
+  },
+  "51:C S 18": {
+   "id": "51:C S 18",
+   "institutionId": 51,
+   "prefix": "C S",
+   "number": "18",
+   "title": "Discrete Mathematics",
+   "units": 5
+  },
+  "51:MATH 22": {
+   "id": "51:MATH 22",
+   "institutionId": 51,
+   "prefix": "MATH",
+   "number": "22",
+   "title": "Discrete Mathematics",
+   "units": 5
+  },
+  "51:CHEM 1A": {
+   "id": "51:CHEM 1A",
+   "institutionId": 51,
+   "prefix": "CHEM",
+   "number": "1A",
+   "title": "General Chemistry",
+   "units": 5
+  },
+  "51:PHYS 4B": {
+   "id": "51:PHYS 4B",
+   "institutionId": 51,
+   "prefix": "PHYS",
+   "number": "4B",
+   "title": "General Physics (Calculus)",
+   "units": 6
+  },
+  "51:PHYS 4C": {
+   "id": "51:PHYS 4C",
+   "institutionId": 51,
+   "prefix": "PHYS",
+   "number": "4C",
+   "title": "General Physics (Calculus)",
+   "units": 6
+  },
+  "51:PHYS 4D": {
+   "id": "51:PHYS 4D",
+   "institutionId": 51,
+   "prefix": "PHYS",
+   "number": "4D",
+   "title": "General Physics (Calculus)",
+   "units": 6
+  },
+  "51:PHYS 4A": {
+   "id": "51:PHYS 4A",
+   "institutionId": 51,
+   "prefix": "PHYS",
+   "number": "4A",
+   "title": "General Physics (Calculus)",
+   "units": 6
+  },
+  "51:MATH 1D": {
+   "id": "51:MATH 1D",
+   "institutionId": 51,
+   "prefix": "MATH",
+   "number": "1D",
+   "title": "Calculus",
+   "units": 5
+  },
+  "51:MATH 1C": {
+   "id": "51:MATH 1C",
+   "institutionId": 51,
+   "prefix": "MATH",
+   "number": "1C",
+   "title": "Calculus",
+   "units": 5
+  },
+  "51:MATH 1A": {
+   "id": "51:MATH 1A",
+   "institutionId": 51,
+   "prefix": "MATH",
+   "number": "1A",
+   "title": "Calculus",
+   "units": 5
+  },
+  "51:MATH 1AH": {
+   "id": "51:MATH 1AH",
+   "institutionId": 51,
+   "prefix": "MATH",
+   "number": "1AH",
+   "title": "Honors Calculus I ",
+   "units": 5
+  },
+  "51:MATH 1AHP": {
+   "id": "51:MATH 1AHP",
+   "institutionId": 51,
+   "prefix": "MATH",
+   "number": "1AHP",
+   "title": "Honors Calculus I Seminar",
+   "units": 1
+  },
+  "51:MATH 1B": {
+   "id": "51:MATH 1B",
+   "institutionId": 51,
+   "prefix": "MATH",
+   "number": "1B",
+   "title": "Calculus",
+   "units": 5
+  },
+  "51:ENGL 1BH": {
+   "id": "51:ENGL 1BH",
+   "institutionId": 51,
+   "prefix": "ENGL",
+   "number": "1BH",
+   "title": "Honors Composition, Critical Reading, & Thinking Through Literature",
+   "units": 5
+  },
+  "51:ENGL 1B": {
+   "id": "51:ENGL 1B",
+   "institutionId": 51,
+   "prefix": "ENGL",
+   "number": "1B",
+   "title": "Composition, Critical Reading & Thinking Through Literature",
+   "units": 5
+  },
+  "51:ESLL 26": {
+   "id": "51:ESLL 26",
+   "institutionId": 51,
+   "prefix": "ESLL",
+   "number": "26",
+   "title": "Advanced Composition & Reading",
+   "units": 5
+  },
+  "51:ENGL C1000H": {
+   "id": "51:ENGL C1000H",
+   "institutionId": 51,
+   "prefix": "ENGL",
+   "number": "C1000H",
+   "title": "Academic Reading and Writing - Honors",
+   "units": 5
+  },
+  "51:ENGL C1000": {
+   "id": "51:ENGL C1000",
+   "institutionId": 51,
+   "prefix": "ENGL",
+   "number": "C1000",
+   "title": "Academic Reading and Writing",
+   "units": 5
+  },
+  "137:MATH 13": {
+   "id": "137:MATH 13",
+   "institutionId": 137,
+   "prefix": "MATH",
+   "number": "13",
+   "title": "Linear Algebra",
+   "units": 3
+  },
+  "137:COMM C1000": {
+   "id": "137:COMM C1000",
+   "institutionId": 137,
+   "prefix": "COMM",
+   "number": "C1000",
+   "title": "Introduction to Public Speaking",
+   "units": 3
+  },
+  "137:ENGR 22": {
+   "id": "137:ENGR 22",
+   "institutionId": 137,
+   "prefix": "ENGR",
+   "number": "22",
+   "title": "Circuit Analysis Lab",
+   "units": 1
+  },
+  "137:ENGR 21": {
+   "id": "137:ENGR 21",
+   "institutionId": 137,
+   "prefix": "ENGR",
+   "number": "21",
+   "title": "Circuit Analysis",
+   "units": 3
+  },
+  "137:MATH 15": {
+   "id": "137:MATH 15",
+   "institutionId": 137,
+   "prefix": "MATH",
+   "number": "15",
+   "title": "Differential Equations",
+   "units": 3
+  },
+  "137:CS 20A": {
+   "id": "137:CS 20A",
+   "institutionId": 137,
+   "prefix": "CS",
+   "number": "20A",
+   "title": "Data Structures with C++",
+   "units": 3
+  },
+  "137:CS 55": {
+   "id": "137:CS 55",
+   "institutionId": 137,
+   "prefix": "CS",
+   "number": "55",
+   "title": "JAVA Programming",
+   "units": 3
+  },
+  "137:CS 15": {
+   "id": "137:CS 15",
+   "institutionId": 137,
+   "prefix": "CS",
+   "number": "15",
+   "title": "Visual BASIC Programming",
+   "units": 3
+  },
+  "137:CS 87A": {
+   "id": "137:CS 87A",
+   "institutionId": 137,
+   "prefix": "CS",
+   "number": "87A",
+   "title": "Python Programming",
+   "units": 3
+  },
+  "137:CS 50": {
+   "id": "137:CS 50",
+   "institutionId": 137,
+   "prefix": "CS",
+   "number": "50",
+   "title": "C Programming",
+   "units": 3
+  },
+  "137:CS 17": {
+   "id": "137:CS 17",
+   "institutionId": 137,
+   "prefix": "CS",
+   "number": "17",
+   "title": "Assembly Language Programming",
+   "units": 3
+  },
+  "137:MATH 10": {
+   "id": "137:MATH 10",
+   "institutionId": 137,
+   "prefix": "MATH",
+   "number": "10",
+   "title": "Discrete Structures",
+   "units": 3
+  },
+  "137:CHEM 11": {
+   "id": "137:CHEM 11",
+   "institutionId": 137,
+   "prefix": "CHEM",
+   "number": "11",
+   "title": "General Chemistry I",
+   "units": 5
+  },
+  "137:PHYSCS 22": {
+   "id": "137:PHYSCS 22",
+   "institutionId": 137,
+   "prefix": "PHYSCS",
+   "number": "22",
+   "title": "Electricity and Magnetism with Lab",
+   "units": 5
+  },
+  "137:PHYSCS 23": {
+   "id": "137:PHYSCS 23",
+   "institutionId": 137,
+   "prefix": "PHYSCS",
+   "number": "23",
+   "title": "Fluids, Waves, Thermodynamics, Optics with Lab",
+   "units": 5
+  },
+  "137:PHYSCS 24": {
+   "id": "137:PHYSCS 24",
+   "institutionId": 137,
+   "prefix": "PHYSCS",
+   "number": "24",
+   "title": "Modern Physics with Lab",
+   "units": 3
+  },
+  "137:PHYSCS 21": {
+   "id": "137:PHYSCS 21",
+   "institutionId": 137,
+   "prefix": "PHYSCS",
+   "number": "21",
+   "title": "Mechanics with Lab",
+   "units": 5
+  },
+  "137:MATH 11": {
+   "id": "137:MATH 11",
+   "institutionId": 137,
+   "prefix": "MATH",
+   "number": "11",
+   "title": "Multivariable Calculus",
+   "units": 5
+  },
+  "137:MATH 7": {
+   "id": "137:MATH 7",
+   "institutionId": 137,
+   "prefix": "MATH",
+   "number": "7",
+   "title": "Calculus 1",
+   "units": 5
+  },
+  "137:MATH 8": {
+   "id": "137:MATH 8",
+   "institutionId": 137,
+   "prefix": "MATH",
+   "number": "8",
+   "title": "Calculus 2",
+   "units": 5
+  },
+  "137:ENGL 3": {
+   "id": "137:ENGL 3",
+   "institutionId": 137,
+   "prefix": "ENGL",
+   "number": "3",
+   "title": "World Literature 1",
+   "units": 3
+  },
+  "137:ENGL 4": {
+   "id": "137:ENGL 4",
+   "institutionId": 137,
+   "prefix": "ENGL",
+   "number": "4",
+   "title": "World Literature 2",
+   "units": 3
+  },
+  "137:ENGL C1000": {
+   "id": "137:ENGL C1000",
+   "institutionId": 137,
+   "prefix": "ENGL",
+   "number": "C1000",
+   "title": "Academic Reading and Writing",
+   "units": 3
+  },
+  "49:MATH 010H": {
+   "id": "49:MATH 010H",
+   "institutionId": 49,
+   "prefix": "MATH",
+   "number": "010H",
+   "title": "Honors Linear Algebra and Applications",
+   "units": 4
+  },
+  "49:MATH 010": {
+   "id": "49:MATH 010",
+   "institutionId": 49,
+   "prefix": "MATH",
+   "number": "010",
+   "title": "Linear Algebra and Applications",
+   "units": 4
+  },
+  "49:COMM C1000": {
+   "id": "49:COMM C1000",
+   "institutionId": 49,
+   "prefix": "COMM",
+   "number": "C1000",
+   "title": "Introduction to Public Speaking",
+   "units": 3
+  },
+  "49:COMM C1000H": {
+   "id": "49:COMM C1000H",
+   "institutionId": 49,
+   "prefix": "COMM",
+   "number": "C1000H",
+   "title": "Introduction to Public Speaking - Honors",
+   "units": 3
+  },
+  "49:ENGR 016": {
+   "id": "49:ENGR 016",
+   "institutionId": 49,
+   "prefix": "ENGR",
+   "number": "016",
+   "title": "Engineering Circuits",
+   "units": 3
+  },
+  "49:MATH 055": {
+   "id": "49:MATH 055",
+   "institutionId": 49,
+   "prefix": "MATH",
+   "number": "055",
+   "title": "Differential Equations",
+   "units": 4
+  },
+  "49:MATH 055H": {
+   "id": "49:MATH 055H",
+   "institutionId": 49,
+   "prefix": "MATH",
+   "number": "055H",
+   "title": "Honors Differential Equations",
+   "units": 4
+  },
+  "49:CS 033": {
+   "id": "49:CS 033",
+   "institutionId": 49,
+   "prefix": "CS",
+   "number": "033",
+   "title": "Advanced JAVA Programming and Algorithm with Data Structures",
+   "units": 3
+  },
+  "49:CS 034": {
+   "id": "49:CS 034",
+   "institutionId": 49,
+   "prefix": "CS",
+   "number": "034",
+   "title": "Advanced Python Programming and Basic Data Structures",
+   "units": 3
+  },
+  "49:CS 002": {
+   "id": "49:CS 002",
+   "institutionId": 49,
+   "prefix": "CS",
+   "number": "002",
+   "title": "Fundamentals of Computer Science I",
+   "units": 4
+  },
+  "49:CS 003B": {
+   "id": "49:CS 003B",
+   "institutionId": 49,
+   "prefix": "CS",
+   "number": "003B",
+   "title": "Fundamentals of Computer Science (JAVA)",
+   "units": 3
+  },
+  "49:CS 003C": {
+   "id": "49:CS 003C",
+   "institutionId": 49,
+   "prefix": "CS",
+   "number": "003C",
+   "title": "Fundamentals of Computer Science (Python)",
+   "units": 3
+  },
+  "49:CS 003A": {
+   "id": "49:CS 003A",
+   "institutionId": 49,
+   "prefix": "CS",
+   "number": "003A",
+   "title": "Fundamentals of Computer Science II (C++)",
+   "units": 3
+  },
+  "49:CS 008": {
+   "id": "49:CS 008",
+   "institutionId": 49,
+   "prefix": "CS",
+   "number": "008",
+   "title": "Fundamentals of Computer Science III (C++) with Data Structures",
+   "units": 3
+  },
+  "49:CS 008L": {
+   "id": "49:CS 008L",
+   "institutionId": 49,
+   "prefix": "CS",
+   "number": "008L",
+   "title": "Fundamentals of Computer Science III (C++) with Data Structures Lab",
+   "units": 1
+  },
+  "49:CS 066": {
+   "id": "49:CS 066",
+   "institutionId": 49,
+   "prefix": "CS",
+   "number": "066",
+   "title": "Computer Architecture and Assembly Language Programming",
+   "units": 3
+  },
+  "49:MATH 022": {
+   "id": "49:MATH 022",
+   "institutionId": 49,
+   "prefix": "MATH",
+   "number": "022",
+   "title": "Discrete Mathematics",
+   "units": 4
+  },
+  "49:CS 045": {
+   "id": "49:CS 045",
+   "institutionId": 49,
+   "prefix": "CS",
+   "number": "045",
+   "title": "Discrete Structures with Computer Science Applications",
+   "units": 4
+  },
+  "49:CHEM 001A": {
+   "id": "49:CHEM 001A",
+   "institutionId": 49,
+   "prefix": "CHEM",
+   "number": "001A",
+   "title": "General Chemistry and Chemical Analysis I",
+   "units": 5
+  },
+  "49:MATH 005A": {
+   "id": "49:MATH 005A",
+   "institutionId": 49,
+   "prefix": "MATH",
+   "number": "005A",
+   "title": "Single Variable Calculus I",
+   "units": 5
+  },
+  "49:MATH 005AH": {
+   "id": "49:MATH 005AH",
+   "institutionId": 49,
+   "prefix": "MATH",
+   "number": "005AH",
+   "title": "Honors Single Variable Calculus I",
+   "units": 5
+  },
+  "49:ENGL 044B": {
+   "id": "49:ENGL 044B",
+   "institutionId": 49,
+   "prefix": "ENGL",
+   "number": "044B",
+   "title": "World Literature: Late Seventeenth Century to the Present",
+   "units": 3
+  },
+  "49:ENGL 001B": {
+   "id": "49:ENGL 001B",
+   "institutionId": 49,
+   "prefix": "ENGL",
+   "number": "001B",
+   "title": "Reading and Composition",
+   "units": 4
+  },
+  "49:ENGL 001BH": {
+   "id": "49:ENGL 001BH",
+   "institutionId": 49,
+   "prefix": "ENGL",
+   "number": "001BH",
+   "title": "Honors Reading and Composition",
+   "units": 4
+  },
+  "49:ENGL 055": {
+   "id": "49:ENGL 055",
+   "institutionId": 49,
+   "prefix": "ENGL",
+   "number": "055",
+   "title": "Native American Literature and Cultural Expression",
+   "units": 3
+  },
+  "49:ETH 055": {
+   "id": "49:ETH 055",
+   "institutionId": 49,
+   "prefix": "ETH",
+   "number": "055",
+   "title": "Native American Literature and Cultural Expression",
+   "units": 3
+  },
+  "49:ENGL C1000H": {
+   "id": "49:ENGL C1000H",
+   "institutionId": 49,
+   "prefix": "ENGL",
+   "number": "C1000H",
+   "title": "Academic Reading and Writing - Honors",
+   "units": 4
+  },
+  "49:ENGL C1000": {
+   "id": "49:ENGL C1000",
+   "institutionId": 49,
+   "prefix": "ENGL",
+   "number": "C1000",
+   "title": "Academic Reading and Writing",
+   "units": 4
+  },
+  "49:ENGL 044A": {
+   "id": "49:ENGL 044A",
+   "institutionId": 49,
+   "prefix": "ENGL",
+   "number": "044A",
+   "title": "World Literature: Antiquity to Late Seventeenth Century",
+   "units": 3
+  },
+  "49:ENGL 044C": {
+   "id": "49:ENGL 044C",
+   "institutionId": 49,
+   "prefix": "ENGL",
+   "number": "044C",
+   "title": "World Literature: 1800 - Mid 20th Century",
+   "units": 3
+  },
+  "49:PHYS 008A": {
+   "id": "49:PHYS 008A",
+   "institutionId": 49,
+   "prefix": "PHYS",
+   "number": "008A",
+   "title": "Physics for Scientists and Engineers I: Mechanics",
+   "units": 5
+  },
+  "49:PHYS 008B": {
+   "id": "49:PHYS 008B",
+   "institutionId": 49,
+   "prefix": "PHYS",
+   "number": "008B",
+   "title": "Physics for Scientists and Engineers II: Waves, Electricity & Magnetism",
+   "units": 5
+  },
+  "49:PHYS 008C": {
+   "id": "49:PHYS 008C",
+   "institutionId": 49,
+   "prefix": "PHYS",
+   "number": "008C",
+   "title": "Physics for Scientists and Engineers III: Thermodynamics, Optics, and Modern Physics",
+   "units": 5
+  },
+  "49:MATH 005B": {
+   "id": "49:MATH 005B",
+   "institutionId": 49,
+   "prefix": "MATH",
+   "number": "005B",
+   "title": "Single Variable Calculus II",
+   "units": 5
+  },
+  "49:MATH 005C": {
+   "id": "49:MATH 005C",
+   "institutionId": 49,
+   "prefix": "MATH",
+   "number": "005C",
+   "title": "Multivariable Calculus",
+   "units": 5
+  },
+  "49:MATH 005BE": {
+   "id": "49:MATH 005BE",
+   "institutionId": 49,
+   "prefix": "MATH",
+   "number": "005BE",
+   "title": "Single Variable Calculus II with Embedded Support",
+   "units": 5.5
+  },
+  "49:MATH 005BH": {
+   "id": "49:MATH 005BH",
+   "institutionId": 49,
+   "prefix": "MATH",
+   "number": "005BH",
+   "title": "Honors Single Variable Calculus II",
+   "units": 5
+  },
+  "49:MATH 005CH": {
+   "id": "49:MATH 005CH",
+   "institutionId": 49,
+   "prefix": "MATH",
+   "number": "005CH",
+   "title": "Honors Multivariable Calculus",
+   "units": 5
+  },
+  "114:MATH 194": {
+   "id": "114:MATH 194",
+   "institutionId": 114,
+   "prefix": "MATH",
+   "number": "194",
+   "title": "Linear Algebra",
+   "units": 3
+  },
+  "114:COMM C1000": {
+   "id": "114:COMM C1000",
+   "institutionId": 114,
+   "prefix": "COMM",
+   "number": "C1000",
+   "title": "Introduction to Public Speaking",
+   "units": 3
+  },
+  "114:ENGIN 230": {
+   "id": "114:ENGIN 230",
+   "institutionId": 114,
+   "prefix": "ENGIN",
+   "number": "230",
+   "title": "Introduction to Circuits and Devices",
+   "units": 4
+  },
+  "114:MATH 294": {
+   "id": "114:MATH 294",
+   "institutionId": 114,
+   "prefix": "MATH",
+   "number": "294",
+   "title": "Differential Equations",
+   "units": 5
+  },
+  "114:COMSC 255": {
+   "id": "114:COMSC 255",
+   "institutionId": 114,
+   "prefix": "COMSC",
+   "number": "255",
+   "title": "Programming with Java",
+   "units": 4
+  },
+  "114:COMSC 110": {
+   "id": "114:COMSC 110",
+   "institutionId": 114,
+   "prefix": "COMSC",
+   "number": "110",
+   "title": "Introduction to Programming",
+   "units": 4
+  },
+  "114:COMSC 165": {
+   "id": "114:COMSC 165",
+   "institutionId": 114,
+   "prefix": "COMSC",
+   "number": "165",
+   "title": "Advanced Programming with C and C++",
+   "units": 4
+  },
+  "114:ENGIN 135": {
+   "id": "114:ENGIN 135",
+   "institutionId": 114,
+   "prefix": "ENGIN",
+   "number": "135",
+   "title": "Programming for Scientists and Engineers",
+   "units": 4
+  },
+  "114:COMSC 200": {
+   "id": "114:COMSC 200",
+   "institutionId": 114,
+   "prefix": "COMSC",
+   "number": "200",
+   "title": "Object Oriented Programming C++",
+   "units": 4
+  },
+  "114:COMSC 210": {
+   "id": "114:COMSC 210",
+   "institutionId": 114,
+   "prefix": "COMSC",
+   "number": "210",
+   "title": "Program Design and Data Structures",
+   "units": 4
+  },
+  "114:COMSC 140": {
+   "id": "114:COMSC 140",
+   "institutionId": 114,
+   "prefix": "COMSC",
+   "number": "140",
+   "title": "Python Programming",
+   "units": 3
+  },
+  "114:COMSC 260": {
+   "id": "114:COMSC 260",
+   "institutionId": 114,
+   "prefix": "COMSC",
+   "number": "260",
+   "title": "Assembly Language Programming/Computer Organization",
+   "units": 4
+  },
+  "114:MATH 195": {
+   "id": "114:MATH 195",
+   "institutionId": 114,
+   "prefix": "MATH",
+   "number": "195",
+   "title": "Discrete Mathematics",
+   "units": 4
+  },
+  "114:COMSC 230": {
+   "id": "114:COMSC 230",
+   "institutionId": 114,
+   "prefix": "COMSC",
+   "number": "230",
+   "title": "Discrete Mathematical Structures for Computer Science",
+   "units": 3
+  },
+  "114:CHEM 120": {
+   "id": "114:CHEM 120",
+   "institutionId": 114,
+   "prefix": "CHEM",
+   "number": "120",
+   "title": "General College Chemistry I",
+   "units": 5
+  },
+  "114:PHYS 230": {
+   "id": "114:PHYS 230",
+   "institutionId": 114,
+   "prefix": "PHYS",
+   "number": "230",
+   "title": "Physics for Engineers and Scientists B: Heat and Electro-Magnetism",
+   "units": 4
+  },
+  "114:PHYS 231": {
+   "id": "114:PHYS 231",
+   "institutionId": 114,
+   "prefix": "PHYS",
+   "number": "231",
+   "title": "Physics for Engineers and Scientists C: Optics and Modern Physics",
+   "units": 4
+  },
+  "114:PHYS 130": {
+   "id": "114:PHYS 130",
+   "institutionId": 114,
+   "prefix": "PHYS",
+   "number": "130",
+   "title": "Physics for Engineers and Scientists A: Mechanics and Wave Motion",
+   "units": 4
+  },
+  "114:MATH 292": {
+   "id": "114:MATH 292",
+   "institutionId": 114,
+   "prefix": "MATH",
+   "number": "292",
+   "title": "Analytic Geometry and Calculus III",
+   "units": 5
+  },
+  "114:MATH 193": {
+   "id": "114:MATH 193",
+   "institutionId": 114,
+   "prefix": "MATH",
+   "number": "193",
+   "title": "Analytic Geometry and Calculus II",
+   "units": 5
+  },
+  "114:MATH 192": {
+   "id": "114:MATH 192",
+   "institutionId": 114,
+   "prefix": "MATH",
+   "number": "192",
+   "title": "Analytic Geometry and Calculus I",
+   "units": 5
+  },
+  "114:ENGL 273": {
+   "id": "114:ENGL 273",
+   "institutionId": 114,
+   "prefix": "ENGL",
+   "number": "273",
+   "title": "Survey of Late World Literature",
+   "units": 3
+  },
+  "114:ENGL 272": {
+   "id": "114:ENGL 272",
+   "institutionId": 114,
+   "prefix": "ENGL",
+   "number": "272",
+   "title": "Survey of Early World Literature",
+   "units": 3
+  },
+  "114:ENGL 123A": {
+   "id": "114:ENGL 123A",
+   "institutionId": 114,
+   "prefix": "ENGL",
+   "number": "123A",
+   "title": "Critical Thinking: Writing about Literature for Multilingual Students",
+   "units": 4
+  },
+  "114:ENGL 123": {
+   "id": "114:ENGL 123",
+   "institutionId": 114,
+   "prefix": "ENGL",
+   "number": "123",
+   "title": "Critical Thinking: Writing about Literature",
+   "units": 3
+  },
+  "114:ENGL 164": {
+   "id": "114:ENGL 164",
+   "institutionId": 114,
+   "prefix": "ENGL",
+   "number": "164",
+   "title": "Native American Literatures",
+   "units": 3
+  },
+  "114:ENGL 122AL": {
+   "id": "114:ENGL 122AL",
+   "institutionId": 114,
+   "prefix": "ENGL",
+   "number": "122AL",
+   "title": "Academic Reading and Writing for Multilingual Students",
+   "units": 5
+  },
+  "114:ENGL C1000": {
+   "id": "114:ENGL C1000",
+   "institutionId": 114,
+   "prefix": "ENGL",
+   "number": "C1000",
+   "title": "Academic Reading and Writing",
+   "units": 3
+  },
+  "114:ENGL C1000E": {
+   "id": "114:ENGL C1000E",
+   "institutionId": 114,
+   "prefix": "ENGL",
+   "number": "C1000E",
+   "title": "Academic Reading and Writing ",
+   "units": 5
+  },
+  "124:MATH 26": {
+   "id": "124:MATH 26",
+   "institutionId": 124,
+   "prefix": "MATH",
+   "number": "26",
+   "title": "Introduction to Linear Algebra",
+   "units": 4
+  },
+  "124:COMM C1000H": {
+   "id": "124:COMM C1000H",
+   "institutionId": 124,
+   "prefix": "COMM",
+   "number": "C1000H",
+   "title": "Introduction to Public Speaking - Honors",
+   "units": 3
+  },
+  "124:COMM C1000": {
+   "id": "124:COMM C1000",
+   "institutionId": 124,
+   "prefix": "COMM",
+   "number": "C1000",
+   "title": "Introduction to Public Speaking",
+   "units": 3
+  },
+  "124:ENGR 70": {
+   "id": "124:ENGR 70",
+   "institutionId": 124,
+   "prefix": "ENGR",
+   "number": "70",
+   "title": "Introduction to Network Analysis",
+   "units": 3
+  },
+  "124:MATH 24": {
+   "id": "124:MATH 24",
+   "institutionId": 124,
+   "prefix": "MATH",
+   "number": "24",
+   "title": "Elementary Differential Equations",
+   "units": 4
+  },
+  "124:MATH 24H": {
+   "id": "124:MATH 24H",
+   "institutionId": 124,
+   "prefix": "MATH",
+   "number": "24H",
+   "title": "Elementary Differential Equations Honors",
+   "units": 4
+  },
+  "124:CS 36": {
+   "id": "124:CS 36",
+   "institutionId": 124,
+   "prefix": "CS",
+   "number": "36",
+   "title": "C Programming",
+   "units": 3
+  },
+  "124:CS 38": {
+   "id": "124:CS 38",
+   "institutionId": 124,
+   "prefix": "CS",
+   "number": "38",
+   "title": "Java Programming",
+   "units": 3
+  },
+  "124:CS 37": {
+   "id": "124:CS 37",
+   "institutionId": 124,
+   "prefix": "CS",
+   "number": "37",
+   "title": "C++ Programming",
+   "units": 3
+  },
+  "124:CS 41": {
+   "id": "124:CS 41",
+   "institutionId": 124,
+   "prefix": "CS",
+   "number": "41",
+   "title": "Data Structures",
+   "units": 3
+  },
+  "124:CS 10": {
+   "id": "124:CS 10",
+   "institutionId": 124,
+   "prefix": "CS",
+   "number": "10",
+   "title": "Introduction to Programming Using Python",
+   "units": 3
+  },
+  "124:CS 40B": {
+   "id": "124:CS 40B",
+   "institutionId": 124,
+   "prefix": "CS",
+   "number": "40B",
+   "title": "Computer Organization and Assembly Language II",
+   "units": 3
+  },
+  "124:CS 40A": {
+   "id": "124:CS 40A",
+   "institutionId": 124,
+   "prefix": "CS",
+   "number": "40A",
+   "title": "Computer Organization and Assembly Language I",
+   "units": 3
+  },
+  "124:MATH 6A": {
+   "id": "124:MATH 6A",
+   "institutionId": 124,
+   "prefix": "MATH",
+   "number": "6A",
+   "title": "Computer Discrete Mathematics I",
+   "units": 3
+  },
+  "124:CS 6A": {
+   "id": "124:CS 6A",
+   "institutionId": 124,
+   "prefix": "CS",
+   "number": "6A",
+   "title": "Computer Discrete Mathematics I",
+   "units": 3
+  },
+  "124:CHEM 1A": {
+   "id": "124:CHEM 1A",
+   "institutionId": 124,
+   "prefix": "CHEM",
+   "number": "1A",
+   "title": "General Chemistry I",
+   "units": 5
+  },
+  "124:CHEM 1AH": {
+   "id": "124:CHEM 1AH",
+   "institutionId": 124,
+   "prefix": "CHEM",
+   "number": "1AH",
+   "title": "General Chemistry 1 Honors",
+   "units": 5
+  },
+  "124:PHYS 4B": {
+   "id": "124:PHYS 4B",
+   "institutionId": 124,
+   "prefix": "PHYS",
+   "number": "4B",
+   "title": "General Physics",
+   "units": 4
+  },
+  "124:PHYS 4C": {
+   "id": "124:PHYS 4C",
+   "institutionId": 124,
+   "prefix": "PHYS",
+   "number": "4C",
+   "title": "General Physics",
+   "units": 4
+  },
+  "124:PHYS 4A": {
+   "id": "124:PHYS 4A",
+   "institutionId": 124,
+   "prefix": "PHYS",
+   "number": "4A",
+   "title": "General Physics",
+   "units": 4
+  },
+  "124:LIT 1": {
+   "id": "124:LIT 1",
+   "institutionId": 124,
+   "prefix": "LIT",
+   "number": "1",
+   "title": "Introduction to Literature",
+   "units": 3
+  },
+  "124:LIT 1H": {
+   "id": "124:LIT 1H",
+   "institutionId": 124,
+   "prefix": "LIT",
+   "number": "1H",
+   "title": "Introduction to Literature Honors",
+   "units": 3
+  },
+  "124:ENGL C1000": {
+   "id": "124:ENGL C1000",
+   "institutionId": 124,
+   "prefix": "ENGL",
+   "number": "C1000",
+   "title": "Academic Reading and Writing",
+   "units": 4
+  },
+  "124:ENGL C1000H": {
+   "id": "124:ENGL C1000H",
+   "institutionId": 124,
+   "prefix": "ENGL",
+   "number": "C1000H",
+   "title": "Academic Reading and Writing - Honors",
+   "units": 4
+  },
+  "124:ESL 1": {
+   "id": "124:ESL 1",
+   "institutionId": 124,
+   "prefix": "ESL",
+   "number": "1",
+   "title": "College Composition for Multilingual Writers",
+   "units": 4
+  },
+  "124:MATH 3A": {
+   "id": "124:MATH 3A",
+   "institutionId": 124,
+   "prefix": "MATH",
+   "number": "3A",
+   "title": "Analytic Geometry and Calculus I",
+   "units": 5
+  },
+  "124:MATH 3B": {
+   "id": "124:MATH 3B",
+   "institutionId": 124,
+   "prefix": "MATH",
+   "number": "3B",
+   "title": "Analytic Geometry and Calculus II",
+   "units": 5
+  },
+  "124:MATH 3AH": {
+   "id": "124:MATH 3AH",
+   "institutionId": 124,
+   "prefix": "MATH",
+   "number": "3AH",
+   "title": "Analytic Geometry and Calculus I Honors",
+   "units": 5
+  },
+  "124:MATH 3BH": {
+   "id": "124:MATH 3BH",
+   "institutionId": 124,
+   "prefix": "MATH",
+   "number": "3BH",
+   "title": "Analytic Geometry and Calculus II Honors",
+   "units": 5
+  },
+  "124:MATH 4A": {
+   "id": "124:MATH 4A",
+   "institutionId": 124,
+   "prefix": "MATH",
+   "number": "4A",
+   "title": "Analytic Geometry and Calculus III",
+   "units": 5
+  },
+  "74:MATH A235": {
+   "id": "74:MATH A235",
+   "institutionId": 74,
+   "prefix": "MATH",
+   "number": "A235",
+   "title": "Applied Linear Algebra",
+   "units": 3
+  },
+  "74:COMM C1000": {
+   "id": "74:COMM C1000",
+   "institutionId": 74,
+   "prefix": "COMM",
+   "number": "C1000",
+   "title": "Introduction to Public Speaking",
+   "units": 3
+  },
+  "74:ENGR A285": {
+   "id": "74:ENGR A285",
+   "institutionId": 74,
+   "prefix": "ENGR",
+   "number": "A285",
+   "title": "Engineering Circuits",
+   "units": 4
+  },
+  "74:MATH A285H": {
+   "id": "74:MATH A285H",
+   "institutionId": 74,
+   "prefix": "MATH",
+   "number": "A285H",
+   "title": "Introduction to Linear Algebra and Differential Equations Honors",
+   "units": 6
+  },
+  "74:MATH A285": {
+   "id": "74:MATH A285",
+   "institutionId": 74,
+   "prefix": "MATH",
+   "number": "A285",
+   "title": "Introduction to Linear Algebra and Differential Equations",
+   "units": 5
+  },
+  "74:CS A140": {
+   "id": "74:CS A140",
+   "institutionId": 74,
+   "prefix": "CS",
+   "number": "A140",
+   "title": "Introduction to C#.NET Programming",
+   "units": 4
+  },
+  "74:CS A170": {
+   "id": "74:CS A170",
+   "institutionId": 74,
+   "prefix": "CS",
+   "number": "A170",
+   "title": "Java Programming 1",
+   "units": 4
+  },
+  "74:CS A131": {
+   "id": "74:CS A131",
+   "institutionId": 74,
+   "prefix": "CS",
+   "number": "A131",
+   "title": "Python Programming I  ",
+   "units": 4
+  },
+  "74:CS A150": {
+   "id": "74:CS A150",
+   "institutionId": 74,
+   "prefix": "CS",
+   "number": "A150",
+   "title": "C++ Programming Language 1",
+   "units": 4
+  },
+  "74:CS A250": {
+   "id": "74:CS A250",
+   "institutionId": 74,
+   "prefix": "CS",
+   "number": "A250",
+   "title": "C++ Programming Language 2",
+   "units": 4
+  },
+  "74:CS A200": {
+   "id": "74:CS A200",
+   "institutionId": 74,
+   "prefix": "CS",
+   "number": "A200",
+   "title": "Data Structures",
+   "units": 4
+  },
+  "74:CS A216": {
+   "id": "74:CS A216",
+   "institutionId": 74,
+   "prefix": "CS",
+   "number": "A216",
+   "title": "Computer Architecture",
+   "units": 4
+  },
+  "74:MATH A230": {
+   "id": "74:MATH A230",
+   "institutionId": 74,
+   "prefix": "MATH",
+   "number": "A230",
+   "title": "Introduction to Discrete Mathematics",
+   "units": 5
+  },
+  "74:CHEM A180": {
+   "id": "74:CHEM A180",
+   "institutionId": 74,
+   "prefix": "CHEM",
+   "number": "A180",
+   "title": "General Chemistry A",
+   "units": 5
+  },
+  "74:PHYS A280": {
+   "id": "74:PHYS A280",
+   "institutionId": 74,
+   "prefix": "PHYS",
+   "number": "A280",
+   "title": "Calculus Based Physics: Electricty/Magnetism with Lab",
+   "units": 5
+  },
+  "74:PHYS A185": {
+   "id": "74:PHYS A185",
+   "institutionId": 74,
+   "prefix": "PHYS",
+   "number": "A185",
+   "title": "Calculus Based Physics: Mechanics with Lab",
+   "units": 5
+  },
+  "74:PHYS A285": {
+   "id": "74:PHYS A285",
+   "institutionId": 74,
+   "prefix": "PHYS",
+   "number": "A285",
+   "title": "Calculus Based Physics: Modern with Lab",
+   "units": 5
+  },
+  "74:ENGL A160": {
+   "id": "74:ENGL A160",
+   "institutionId": 74,
+   "prefix": "ENGL",
+   "number": "A160",
+   "title": "World Literature Through Renaissance",
+   "units": 3
+  },
+  "74:ENGL A161": {
+   "id": "74:ENGL A161",
+   "institutionId": 74,
+   "prefix": "ENGL",
+   "number": "A161",
+   "title": "World Literature Since Renaissance",
+   "units": 3
+  },
+  "74:ENGL A101H": {
+   "id": "74:ENGL A101H",
+   "institutionId": 74,
+   "prefix": "ENGL",
+   "number": "A101H",
+   "title": "Critical Reasoning: Fiction Honors",
+   "units": 4
+  },
+  "74:ENGL A101": {
+   "id": "74:ENGL A101",
+   "institutionId": 74,
+   "prefix": "ENGL",
+   "number": "A101",
+   "title": "Critical Reasoning: Fiction",
+   "units": 4
+  },
+  "74:ENGL C1000": {
+   "id": "74:ENGL C1000",
+   "institutionId": 74,
+   "prefix": "ENGL",
+   "number": "C1000",
+   "title": "Academic Reading and Writing",
+   "units": 4
+  },
+  "74:MATH A180": {
+   "id": "74:MATH A180",
+   "institutionId": 74,
+   "prefix": "MATH",
+   "number": "A180",
+   "title": "Calculus 1",
+   "units": 5
+  },
+  "74:MATH A185": {
+   "id": "74:MATH A185",
+   "institutionId": 74,
+   "prefix": "MATH",
+   "number": "A185",
+   "title": "Calculus 2",
+   "units": 5
+  },
+  "74:MATH A280": {
+   "id": "74:MATH A280",
+   "institutionId": 74,
+   "prefix": "MATH",
+   "number": "A280",
+   "title": "Calculus 3",
+   "units": 5
+  },
+  "74:MATH A180H": {
+   "id": "74:MATH A180H",
+   "institutionId": 74,
+   "prefix": "MATH",
+   "number": "A180H",
+   "title": "Calculus 1 Honors  ",
+   "units": 5
+  },
+  "74:MATH A185H": {
+   "id": "74:MATH A185H",
+   "institutionId": 74,
+   "prefix": "MATH",
+   "number": "A185H",
+   "title": "Calculus 2 Honors",
+   "units": 5
+  },
+  "74:MATH A280H": {
+   "id": "74:MATH A280H",
+   "institutionId": 74,
+   "prefix": "MATH",
+   "number": "A280H",
+   "title": "Calculus 3 Honors  ",
+   "units": 6
+  },
+  "103:MATH 270": {
+   "id": "103:MATH 270",
+   "institutionId": 103,
+   "prefix": "MATH",
+   "number": "270",
+   "title": "Differential Equations with Linear Algebra",
+   "units": 5
+  },
+  "103:COMM C1000": {
+   "id": "103:COMM C1000",
+   "institutionId": 103,
+   "prefix": "COMM",
+   "number": "C1000",
+   "title": "Introduction to Public Speaking",
+   "units": 3
+  },
+  "103:COMM C1000H": {
+   "id": "103:COMM C1000H",
+   "institutionId": 103,
+   "prefix": "COMM",
+   "number": "C1000H",
+   "title": "Introduction to Public Speaking Honors",
+   "units": 3
+  },
+  "103:ENGR 11": {
+   "id": "103:ENGR 11",
+   "institutionId": 103,
+   "prefix": "ENGR",
+   "number": "11",
+   "title": "Circuit Analysis",
+   "units": 3
+  },
+  "103:ENGR 12": {
+   "id": "103:ENGR 12",
+   "institutionId": 103,
+   "prefix": "ENGR",
+   "number": "12",
+   "title": "Circuit Analysis Laboratory",
+   "units": 1
+  },
+  "103:CSCI 2": {
+   "id": "103:CSCI 2",
+   "institutionId": 103,
+   "prefix": "CSCI",
+   "number": "2",
+   "title": "Introduction to Data Structures",
+   "units": 5
+  },
+  "103:CSCI 3": {
+   "id": "103:CSCI 3",
+   "institutionId": 103,
+   "prefix": "CSCI",
+   "number": "3",
+   "title": "Object-Oriented Programming in Java",
+   "units": 4
+  },
+  "103:CSCI 1": {
+   "id": "103:CSCI 1",
+   "institutionId": 103,
+   "prefix": "CSCI",
+   "number": "1",
+   "title": "Problem Solving and Program Design Using C++",
+   "units": 4
+  },
+  "103:CSCI 30": {
+   "id": "103:CSCI 30",
+   "institutionId": 103,
+   "prefix": "CSCI",
+   "number": "30",
+   "title": "Advanced Programming in C++",
+   "units": 4
+  },
+  "103:CSCI 14": {
+   "id": "103:CSCI 14",
+   "institutionId": 103,
+   "prefix": "CSCI",
+   "number": "14",
+   "title": "Introduction to Programming with Python ",
+   "units": 4
+  },
+  "103:MATH 210": {
+   "id": "103:MATH 210",
+   "institutionId": 103,
+   "prefix": "MATH",
+   "number": "210",
+   "title": "Introduction to Discrete Structures",
+   "units": 5
+  },
+  "103:CHEM 1A": {
+   "id": "103:CHEM 1A",
+   "institutionId": 103,
+   "prefix": "CHEM",
+   "number": "1A",
+   "title": "General Chemistry I",
+   "units": 5
+  },
+  "103:PHYS 1C": {
+   "id": "103:PHYS 1C",
+   "institutionId": 103,
+   "prefix": "PHYS",
+   "number": "1C",
+   "title": "Electricity and Magnetism",
+   "units": 4
+  },
+  "103:PHYS 1B": {
+   "id": "103:PHYS 1B",
+   "institutionId": 103,
+   "prefix": "PHYS",
+   "number": "1B",
+   "title": "Fluids, Heat and Sound",
+   "units": 3
+  },
+  "103:PHYS 1D": {
+   "id": "103:PHYS 1D",
+   "institutionId": 103,
+   "prefix": "PHYS",
+   "number": "1D",
+   "title": "Optics and Modern Physics",
+   "units": 4
+  },
+  "103:PHYS 1A": {
+   "id": "103:PHYS 1A",
+   "institutionId": 103,
+   "prefix": "PHYS",
+   "number": "1A",
+   "title": "Mechanics of Solids",
+   "units": 4
+  },
+  "103:MATH 220": {
+   "id": "103:MATH 220",
+   "institutionId": 103,
+   "prefix": "MATH",
+   "number": "220",
+   "title": "Multi-Variable Calculus",
+   "units": 5
+  },
+  "103:MATH 191": {
+   "id": "103:MATH 191",
+   "institutionId": 103,
+   "prefix": "MATH",
+   "number": "191",
+   "title": "Single Variable Calculus and Analytic Geometry II",
+   "units": 5
+  },
+  "103:MATH 190": {
+   "id": "103:MATH 190",
+   "institutionId": 103,
+   "prefix": "MATH",
+   "number": "190",
+   "title": "Single Variable Calculus and Analytic Geometry I",
+   "units": 5
+  },
+  "103:ENGL 35": {
+   "id": "103:ENGL 35",
+   "institutionId": 103,
+   "prefix": "ENGL",
+   "number": "35",
+   "title": "World Literature: 3500 BCE to 1650 CE",
+   "units": 3
+  },
+  "103:ENGL 36": {
+   "id": "103:ENGL 36",
+   "institutionId": 103,
+   "prefix": "ENGL",
+   "number": "36",
+   "title": "World Literature: 1650 CE to Present",
+   "units": 3
+  },
+  "103:ENGL 1B": {
+   "id": "103:ENGL 1B",
+   "institutionId": 103,
+   "prefix": "ENGL",
+   "number": "1B",
+   "title": "Literature and Composition",
+   "units": 3
+  },
+  "103:ENGL 1BH": {
+   "id": "103:ENGL 1BH",
+   "institutionId": 103,
+   "prefix": "ENGL",
+   "number": "1BH",
+   "title": "Honors Literature and Composition",
+   "units": 3
+  },
+  "103:ENGL C1000H": {
+   "id": "103:ENGL C1000H",
+   "institutionId": 103,
+   "prefix": "ENGL",
+   "number": "C1000H",
+   "title": "Academic Reading and Writing Honors",
+   "units": 4
+  },
+  "103:ENGL C1000": {
+   "id": "103:ENGL C1000",
+   "institutionId": 103,
+   "prefix": "ENGL",
+   "number": "C1000",
+   "title": "Academic Reading and Writing",
+   "units": 4
+  },
+  "58:MATH 3E": {
+   "id": "58:MATH 3E",
+   "institutionId": 58,
+   "prefix": "MATH",
+   "number": "3E",
+   "title": "Linear Algebra",
+   "units": 3
+  },
+  "58:COMM 3": {
+   "id": "58:COMM 3",
+   "institutionId": 58,
+   "prefix": "COMM",
+   "number": "3",
+   "title": "Introduction to Human Communication",
+   "units": 3
+  },
+  "58:COMM C1000": {
+   "id": "58:COMM C1000",
+   "institutionId": 58,
+   "prefix": "COMM",
+   "number": "C1000",
+   "title": "Introduction to Public Speaking",
+   "units": 3
+  },
+  "58:MATH 3F": {
+   "id": "58:MATH 3F",
+   "institutionId": 58,
+   "prefix": "MATH",
+   "number": "3F",
+   "title": "Differential Equations",
+   "units": 3
+  },
+  "58:CIS 25": {
+   "id": "58:CIS 25",
+   "institutionId": 58,
+   "prefix": "CIS",
+   "number": "25",
+   "title": "Object-Orientated Programming Using C++",
+   "units": 4
+  },
+  "58:CIS 36A": {
+   "id": "58:CIS 36A",
+   "institutionId": 58,
+   "prefix": "CIS",
+   "number": "36A",
+   "title": "Java Programming Language I",
+   "units": 4
+  },
+  "58:CIS 27": {
+   "id": "58:CIS 27",
+   "institutionId": 58,
+   "prefix": "CIS",
+   "number": "27",
+   "title": "Data Structure and Algorithms",
+   "units": 4
+  },
+  "58:CIS 6": {
+   "id": "58:CIS 6",
+   "institutionId": 58,
+   "prefix": "CIS",
+   "number": "6",
+   "title": "Introduction to Computer Programming",
+   "units": 5
+  },
+  "58:CIS 20": {
+   "id": "58:CIS 20",
+   "institutionId": 58,
+   "prefix": "CIS",
+   "number": "20",
+   "title": "Microcomputer Assembly Language",
+   "units": 4
+  },
+  "58:MATH 11": {
+   "id": "58:MATH 11",
+   "institutionId": 58,
+   "prefix": "MATH",
+   "number": "11",
+   "title": "Discrete Mathematics",
+   "units": 4
+  },
+  "58:CHEM 1A": {
+   "id": "58:CHEM 1A",
+   "institutionId": 58,
+   "prefix": "CHEM",
+   "number": "1A",
+   "title": "General Chemistry",
+   "units": 5
+  },
+  "58:PHYS 4A": {
+   "id": "58:PHYS 4A",
+   "institutionId": 58,
+   "prefix": "PHYS",
+   "number": "4A",
+   "title": "General Physics with Calculus",
+   "units": 5
+  },
+  "58:PHYS 4C": {
+   "id": "58:PHYS 4C",
+   "institutionId": 58,
+   "prefix": "PHYS",
+   "number": "4C",
+   "title": "General Physics with Calculus",
+   "units": 5
+  },
+  "58:PHYS 4B": {
+   "id": "58:PHYS 4B",
+   "institutionId": 58,
+   "prefix": "PHYS",
+   "number": "4B",
+   "title": "General Physics with Calculus",
+   "units": 5
+  },
+  "58:MATH 3C": {
+   "id": "58:MATH 3C",
+   "institutionId": 58,
+   "prefix": "MATH",
+   "number": "3C",
+   "title": "Calculus III",
+   "units": 5
+  },
+  "58:MATH 3B": {
+   "id": "58:MATH 3B",
+   "institutionId": 58,
+   "prefix": "MATH",
+   "number": "3B",
+   "title": "Calculus II",
+   "units": 5
+  },
+  "58:MATH 3A": {
+   "id": "58:MATH 3A",
+   "institutionId": 58,
+   "prefix": "MATH",
+   "number": "3A",
+   "title": "Calculus I",
+   "units": 5
+  },
+  "58:ENGL 1B": {
+   "id": "58:ENGL 1B",
+   "institutionId": 58,
+   "prefix": "ENGL",
+   "number": "1B",
+   "title": "Composition and Reading",
+   "units": 4
+  },
+  "58:ENGL C1000": {
+   "id": "58:ENGL C1000",
+   "institutionId": 58,
+   "prefix": "ENGL",
+   "number": "C1000",
+   "title": "Academic Reading and Writing",
+   "units": 4
+  },
+  "58:ENGL 44B": {
+   "id": "58:ENGL 44B",
+   "institutionId": 58,
+   "prefix": "ENGL",
+   "number": "44B",
+   "title": "Masterpieces of World Literature",
+   "units": 3
+  },
+  "33:COMM C1000": {
+   "id": "33:COMM C1000",
+   "institutionId": 33,
+   "prefix": "COMM",
+   "number": "C1000",
+   "title": "Introduction to Public Speaking",
+   "units": 3
+  },
+  "33:ENGN 20": {
+   "id": "33:ENGN 20",
+   "institutionId": 33,
+   "prefix": "ENGN",
+   "number": "20",
+   "title": "Introduction to Circuit Analysis",
+   "units": 3
+  },
+  "33:ENGN 20L": {
+   "id": "33:ENGN 20L",
+   "institutionId": 33,
+   "prefix": "ENGN",
+   "number": "20L",
+   "title": "Introduction to Circuit Analysis Laboratory",
+   "units": 1
+  },
+  "33:CS 110B": {
+   "id": "33:CS 110B",
+   "institutionId": 33,
+   "prefix": "CS",
+   "number": "110B",
+   "title": "Programming Fundamentals: C++",
+   "units": 4
+  },
+  "33:CS 110A": {
+   "id": "33:CS 110A",
+   "institutionId": 33,
+   "prefix": "CS",
+   "number": "110A",
+   "title": "Introduction to Programming and Computer Science",
+   "units": 4
+  },
+  "33:CS 270": {
+   "id": "33:CS 270",
+   "institutionId": 33,
+   "prefix": "CS",
+   "number": "270",
+   "title": "Computer Architecture with Assembly Language",
+   "units": 4
+  },
+  "33:MATH 115": {
+   "id": "33:MATH 115",
+   "institutionId": 33,
+   "prefix": "MATH",
+   "number": "115",
+   "title": "Discrete Mathematics",
+   "units": 3
+  },
+  "33:CHEM 101A": {
+   "id": "33:CHEM 101A",
+   "institutionId": 33,
+   "prefix": "CHEM",
+   "number": "101A",
+   "title": "General College Chemistry",
+   "units": 6
+  },
+  "33:PHYC 4B": {
+   "id": "33:PHYC 4B",
+   "institutionId": 33,
+   "prefix": "PHYC",
+   "number": "4B",
+   "title": "Electromagnetism for Scientists and Engineers",
+   "units": 3
+  },
+  "33:PHYC 4BL": {
+   "id": "33:PHYC 4BL",
+   "institutionId": 33,
+   "prefix": "PHYC",
+   "number": "4BL",
+   "title": "Electromagnetism Laboratory for Scientists and Engineers",
+   "units": 1
+  },
+  "33:PHYC 4CL": {
+   "id": "33:PHYC 4CL",
+   "institutionId": 33,
+   "prefix": "PHYC",
+   "number": "4CL",
+   "title": "Waves and Thermodynamics Laboratory for Scientists and Engineers",
+   "units": 1
+  },
+  "33:PHYC 4C": {
+   "id": "33:PHYC 4C",
+   "institutionId": 33,
+   "prefix": "PHYC",
+   "number": "4C",
+   "title": "Waves and Thermodynamics for Scientists and Engineers",
+   "units": 3
+  },
+  "33:PHYC 4DL": {
+   "id": "33:PHYC 4DL",
+   "institutionId": 33,
+   "prefix": "PHYC",
+   "number": "4DL",
+   "title": "Modern Physics Laboratory for Scientists and Engineers",
+   "units": 1
+  },
+  "33:PHYC 4D": {
+   "id": "33:PHYC 4D",
+   "institutionId": 33,
+   "prefix": "PHYC",
+   "number": "4D",
+   "title": "Modern Physics for Scientists and Engineers",
+   "units": 3
+  },
+  "33:PHYC 4A": {
+   "id": "33:PHYC 4A",
+   "institutionId": 33,
+   "prefix": "PHYC",
+   "number": "4A",
+   "title": "Classical Mechanics for Scientists and Engineers",
+   "units": 3
+  },
+  "33:PHYC 4AL": {
+   "id": "33:PHYC 4AL",
+   "institutionId": 33,
+   "prefix": "PHYC",
+   "number": "4AL",
+   "title": "Mechanics Laboratory for Scientists and Engineers",
+   "units": 1
+  },
+  "33:MATH 110C": {
+   "id": "33:MATH 110C",
+   "institutionId": 33,
+   "prefix": "MATH",
+   "number": "110C",
+   "title": "Calculus III",
+   "units": 5
+  },
+  "33:MATH 110B": {
+   "id": "33:MATH 110B",
+   "institutionId": 33,
+   "prefix": "MATH",
+   "number": "110B",
+   "title": "Calculus II",
+   "units": 5
+  },
+  "33:MATH 110A": {
+   "id": "33:MATH 110A",
+   "institutionId": 33,
+   "prefix": "MATH",
+   "number": "110A",
+   "title": "Calculus I",
+   "units": 5
+  },
+  "33:ENGL 44A": {
+   "id": "33:ENGL 44A",
+   "institutionId": 33,
+   "prefix": "ENGL",
+   "number": "44A",
+   "title": "Survey of World Literature, Part I: Ancient, Medieval, and Early Modern",
+   "units": 3
+  },
+  "33:ENGL 44B": {
+   "id": "33:ENGL 44B",
+   "institutionId": 33,
+   "prefix": "ENGL",
+   "number": "44B",
+   "title": "Survey of World Literature, Part II: Early Modern to the Present",
+   "units": 3
+  },
+  "33:ENGL 1B": {
+   "id": "33:ENGL 1B",
+   "institutionId": 33,
+   "prefix": "ENGL",
+   "number": "1B",
+   "title": "Writing about Literature",
+   "units": 4
+  },
+  "33:ENGL C1000": {
+   "id": "33:ENGL C1000",
+   "institutionId": 33,
+   "prefix": "ENGL",
+   "number": "C1000",
+   "title": "Academic Reading and Writing",
+   "units": 4
+  },
+  "33:CS 110C": {
+   "id": "33:CS 110C",
+   "institutionId": 33,
+   "prefix": "CS",
+   "number": "110C",
+   "title": "Data Structures and Algorithms: C++",
+   "units": 4
+  },
+  "33:CS 111B": {
+   "id": "33:CS 111B",
+   "institutionId": 33,
+   "prefix": "CS",
+   "number": "111B",
+   "title": "Programming Fundamentals: Java",
+   "units": 4
+  },
+  "33:CS 111C": {
+   "id": "33:CS 111C",
+   "institutionId": 33,
+   "prefix": "CS",
+   "number": "111C",
+   "title": "Data Structures and Algorithms: Java",
+   "units": 4
+  },
+  "33:MATH 130": {
+   "id": "33:MATH 130",
+   "institutionId": 33,
+   "prefix": "MATH",
+   "number": "130",
+   "title": "Linear Algebra and Differential Equations",
+   "units": 5
+  },
+  "136:MATH 079": {
+   "id": "136:MATH 079",
+   "institutionId": 136,
+   "prefix": "MATH",
+   "number": "079",
+   "title": "Linear Algebra",
+   "units": 3
+  },
+  "136:COMM C1000": {
+   "id": "136:COMM C1000",
+   "institutionId": 136,
+   "prefix": "COMM",
+   "number": "C1000",
+   "title": "Introduction to Public Speaking",
+   "units": 3
+  },
+  "136:COMM C1000H": {
+   "id": "136:COMM C1000H",
+   "institutionId": 136,
+   "prefix": "COMM",
+   "number": "C1000H",
+   "title": "Introduction to Public Speaking - Honors",
+   "units": 3
+  },
+  "136:ENGR 033": {
+   "id": "136:ENGR 033",
+   "institutionId": 136,
+   "prefix": "ENGR",
+   "number": "033",
+   "title": "Circuit Analysis",
+   "units": 4
+  },
+  "136:MATH 078": {
+   "id": "136:MATH 078",
+   "institutionId": 136,
+   "prefix": "MATH",
+   "number": "078",
+   "title": "Differential Equations",
+   "units": 4
+  },
+  "136:CIS 054": {
+   "id": "136:CIS 054",
+   "institutionId": 136,
+   "prefix": "CIS",
+   "number": "054",
+   "title": "C/C++ Programming",
+   "units": 3
+  },
+  "136:CIS 084": {
+   "id": "136:CIS 084",
+   "institutionId": 136,
+   "prefix": "CIS",
+   "number": "084",
+   "title": "Java Programming",
+   "units": 3
+  },
+  "136:CIS 059": {
+   "id": "136:CIS 059",
+   "institutionId": 136,
+   "prefix": "CIS",
+   "number": "059",
+   "title": "Object Oriented Design and Programming",
+   "units": 3
+  },
+  "136:CIS 055": {
+   "id": "136:CIS 055",
+   "institutionId": 136,
+   "prefix": "CIS",
+   "number": "055",
+   "title": "Data Structures: Programming",
+   "units": 3
+  },
+  "136:CIS 024C": {
+   "id": "136:CIS 024C",
+   "institutionId": 136,
+   "prefix": "CIS",
+   "number": "024C",
+   "title": "Python Programming",
+   "units": 3
+  },
+  "136:MATH 080": {
+   "id": "136:MATH 080",
+   "institutionId": 136,
+   "prefix": "MATH",
+   "number": "080",
+   "title": "Discrete Structures for Computer Science",
+   "units": 4
+  },
+  "136:MATH 070": {
+   "id": "136:MATH 070",
+   "institutionId": 136,
+   "prefix": "MATH",
+   "number": "070",
+   "title": "Discrete Mathematics",
+   "units": 4
+  },
+  "136:CHEM 001A": {
+   "id": "136:CHEM 001A",
+   "institutionId": 136,
+   "prefix": "CHEM",
+   "number": "001A",
+   "title": "General Chemistry",
+   "units": 5
+  },
+  "136:PHYS 004B": {
+   "id": "136:PHYS 004B",
+   "institutionId": 136,
+   "prefix": "PHYS",
+   "number": "004B",
+   "title": "General Physics",
+   "units": 5
+  },
+  "136:MATH 071H": {
+   "id": "136:MATH 071H",
+   "institutionId": 136,
+   "prefix": "MATH",
+   "number": "071H",
+   "title": "Honors Calculus I with Analytic Geometry",
+   "units": 5
+  },
+  "136:MATH 071": {
+   "id": "136:MATH 071",
+   "institutionId": 136,
+   "prefix": "MATH",
+   "number": "071",
+   "title": "Calculus I with Analytic Geometry",
+   "units": 5
+  },
+  "136:MATH 072": {
+   "id": "136:MATH 072",
+   "institutionId": 136,
+   "prefix": "MATH",
+   "number": "072",
+   "title": "Calculus II with Analytic Geometry",
+   "units": 5
+  },
+  "136:ENGL 001B": {
+   "id": "136:ENGL 001B",
+   "institutionId": 136,
+   "prefix": "ENGL",
+   "number": "001B",
+   "title": "English Composition",
+   "units": 3
+  },
+  "136:HUMNT 002": {
+   "id": "136:HUMNT 002",
+   "institutionId": 136,
+   "prefix": "HUMNT",
+   "number": "002",
+   "title": "Introduction to World Literature",
+   "units": 3
+  },
+  "136:ENGL C1000": {
+   "id": "136:ENGL C1000",
+   "institutionId": 136,
+   "prefix": "ENGL",
+   "number": "C1000",
+   "title": "Academic Reading and Writing",
+   "units": 3
+  },
+  "136:PHYS 004A": {
+   "id": "136:PHYS 004A",
+   "institutionId": 136,
+   "prefix": "PHYS",
+   "number": "004A",
+   "title": "General Physics",
+   "units": 5
+  },
+  "136:PHYS 004C": {
+   "id": "136:PHYS 004C",
+   "institutionId": 136,
+   "prefix": "PHYS",
+   "number": "004C",
+   "title": "General Physics",
+   "units": 5
+  },
+  "136:MATH 073": {
+   "id": "136:MATH 073",
+   "institutionId": 136,
+   "prefix": "MATH",
+   "number": "073",
+   "title": "Multivariable Calculus",
+   "units": 5
+  },
+  "92:MATH 210": {
+   "id": "92:MATH 210",
+   "institutionId": 92,
+   "prefix": "MATH",
+   "number": "210",
+   "title": "Linear Algebra",
+   "units": 4
+  },
+  "92:COMM C1000": {
+   "id": "92:COMM C1000",
+   "institutionId": 92,
+   "prefix": "COMM",
+   "number": "C1000",
+   "title": "Introduction to Public Speaking",
+   "units": 3
+  },
+  "92:COMM C1000H": {
+   "id": "92:COMM C1000H",
+   "institutionId": 92,
+   "prefix": "COMM",
+   "number": "C1000H",
+   "title": "Introduction to Public Speaking - Honors",
+   "units": 3
+  },
+  "92:ENGR 117L": {
+   "id": "92:ENGR 117L",
+   "institutionId": 92,
+   "prefix": "ENGR",
+   "number": "117L",
+   "title": "Electronic Circuits Laboratory",
+   "units": 1
+  },
+  "92:ENGR 117": {
+   "id": "92:ENGR 117",
+   "institutionId": 92,
+   "prefix": "ENGR",
+   "number": "117",
+   "title": "Electronic Circuits",
+   "units": 3
+  },
+  "92:MATH 220": {
+   "id": "92:MATH 220",
+   "institutionId": 92,
+   "prefix": "MATH",
+   "number": "220",
+   "title": "Differential Equations",
+   "units": 4
+  },
+  "92:CS 106": {
+   "id": "92:CS 106",
+   "institutionId": 92,
+   "prefix": "CS",
+   "number": "106",
+   "title": "Theory and Practice II",
+   "units": 3
+  },
+  "92:CS 140": {
+   "id": "92:CS 140",
+   "institutionId": 92,
+   "prefix": "CS",
+   "number": "140",
+   "title": "Object-Oriented Programming Using C++",
+   "units": 4
+  },
+  "92:CS 137": {
+   "id": "92:CS 137",
+   "institutionId": 92,
+   "prefix": "CS",
+   "number": "137",
+   "title": "C Programming",
+   "units": 3
+  },
+  "92:CS 105": {
+   "id": "92:CS 105",
+   "institutionId": 92,
+   "prefix": "CS",
+   "number": "105",
+   "title": "Theory and Practice I",
+   "units": 3
+  },
+  "92:CS 104": {
+   "id": "92:CS 104",
+   "institutionId": 92,
+   "prefix": "CS",
+   "number": "104",
+   "title": "Introduction to Programming",
+   "units": 3
+  },
+  "92:CS 107": {
+   "id": "92:CS 107",
+   "institutionId": 92,
+   "prefix": "CS",
+   "number": "107",
+   "title": "Computer Architecture & Organization",
+   "units": 3
+  },
+  "92:CS 108": {
+   "id": "92:CS 108",
+   "institutionId": 92,
+   "prefix": "CS",
+   "number": "108",
+   "title": "Discrete Structures",
+   "units": 4
+  },
+  "92:PHYS 122": {
+   "id": "92:PHYS 122",
+   "institutionId": 92,
+   "prefix": "PHYS",
+   "number": "122",
+   "title": "Electricity and Magnetism",
+   "units": 5
+  },
+  "92:PHYS 123": {
+   "id": "92:PHYS 123",
+   "institutionId": 92,
+   "prefix": "PHYS",
+   "number": "123",
+   "title": "Heat, Light and Modern Physics",
+   "units": 5
+  },
+  "92:PHYS 121": {
+   "id": "92:PHYS 121",
+   "institutionId": 92,
+   "prefix": "PHYS",
+   "number": "121",
+   "title": "Mechanics of Solids and Fluids",
+   "units": 5
+  },
+  "92:MATH 200": {
+   "id": "92:MATH 200",
+   "institutionId": 92,
+   "prefix": "MATH",
+   "number": "200",
+   "title": "Multivariable Calculus",
+   "units": 4
+  },
+  "92:MATH 160": {
+   "id": "92:MATH 160",
+   "institutionId": 92,
+   "prefix": "MATH",
+   "number": "160",
+   "title": "Calculus with Analytic Geometry II",
+   "units": 5
+  },
+  "92:MATH 150": {
+   "id": "92:MATH 150",
+   "institutionId": 92,
+   "prefix": "MATH",
+   "number": "150",
+   "title": "Calculus with Analytic Geometry I",
+   "units": 5
+  },
+  "92:ENG 231": {
+   "id": "92:ENG 231",
+   "institutionId": 92,
+   "prefix": "ENG",
+   "number": "231",
+   "title": "World Literature: Ancient Times to 16th Century",
+   "units": 3
+  },
+  "92:ENG 232": {
+   "id": "92:ENG 232",
+   "institutionId": 92,
+   "prefix": "ENG",
+   "number": "232",
+   "title": "World Literature: 17th Century to Present",
+   "units": 3
+  },
+  "92:ENG 111": {
+   "id": "92:ENG 111",
+   "institutionId": 92,
+   "prefix": "ENG",
+   "number": "111",
+   "title": "Critical Thinking and Composition Through Literature",
+   "units": 3
+  },
+  "92:ENG 111H": {
+   "id": "92:ENG 111H",
+   "institutionId": 92,
+   "prefix": "ENG",
+   "number": "111H",
+   "title": "Critical Thinking and Composition through Literature, Honors",
+   "units": 3
+  },
+  "92:NATA 113": {
+   "id": "92:NATA 113",
+   "institutionId": 92,
+   "prefix": "NATA",
+   "number": "113",
+   "title": "The Indian in Literature: Fact and Fiction",
+   "units": 3
+  },
+  "92:ENGL C1000E": {
+   "id": "92:ENGL C1000E",
+   "institutionId": 92,
+   "prefix": "ENGL",
+   "number": "C1000E",
+   "title": "Academic Reading and Writing",
+   "units": 4
+  },
+  "92:ENGL C1000H": {
+   "id": "92:ENGL C1000H",
+   "institutionId": 92,
+   "prefix": "ENGL",
+   "number": "C1000H",
+   "title": "Academic Reading and Writing - Honors",
+   "units": 4
+  },
+  "92:ENGL C1000": {
+   "id": "92:ENGL C1000",
+   "institutionId": 92,
+   "prefix": "ENGL",
+   "number": "C1000",
+   "title": "Academic Reading and Writing",
+   "units": 4
+  },
+  "65:MATH 26": {
+   "id": "65:MATH 26",
+   "institutionId": 65,
+   "prefix": "MATH",
+   "number": "26",
+   "title": "Introduction to Linear Algebra",
+   "units": 4
+  },
+  "65:COMM C1000": {
+   "id": "65:COMM C1000",
+   "institutionId": 65,
+   "prefix": "COMM",
+   "number": "C1000",
+   "title": "Introduction to Public Speaking ",
+   "units": 3
+  },
+  "65:COMM C1000H": {
+   "id": "65:COMM C1000H",
+   "institutionId": 65,
+   "prefix": "COMM",
+   "number": "C1000H",
+   "title": "Introduction to Public Speaking - Honors",
+   "units": 3
+  },
+  "65:MATH 24": {
+   "id": "65:MATH 24",
+   "institutionId": 65,
+   "prefix": "MATH",
+   "number": "24",
+   "title": "Elementary Differential Equations",
+   "units": 4
+  },
+  "65:CS 1A": {
+   "id": "65:CS 1A",
+   "institutionId": 65,
+   "prefix": "CS",
+   "number": "1A",
+   "title": "Introduction to Computer Science I",
+   "units": 3.5
+  },
+  "65:CS 4A": {
+   "id": "65:CS 4A",
+   "institutionId": 65,
+   "prefix": "CS",
+   "number": "4A",
+   "title": "Introduction to JAVA for Computer Science",
+   "units": 3.5
+  },
+  "65:CS 1B": {
+   "id": "65:CS 1B",
+   "institutionId": 65,
+   "prefix": "CS",
+   "number": "1B",
+   "title": "Introduction to Computer Science II",
+   "units": 3.5
+  },
+  "65:CS 4B": {
+   "id": "65:CS 4B",
+   "institutionId": 65,
+   "prefix": "CS",
+   "number": "4B",
+   "title": "Advanced Topics in JAVA for Computer Science",
+   "units": 3.5
+  },
+  "65:CS 1C": {
+   "id": "65:CS 1C",
+   "institutionId": 65,
+   "prefix": "CS",
+   "number": "1C",
+   "title": "Introduction to Computer Science III",
+   "units": 3.5
+  },
+  "65:CS 1D": {
+   "id": "65:CS 1D",
+   "institutionId": 65,
+   "prefix": "CS",
+   "number": "1D",
+   "title": "Data Structures",
+   "units": 3.5
+  },
+  "65:CS 3B": {
+   "id": "65:CS 3B",
+   "institutionId": 65,
+   "prefix": "CS",
+   "number": "3B",
+   "title": "Computer Organization and Assembly Language",
+   "units": 3.5
+  },
+  "65:CS 30B": {
+   "id": "65:CS 30B",
+   "institutionId": 65,
+   "prefix": "CS",
+   "number": "30B",
+   "title": "Computer Discrete Mathematics II",
+   "units": 3
+  },
+  "65:CS 30A": {
+   "id": "65:CS 30A",
+   "institutionId": 65,
+   "prefix": "CS",
+   "number": "30A",
+   "title": "Computer Discrete Mathematics I ",
+   "units": 3
+  },
+  "65:MATH 30A": {
+   "id": "65:MATH 30A",
+   "institutionId": 65,
+   "prefix": "MATH",
+   "number": "30A",
+   "title": "Computer Discrete Mathematics I ",
+   "units": 3
+  },
+  "65:MATH 30B": {
+   "id": "65:MATH 30B",
+   "institutionId": 65,
+   "prefix": "MATH",
+   "number": "30B",
+   "title": "Computer Discrete Mathematics II",
+   "units": 3
+  },
+  "65:CHEM 1A": {
+   "id": "65:CHEM 1A",
+   "institutionId": 65,
+   "prefix": "CHEM",
+   "number": "1A",
+   "title": "General Chemistry",
+   "units": 5
+  },
+  "65:PHYS 4B": {
+   "id": "65:PHYS 4B",
+   "institutionId": 65,
+   "prefix": "PHYS",
+   "number": "4B",
+   "title": "General Physics",
+   "units": 5
+  },
+  "65:PHYS 4A": {
+   "id": "65:PHYS 4A",
+   "institutionId": 65,
+   "prefix": "PHYS",
+   "number": "4A",
+   "title": "General Physics",
+   "units": 5
+  },
+  "65:PHYS 4C": {
+   "id": "65:PHYS 4C",
+   "institutionId": 65,
+   "prefix": "PHYS",
+   "number": "4C",
+   "title": "General Physics",
+   "units": 5
+  },
+  "65:MATH 3C": {
+   "id": "65:MATH 3C",
+   "institutionId": 65,
+   "prefix": "MATH",
+   "number": "3C",
+   "title": "Analytic Geometry and Calculus",
+   "units": 5
+  },
+  "65:MATH 3B": {
+   "id": "65:MATH 3B",
+   "institutionId": 65,
+   "prefix": "MATH",
+   "number": "3B",
+   "title": "Analytic Geometry and Calculus",
+   "units": 5
+  },
+  "65:MATH 3AH": {
+   "id": "65:MATH 3AH",
+   "institutionId": 65,
+   "prefix": "MATH",
+   "number": "3AH",
+   "title": "Honors Analytic Geometry and Calculus",
+   "units": 5
+  },
+  "65:MATH 3A": {
+   "id": "65:MATH 3A",
+   "institutionId": 65,
+   "prefix": "MATH",
+   "number": "3A",
+   "title": "Analytic Geometry and Calculus",
+   "units": 5
+  },
+  "65:ENG 21A": {
+   "id": "65:ENG 21A",
+   "institutionId": 65,
+   "prefix": "ENG",
+   "number": "21A",
+   "title": "World Literature - Ancient to 17th Century",
+   "units": 3
+  },
+  "65:ENG 21B": {
+   "id": "65:ENG 21B",
+   "institutionId": 65,
+   "prefix": "ENG",
+   "number": "21B",
+   "title": "World Literature - 17th Century to Modern Period",
+   "units": 3
+  },
+  "65:ENG 25H": {
+   "id": "65:ENG 25H",
+   "institutionId": 65,
+   "prefix": "ENG",
+   "number": "25H",
+   "title": "Honors Introduction to Literature ",
+   "units": 3
+  },
+  "65:ENG 25": {
+   "id": "65:ENG 25",
+   "institutionId": 65,
+   "prefix": "ENG",
+   "number": "25",
+   "title": "Introduction to Literature",
+   "units": 3
+  },
+  "65:ENGL C1000": {
+   "id": "65:ENGL C1000",
+   "institutionId": 65,
+   "prefix": "ENGL",
+   "number": "C1000",
+   "title": "Academic Reading and Writing",
+   "units": 4
+  },
+  "65:ENGL C1000H": {
+   "id": "65:ENGL C1000H",
+   "institutionId": 65,
+   "prefix": "ENGL",
+   "number": "C1000H",
+   "title": "Academic Reading and Writing - Honors",
+   "units": 4
+  },
+  "80:MATH 004C": {
+   "id": "80:MATH 004C",
+   "institutionId": 80,
+   "prefix": "MATH",
+   "number": "004C",
+   "title": "Linear Algebra",
+   "units": 4
+  },
+  "80:COMM C1000": {
+   "id": "80:COMM C1000",
+   "institutionId": 80,
+   "prefix": "COMM",
+   "number": "C1000",
+   "title": "Introduction to Public Speaking",
+   "units": 3
+  },
+  "80:COMM C1000H": {
+   "id": "80:COMM C1000H",
+   "institutionId": 80,
+   "prefix": "COMM",
+   "number": "C1000H",
+   "title": "Introduction to Public Speaking - Honors",
+   "units": 3
+  },
+  "80:ENGR 098": {
+   "id": "80:ENGR 098",
+   "institutionId": 80,
+   "prefix": "ENGR",
+   "number": "098",
+   "title": "Circuit Analysis",
+   "units": 4
+  },
+  "80:MATH 004B": {
+   "id": "80:MATH 004B",
+   "institutionId": 80,
+   "prefix": "MATH",
+   "number": "004B",
+   "title": "Differential Equations",
+   "units": 4
+  },
+  "80:CIST 005B": {
+   "id": "80:CIST 005B",
+   "institutionId": 80,
+   "prefix": "CIST",
+   "number": "005B",
+   "title": "Advanced Python",
+   "units": 4
+  },
+  "80:CIST 037": {
+   "id": "80:CIST 037",
+   "institutionId": 80,
+   "prefix": "CIST",
+   "number": "037",
+   "title": "C Programming",
+   "units": 4
+  },
+  "80:CIST 004A1": {
+   "id": "80:CIST 004A1",
+   "institutionId": 80,
+   "prefix": "CIST",
+   "number": "004A1",
+   "title": "Computer Programming I (JAVA)",
+   "units": 4
+  },
+  "80:CIST 004A": {
+   "id": "80:CIST 004A",
+   "institutionId": 80,
+   "prefix": "CIST",
+   "number": "004A",
+   "title": "Computer Programming I (C++ Programming)",
+   "units": 4
+  },
+  "80:CIST 004B": {
+   "id": "80:CIST 004B",
+   "institutionId": 80,
+   "prefix": "CIST",
+   "number": "004B",
+   "title": "Data Structures Using Advanced C++ ",
+   "units": 4
+  },
+  "80:CIST 004B1": {
+   "id": "80:CIST 004B1",
+   "institutionId": 80,
+   "prefix": "CIST",
+   "number": "004B1",
+   "title": "Data Structures Using Advanced JAVA",
+   "units": 4
+  },
+  "80:CIST 005A": {
+   "id": "80:CIST 005A",
+   "institutionId": 80,
+   "prefix": "CIST",
+   "number": "005A",
+   "title": "Introduction to Python",
+   "units": 4
+  },
+  "80:MATH 019": {
+   "id": "80:MATH 019",
+   "institutionId": 80,
+   "prefix": "MATH",
+   "number": "019",
+   "title": "Discrete Mathematics",
+   "units": 4
+  },
+  "80:CHEM 001A": {
+   "id": "80:CHEM 001A",
+   "institutionId": 80,
+   "prefix": "CHEM",
+   "number": "001A",
+   "title": "General Chemistry",
+   "units": 5
+  },
+  "80:CHEM 001AH": {
+   "id": "80:CHEM 001AH",
+   "institutionId": 80,
+   "prefix": "CHEM",
+   "number": "001AH",
+   "title": "Honors General Chemistry",
+   "units": 5
+  },
+  "80:PHYS 004C": {
+   "id": "80:PHYS 004C",
+   "institutionId": 80,
+   "prefix": "PHYS",
+   "number": "004C",
+   "title": "Engineering Physics - Light, Heat and Waves",
+   "units": 5
+  },
+  "80:PHYS 004B": {
+   "id": "80:PHYS 004B",
+   "institutionId": 80,
+   "prefix": "PHYS",
+   "number": "004B",
+   "title": "Engineering Physics - Electricity and Magnetism",
+   "units": 5
+  },
+  "80:PHYS 004A": {
+   "id": "80:PHYS 004A",
+   "institutionId": 80,
+   "prefix": "PHYS",
+   "number": "004A",
+   "title": "Engineering Physics - Mechanics",
+   "units": 5
+  },
+  "80:PHYS 005": {
+   "id": "80:PHYS 005",
+   "institutionId": 80,
+   "prefix": "PHYS",
+   "number": "005",
+   "title": "Advanced Topics in Modern Physics",
+   "units": 3
+  },
+  "80:MATH 003AH": {
+   "id": "80:MATH 003AH",
+   "institutionId": 80,
+   "prefix": "MATH",
+   "number": "003AH",
+   "title": "Honors Calculus and Analytical Geometry",
+   "units": 5
+  },
+  "80:MATH 003A": {
+   "id": "80:MATH 003A",
+   "institutionId": 80,
+   "prefix": "MATH",
+   "number": "003A",
+   "title": "Calculus and Analytic Geometry",
+   "units": 5
+  },
+  "80:MATH 003BH": {
+   "id": "80:MATH 003BH",
+   "institutionId": 80,
+   "prefix": "MATH",
+   "number": "003BH",
+   "title": "Honors Calculus and Analytical Geometry",
+   "units": 5
+  },
+  "80:MATH 003B": {
+   "id": "80:MATH 003B",
+   "institutionId": 80,
+   "prefix": "MATH",
+   "number": "003B",
+   "title": "Calculus and Analytic Geometry",
+   "units": 5
+  },
+  "80:ENGL 006BH": {
+   "id": "80:ENGL 006BH",
+   "institutionId": 80,
+   "prefix": "ENGL",
+   "number": "006BH",
+   "title": "Honors World Literature 2",
+   "units": 3
+  },
+  "80:ENGL 006A": {
+   "id": "80:ENGL 006A",
+   "institutionId": 80,
+   "prefix": "ENGL",
+   "number": "006A",
+   "title": "World Literature",
+   "units": 3
+  },
+  "80:ENGL 006B": {
+   "id": "80:ENGL 006B",
+   "institutionId": 80,
+   "prefix": "ENGL",
+   "number": "006B",
+   "title": "World Literature 2",
+   "units": 3
+  },
+  "80:ENGL 006AH": {
+   "id": "80:ENGL 006AH",
+   "institutionId": 80,
+   "prefix": "ENGL",
+   "number": "006AH",
+   "title": "Honors World Literature",
+   "units": 3
+  },
+  "80:ENGL 001B": {
+   "id": "80:ENGL 001B",
+   "institutionId": 80,
+   "prefix": "ENGL",
+   "number": "001B",
+   "title": "Critical Thinking Through Literature",
+   "units": 3
+  },
+  "80:ENGL C1000": {
+   "id": "80:ENGL C1000",
+   "institutionId": 80,
+   "prefix": "ENGL",
+   "number": "C1000",
+   "title": "Academic Reading and Writing",
+   "units": 3
+  },
+  "80:MATH 004A": {
+   "id": "80:MATH 004A",
+   "institutionId": 80,
+   "prefix": "MATH",
+   "number": "004A",
+   "title": "Intermediate Calculus",
+   "units": 5
+  },
+  "32:MAT 004C": {
+   "id": "32:MAT 004C",
+   "institutionId": 32,
+   "prefix": "MAT",
+   "number": "004C",
+   "title": "Linear Algebra",
+   "units": 4
+  },
+  "32:COMM C1000": {
+   "id": "32:COMM C1000",
+   "institutionId": 32,
+   "prefix": "COMM",
+   "number": "C1000",
+   "title": "Introduction to Public Speaking",
+   "units": 3
+  },
+  "32:COMM C1000H": {
+   "id": "32:COMM C1000H",
+   "institutionId": 32,
+   "prefix": "COMM",
+   "number": "C1000H",
+   "title": "Introduction to Public Speaking - Honors",
+   "units": 3
+  },
+  "32:EGR 024L": {
+   "id": "32:EGR 024L",
+   "institutionId": 32,
+   "prefix": "EGR",
+   "number": "024L",
+   "title": "Introduction to Circuit Analysis Laboratory",
+   "units": 1
+  },
+  "32:EGR 024": {
+   "id": "32:EGR 024",
+   "institutionId": 32,
+   "prefix": "EGR",
+   "number": "024",
+   "title": "Introduction to Circuit Analysis",
+   "units": 3
+  },
+  "32:MAT 004B": {
+   "id": "32:MAT 004B",
+   "institutionId": 32,
+   "prefix": "MAT",
+   "number": "004B",
+   "title": "Differential Equations",
+   "units": 4
+  },
+  "32:CIS 037A": {
+   "id": "32:CIS 037A",
+   "institutionId": 32,
+   "prefix": "CIS",
+   "number": "037A",
+   "title": "Introduction to C Programming",
+   "units": 4
+  },
+  "32:CIS 043": {
+   "id": "32:CIS 043",
+   "institutionId": 32,
+   "prefix": "CIS",
+   "number": "043",
+   "title": "Software Development with Java",
+   "units": 4
+  },
+  "32:EGR 030": {
+   "id": "32:EGR 030",
+   "institutionId": 32,
+   "prefix": "EGR",
+   "number": "030",
+   "title": "Introduction to Computing for Engineers",
+   "units": 4
+  },
+  "32:CIS 040": {
+   "id": "32:CIS 040",
+   "institutionId": 32,
+   "prefix": "CIS",
+   "number": "040",
+   "title": "C++ Programming",
+   "units": 4
+  },
+  "32:CIS 044": {
+   "id": "32:CIS 044",
+   "institutionId": 32,
+   "prefix": "CIS",
+   "number": "044",
+   "title": "Introduction to Data Structures Using Java",
+   "units": 4
+  },
+  "32:CIS 039": {
+   "id": "32:CIS 039",
+   "institutionId": 32,
+   "prefix": "CIS",
+   "number": "039",
+   "title": " Introduction to Computer Systems and Assembly Language",
+   "units": 4
+  },
+  "32:MAT 020": {
+   "id": "32:MAT 020",
+   "institutionId": 32,
+   "prefix": "MAT",
+   "number": "020",
+   "title": "Discrete Structures",
+   "units": 4
+  },
+  "32:CHM 001A": {
+   "id": "32:CHM 001A",
+   "institutionId": 32,
+   "prefix": "CHM",
+   "number": "001A",
+   "title": "General Chemistry I",
+   "units": 5
+  },
+  "32:CHM 001AH": {
+   "id": "32:CHM 001AH",
+   "institutionId": 32,
+   "prefix": "CHM",
+   "number": "001AH",
+   "title": "General Chemistry I - Honors",
+   "units": 5
+  },
+  "32:PHY 004B": {
+   "id": "32:PHY 004B",
+   "institutionId": 32,
+   "prefix": "PHY",
+   "number": "004B",
+   "title": "Engineering Physics - Electricity and Magnetism",
+   "units": 4
+  },
+  "32:PHY 004C": {
+   "id": "32:PHY 004C",
+   "institutionId": 32,
+   "prefix": "PHY",
+   "number": "004C",
+   "title": "Engineering Physics - Light and Heat",
+   "units": 4
+  },
+  "32:PHY 004A": {
+   "id": "32:PHY 004A",
+   "institutionId": 32,
+   "prefix": "PHY",
+   "number": "004A",
+   "title": "Engineering Physics - Mechanics",
+   "units": 5
+  },
+  "32:PHY 004D": {
+   "id": "32:PHY 004D",
+   "institutionId": 32,
+   "prefix": "PHY",
+   "number": "004D",
+   "title": "Engineering Physics - Atomic",
+   "units": 2
+  },
+  "32:ENGL C1000": {
+   "id": "32:ENGL C1000",
+   "institutionId": 32,
+   "prefix": "ENGL",
+   "number": "C1000",
+   "title": "Academic Reading and Writing",
+   "units": 3
+  },
+  "32:ENGL C1000E": {
+   "id": "32:ENGL C1000E",
+   "institutionId": 32,
+   "prefix": "ENGL",
+   "number": "C1000E",
+   "title": "Academic Reading and Writing",
+   "units": 5
+  },
+  "32:ENG 006B": {
+   "id": "32:ENG 006B",
+   "institutionId": 32,
+   "prefix": "ENG",
+   "number": "006B",
+   "title": "Survey of World Literature",
+   "units": 3
+  },
+  "32:MAT 003A": {
+   "id": "32:MAT 003A",
+   "institutionId": 32,
+   "prefix": "MAT",
+   "number": "003A",
+   "title": "Analytic Geometry and Calculus I",
+   "units": 5
+  },
+  "32:MAT 003B": {
+   "id": "32:MAT 003B",
+   "institutionId": 32,
+   "prefix": "MAT",
+   "number": "003B",
+   "title": "Analytic Geometry and Calculus II",
+   "units": 5
+  },
+  "32:MAT 003AH": {
+   "id": "32:MAT 003AH",
+   "institutionId": 32,
+   "prefix": "MAT",
+   "number": "003AH",
+   "title": "Analytic Geometry and Calculus I - Honors",
+   "units": 5
+  },
+  "32:MAT 004A": {
+   "id": "32:MAT 004A",
+   "institutionId": 32,
+   "prefix": "MAT",
+   "number": "004A",
+   "title": "Multivariable Calculus",
+   "units": 5
+  }
+ }
+}

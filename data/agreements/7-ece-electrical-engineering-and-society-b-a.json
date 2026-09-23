@@ -1,0 +1,4924 @@
+{
+ "receivingId": 7,
+ "major": "ECE: Electrical Engineering and Society B.A.",
+ "year": "2025-2026",
+ "sendingIds": [
+  113,
+  51,
+  137,
+  49,
+  114,
+  124,
+  74,
+  103,
+  58,
+  33,
+  136,
+  92,
+  65,
+  80,
+  32
+ ],
+ "root": {
+  "kind": "node",
+  "type": "AND",
+  "required": true,
+  "children": [
+   {
+    "kind": "node",
+    "type": "AND",
+    "title": "LOWER DIVISION MAJOR REQUIREMENTS",
+    "required": true,
+    "children": [
+     {
+      "kind": "node",
+      "type": "AND",
+      "required": true,
+      "children": [
+       {
+        "kind": "req",
+        "id": "MATH 18",
+        "label": "Linear Algebra",
+        "units": 4,
+        "groups": [
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:MATH 2BH"
+          ]
+         },
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:MATH 2B"
+          ]
+         },
+         {
+          "institutionId": 51,
+          "courses": [
+           "51:MATH 2B"
+          ]
+         },
+         {
+          "institutionId": 137,
+          "courses": [
+           "137:MATH 13"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:MATH 010H"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:MATH 010"
+          ]
+         },
+         {
+          "institutionId": 114,
+          "courses": [
+           "114:MATH 194"
+          ]
+         },
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:MATH 26"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:MATH A235"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:MATH A285"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:MATH A285H"
+          ]
+         },
+         {
+          "institutionId": 103,
+          "courses": [
+           "103:MATH 270"
+          ]
+         },
+         {
+          "institutionId": 58,
+          "courses": [
+           "58:MATH 3E"
+          ]
+         },
+         {
+          "institutionId": 33,
+          "courses": [
+           "33:MATH 130"
+          ]
+         },
+         {
+          "institutionId": 33,
+          "courses": [
+           "33:MATH 120"
+          ]
+         },
+         {
+          "institutionId": 136,
+          "courses": [
+           "136:MATH 079"
+          ]
+         },
+         {
+          "institutionId": 92,
+          "courses": [
+           "92:MATH 210"
+          ]
+         },
+         {
+          "institutionId": 65,
+          "courses": [
+           "65:MATH 26"
+          ]
+         },
+         {
+          "institutionId": 80,
+          "courses": [
+           "80:MATH 004C"
+          ]
+         },
+         {
+          "institutionId": 32,
+          "courses": [
+           "32:MAT 004C"
+          ]
+         }
+        ]
+       },
+       {
+        "kind": "req",
+        "id": "MATH 20E",
+        "label": "Vector Calculus",
+        "units": 4,
+        "groups": [
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:MATH 1C",
+           "113:MATH 1D"
+          ]
+         },
+         {
+          "institutionId": 51,
+          "courses": [
+           "51:MATH 1C",
+           "51:MATH 1D"
+          ]
+         },
+         {
+          "institutionId": 137,
+          "courses": [
+           "137:MATH 11"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:MATH 005C"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:MATH 005CH"
+          ]
+         },
+         {
+          "institutionId": 114,
+          "courses": [
+           "114:MATH 292"
+          ]
+         },
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:MATH 4A"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:MATH A280"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:MATH A280H"
+          ]
+         },
+         {
+          "institutionId": 103,
+          "courses": [
+           "103:MATH 220"
+          ]
+         },
+         {
+          "institutionId": 65,
+          "courses": [
+           "65:MATH 3C"
+          ]
+         },
+         {
+          "institutionId": 32,
+          "courses": [
+           "32:MAT 004A"
+          ]
+         }
+        ],
+        "noArticulation": {
+         "33": "No Course Articulated",
+         "58": "No Course Articulated",
+         "80": "No Course Articulated",
+         "92": "No Course Articulated",
+         "136": "No Course Articulated"
+        }
+       },
+       {
+        "kind": "req",
+        "id": "MATH 20B",
+        "label": "Calculus for Science and Engineering",
+        "units": 4,
+        "groups": [
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:MATH 1BH"
+          ]
+         },
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:MATH 1B"
+          ]
+         },
+         {
+          "institutionId": 51,
+          "courses": [
+           "51:MATH 1B"
+          ]
+         },
+         {
+          "institutionId": 137,
+          "courses": [
+           "137:MATH 8"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:MATH 005BH"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:MATH 005B"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:MATH 005BE"
+          ]
+         },
+         {
+          "institutionId": 114,
+          "courses": [
+           "114:MATH 193"
+          ]
+         },
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:MATH 3B"
+          ]
+         },
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:MATH 3BH"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:MATH A185"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:MATH A185H"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:MATH A182H"
+          ]
+         },
+         {
+          "institutionId": 103,
+          "courses": [
+           "103:MATH 191"
+          ]
+         },
+         {
+          "institutionId": 58,
+          "courses": [
+           "58:MATH 3B"
+          ]
+         },
+         {
+          "institutionId": 33,
+          "courses": [
+           "33:MATH 110B"
+          ]
+         },
+         {
+          "institutionId": 136,
+          "courses": [
+           "136:MATH 072"
+          ]
+         },
+         {
+          "institutionId": 92,
+          "courses": [
+           "92:MATH 160"
+          ]
+         },
+         {
+          "institutionId": 65,
+          "courses": [
+           "65:MATH 3B"
+          ]
+         },
+         {
+          "institutionId": 80,
+          "courses": [
+           "80:MATH 003BH"
+          ]
+         },
+         {
+          "institutionId": 80,
+          "courses": [
+           "80:MATH 003B"
+          ]
+         },
+         {
+          "institutionId": 32,
+          "courses": [
+           "32:MAT 003B"
+          ]
+         }
+        ]
+       },
+       {
+        "kind": "req",
+        "id": "MATH 20C",
+        "label": "Calculus and Analytic Geometry for Science and Engineering",
+        "units": 4,
+        "groups": [
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:MATH 1C",
+           "113:MATH 1D"
+          ]
+         },
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:MATH 1CH",
+           "113:MATH 1DH"
+          ]
+         },
+         {
+          "institutionId": 51,
+          "courses": [
+           "51:MATH 1C",
+           "51:MATH 1D"
+          ]
+         },
+         {
+          "institutionId": 137,
+          "courses": [
+           "137:MATH 11"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:MATH 005C"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:MATH 005CH"
+          ]
+         },
+         {
+          "institutionId": 114,
+          "courses": [
+           "114:MATH 292"
+          ]
+         },
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:MATH 4A"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:MATH A280H"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:MATH A280"
+          ]
+         },
+         {
+          "institutionId": 103,
+          "courses": [
+           "103:MATH 220"
+          ]
+         },
+         {
+          "institutionId": 58,
+          "courses": [
+           "58:MATH 3C"
+          ]
+         },
+         {
+          "institutionId": 33,
+          "courses": [
+           "33:MATH 110C"
+          ]
+         },
+         {
+          "institutionId": 136,
+          "courses": [
+           "136:MATH 073"
+          ]
+         },
+         {
+          "institutionId": 92,
+          "courses": [
+           "92:MATH 200"
+          ]
+         },
+         {
+          "institutionId": 65,
+          "courses": [
+           "65:MATH 3C"
+          ]
+         },
+         {
+          "institutionId": 80,
+          "courses": [
+           "80:MATH 004A"
+          ]
+         },
+         {
+          "institutionId": 32,
+          "courses": [
+           "32:MAT 004A"
+          ]
+         }
+        ]
+       },
+       {
+        "kind": "req",
+        "id": "MATH 20A",
+        "label": "Calculus for Science and Engineering",
+        "units": 4,
+        "groups": [
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:MATH 1A"
+          ]
+         },
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:MATH 1AH"
+          ]
+         },
+         {
+          "institutionId": 51,
+          "courses": [
+           "51:MATH 1AH"
+          ]
+         },
+         {
+          "institutionId": 51,
+          "courses": [
+           "51:MATH 1A"
+          ]
+         },
+         {
+          "institutionId": 137,
+          "courses": [
+           "137:MATH 8",
+           "137:MATH 7"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:MATH 005AH"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:MATH 005A"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:MATH 005AE"
+          ]
+         },
+         {
+          "institutionId": 114,
+          "courses": [
+           "114:MATH 192"
+          ]
+         },
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:MATH 3A"
+          ]
+         },
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:MATH 3AH"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:MATH A180"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:MATH A182H"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:MATH A180H"
+          ]
+         },
+         {
+          "institutionId": 103,
+          "courses": [
+           "103:MATH 190"
+          ]
+         },
+         {
+          "institutionId": 58,
+          "courses": [
+           "58:MATH 3A"
+          ]
+         },
+         {
+          "institutionId": 33,
+          "courses": [
+           "33:MATH 110A"
+          ]
+         },
+         {
+          "institutionId": 136,
+          "courses": [
+           "136:MATH 071"
+          ]
+         },
+         {
+          "institutionId": 92,
+          "courses": [
+           "92:MATH 150"
+          ]
+         },
+         {
+          "institutionId": 65,
+          "courses": [
+           "65:MATH 3AH"
+          ]
+         },
+         {
+          "institutionId": 65,
+          "courses": [
+           "65:MATH 3A"
+          ]
+         },
+         {
+          "institutionId": 80,
+          "courses": [
+           "80:MATH 003AH"
+          ]
+         },
+         {
+          "institutionId": 80,
+          "courses": [
+           "80:MATH 003A"
+          ]
+         },
+         {
+          "institutionId": 32,
+          "courses": [
+           "32:MAT 003A"
+          ]
+         },
+         {
+          "institutionId": 32,
+          "courses": [
+           "32:MAT 003AH"
+          ]
+         }
+        ]
+       },
+       {
+        "kind": "req",
+        "id": "MATH 20D",
+        "label": "Introduction to Differential Equations",
+        "units": 4,
+        "groups": [
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:MATH 2AH"
+          ]
+         },
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:MATH 2A"
+          ]
+         },
+         {
+          "institutionId": 51,
+          "courses": [
+           "51:MATH 2A"
+          ]
+         },
+         {
+          "institutionId": 137,
+          "courses": [
+           "137:MATH 15"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:MATH 055"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:MATH 055H"
+          ]
+         },
+         {
+          "institutionId": 114,
+          "courses": [
+           "114:MATH 294"
+          ]
+         },
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:MATH 24H"
+          ]
+         },
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:MATH 24"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:MATH A285"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:MATH A285H"
+          ]
+         },
+         {
+          "institutionId": 103,
+          "courses": [
+           "103:MATH 270"
+          ]
+         },
+         {
+          "institutionId": 58,
+          "courses": [
+           "58:MATH 3F"
+          ]
+         },
+         {
+          "institutionId": 33,
+          "courses": [
+           "33:MATH 130"
+          ]
+         },
+         {
+          "institutionId": 33,
+          "courses": [
+           "33:MATH 125"
+          ]
+         },
+         {
+          "institutionId": 136,
+          "courses": [
+           "136:MATH 078"
+          ]
+         },
+         {
+          "institutionId": 92,
+          "courses": [
+           "92:MATH 220"
+          ]
+         },
+         {
+          "institutionId": 65,
+          "courses": [
+           "65:MATH 24"
+          ]
+         },
+         {
+          "institutionId": 80,
+          "courses": [
+           "80:MATH 004B"
+          ]
+         },
+         {
+          "institutionId": 32,
+          "courses": [
+           "32:MAT 004B",
+           "32:MAT 003B"
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "kind": "node",
+      "type": "AND",
+      "required": true,
+      "children": [
+       {
+        "kind": "req",
+        "id": "ECE 65",
+        "label": "Components and Circuits Lab",
+        "units": 4,
+        "groups": [],
+        "noArticulation": {
+         "32": "This course must be taken at the university after transfer",
+         "33": "This course must be taken at the university after transfer",
+         "49": "This course must be taken at the university after transfer",
+         "51": "This course must be taken at the university after transfer",
+         "58": "This course must be taken at the university after transfer",
+         "65": "This course must be taken at the university after transfer",
+         "74": "This course must be taken at the university after transfer",
+         "80": "This course must be taken at the university after transfer",
+         "92": "This course must be taken at the university after transfer",
+         "103": "This course must be taken at the university after transfer",
+         "113": "This course must be taken at the university after transfer",
+         "114": "This course must be taken at the university after transfer",
+         "124": "This course must be taken at the university after transfer",
+         "136": "This course must be taken at the university after transfer",
+         "137": "This course must be taken at the university after transfer"
+        }
+       },
+       {
+        "kind": "req",
+        "id": "ECE 45",
+        "label": "Circuits and Systems",
+        "units": 4,
+        "groups": [],
+        "noArticulation": {
+         "32": "This course must be taken at the university after transfer",
+         "33": "This course must be taken at the university after transfer",
+         "49": "This course must be taken at the university after transfer",
+         "51": "This course must be taken at the university after transfer",
+         "58": "This course must be taken at the university after transfer",
+         "65": "This course must be taken at the university after transfer",
+         "74": "This course must be taken at the university after transfer",
+         "80": "This course must be taken at the university after transfer",
+         "92": "This course must be taken at the university after transfer",
+         "103": "This course must be taken at the university after transfer",
+         "113": "This course must be taken at the university after transfer",
+         "114": "This course must be taken at the university after transfer",
+         "124": "This course must be taken at the university after transfer",
+         "136": "This course must be taken at the university after transfer",
+         "137": "This course must be taken at the university after transfer"
+        }
+       },
+       {
+        "kind": "req",
+        "id": "ECE 15",
+        "label": "Engineering Computation",
+        "units": 4,
+        "groups": [],
+        "noArticulation": {
+         "32": "This course must be taken at the university after transfer",
+         "33": "This course must be taken at the university after transfer",
+         "49": "This course must be taken at the university after transfer",
+         "51": "This course must be taken at the university after transfer",
+         "58": "This course must be taken at the university after transfer",
+         "65": "This course must be taken at the university after transfer",
+         "74": "This course must be taken at the university after transfer",
+         "80": "This course must be taken at the university after transfer",
+         "92": "This course must be taken at the university after transfer",
+         "103": "This course must be taken at the university after transfer",
+         "113": "This course must be taken at the university after transfer",
+         "114": "This course must be taken at the university after transfer",
+         "124": "This course must be taken at the university after transfer",
+         "136": "This course must be taken at the university after transfer",
+         "137": "This course must be taken at the university after transfer"
+        }
+       },
+       {
+        "kind": "req",
+        "id": "ECE 35",
+        "label": "Introduction to Analog Design",
+        "units": 4,
+        "groups": [],
+        "noArticulation": {
+         "32": "No Course Articulated",
+         "33": "No Course Articulated",
+         "49": "No Course Articulated",
+         "51": "No Course Articulated",
+         "58": "No Course Articulated",
+         "65": "No Course Articulated",
+         "74": "No Course Articulated",
+         "80": "No Course Articulated",
+         "92": "No Course Articulated",
+         "103": "No Course Articulated",
+         "113": "No Course Articulated",
+         "114": "No Course Articulated",
+         "124": "No Course Articulated",
+         "136": "No Course Articulated",
+         "137": "No Course Articulated"
+        }
+       },
+       {
+        "kind": "req",
+        "id": "ECE 30",
+        "label": "Introduction to Computer Engineering",
+        "units": 4,
+        "groups": [
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:CS 40A",
+           "124:CS 40B"
+          ]
+         },
+         {
+          "institutionId": 33,
+          "courses": [
+           "33:CS 270"
+          ]
+         }
+        ]
+       },
+       {
+        "kind": "req",
+        "id": "ECE 25",
+        "label": "Introduction to Digital Design",
+        "units": 4,
+        "groups": [],
+        "noArticulation": {
+         "32": "This course must be taken at the university after transfer",
+         "33": "This course must be taken at the university after transfer",
+         "49": "This course must be taken at the university after transfer",
+         "51": "This course must be taken at the university after transfer",
+         "58": "This course must be taken at the university after transfer",
+         "65": "This course must be taken at the university after transfer",
+         "74": "This course must be taken at the university after transfer",
+         "80": "This course must be taken at the university after transfer",
+         "92": "This course must be taken at the university after transfer",
+         "103": "This course must be taken at the university after transfer",
+         "113": "This course must be taken at the university after transfer",
+         "114": "This course must be taken at the university after transfer",
+         "124": "This course must be taken at the university after transfer",
+         "136": "This course must be taken at the university after transfer",
+         "137": "This course must be taken at the university after transfer"
+        }
+       }
+      ]
+     },
+     {
+      "kind": "node",
+      "type": "AND",
+      "required": true,
+      "children": [
+       {
+        "kind": "req",
+        "id": "PHYS 2C",
+        "label": "Physics - Fluids, Waves, Thermodynamics, and Optics",
+        "units": 4,
+        "groups": [
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:PHYS 4C"
+          ]
+         },
+         {
+          "institutionId": 51,
+          "courses": [
+           "51:PHYS 4C"
+          ]
+         },
+         {
+          "institutionId": 137,
+          "courses": [
+           "137:PHYSCS 23"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:PHYS 008C",
+           "49:PHYS 008A",
+           "49:PHYS 008B"
+          ]
+         },
+         {
+          "institutionId": 114,
+          "courses": [
+           "114:PHYS 231",
+           "114:PHYS 230"
+          ]
+         },
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:PHYS 4C"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:PHYS A285"
+          ]
+         },
+         {
+          "institutionId": 103,
+          "courses": [
+           "103:PHYS 1B"
+          ]
+         },
+         {
+          "institutionId": 58,
+          "courses": [
+           "58:PHYS 4C",
+           "58:PHYS 4A",
+           "58:PHYS 4B"
+          ]
+         },
+         {
+          "institutionId": 33,
+          "courses": [
+           "33:PHYC 4C"
+          ]
+         },
+         {
+          "institutionId": 136,
+          "courses": [
+           "136:PHYS 004C"
+          ]
+         },
+         {
+          "institutionId": 92,
+          "courses": [
+           "92:PHYS 123"
+          ]
+         },
+         {
+          "institutionId": 65,
+          "courses": [
+           "65:PHYS 4C"
+          ]
+         },
+         {
+          "institutionId": 80,
+          "courses": [
+           "80:PHYS 004C"
+          ]
+         },
+         {
+          "institutionId": 32,
+          "courses": [
+           "32:PHY 004C"
+          ]
+         }
+        ]
+       },
+       {
+        "kind": "req",
+        "id": "PHYS 2D",
+        "label": "Physics - Relativity and Quantum Physics",
+        "units": 4,
+        "groups": [
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:PHYS 4D"
+          ]
+         },
+         {
+          "institutionId": 51,
+          "courses": [
+           "51:PHYS 4D"
+          ]
+         },
+         {
+          "institutionId": 137,
+          "courses": [
+           "137:PHYSCS 24"
+          ]
+         },
+         {
+          "institutionId": 114,
+          "courses": [
+           "114:PHYS 231"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:PHYS A285",
+           "74:PHYS A280",
+           "74:PHYS A185"
+          ]
+         },
+         {
+          "institutionId": 103,
+          "courses": [
+           "103:PHYS 1D"
+          ]
+         },
+         {
+          "institutionId": 58,
+          "courses": [
+           "58:PHYS 4C"
+          ]
+         },
+         {
+          "institutionId": 33,
+          "courses": [
+           "33:PHYC 4D"
+          ]
+         },
+         {
+          "institutionId": 92,
+          "courses": [
+           "92:PHYS 123",
+           "92:PHYS 121",
+           "92:PHYS 122"
+          ]
+         }
+        ],
+        "noArticulation": {
+         "49": "No Course Articulated"
+        }
+       },
+       {
+        "kind": "req",
+        "id": "PHYS 2B",
+        "label": "Physics - Electricity and Magnetism",
+        "units": 4,
+        "groups": [
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:PHYS 4B"
+          ]
+         },
+         {
+          "institutionId": 51,
+          "courses": [
+           "51:PHYS 4B"
+          ]
+         },
+         {
+          "institutionId": 137,
+          "courses": [
+           "137:PHYSCS 22"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:PHYS 008B"
+          ]
+         },
+         {
+          "institutionId": 114,
+          "courses": [
+           "114:PHYS 230"
+          ]
+         },
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:PHYS 4B"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:PHYS A280"
+          ]
+         },
+         {
+          "institutionId": 103,
+          "courses": [
+           "103:PHYS 1C"
+          ]
+         },
+         {
+          "institutionId": 58,
+          "courses": [
+           "58:PHYS 4B"
+          ]
+         },
+         {
+          "institutionId": 33,
+          "courses": [
+           "33:PHYC 4B"
+          ]
+         },
+         {
+          "institutionId": 136,
+          "courses": [
+           "136:PHYS 004B"
+          ]
+         },
+         {
+          "institutionId": 92,
+          "courses": [
+           "92:PHYS 122"
+          ]
+         },
+         {
+          "institutionId": 65,
+          "courses": [
+           "65:PHYS 4B"
+          ]
+         },
+         {
+          "institutionId": 80,
+          "courses": [
+           "80:PHYS 004B"
+          ]
+         },
+         {
+          "institutionId": 32,
+          "courses": [
+           "32:PHY 004B"
+          ]
+         }
+        ]
+       },
+       {
+        "kind": "req",
+        "id": "PHYS 2A",
+        "label": "Physics - Mechanics",
+        "units": 4,
+        "groups": [
+         {
+          "institutionId": 113,
+          "courses": [
+           "113:PHYS 4A"
+          ]
+         },
+         {
+          "institutionId": 51,
+          "courses": [
+           "51:PHYS 4A"
+          ]
+         },
+         {
+          "institutionId": 137,
+          "courses": [
+           "137:PHYSCS 21"
+          ]
+         },
+         {
+          "institutionId": 49,
+          "courses": [
+           "49:PHYS 008A"
+          ]
+         },
+         {
+          "institutionId": 114,
+          "courses": [
+           "114:PHYS 130"
+          ]
+         },
+         {
+          "institutionId": 124,
+          "courses": [
+           "124:PHYS 4A"
+          ]
+         },
+         {
+          "institutionId": 74,
+          "courses": [
+           "74:PHYS A185"
+          ]
+         },
+         {
+          "institutionId": 103,
+          "courses": [
+           "103:PHYS 1A"
+          ]
+         },
+         {
+          "institutionId": 58,
+          "courses": [
+           "58:PHYS 4A"
+          ]
+         },
+         {
+          "institutionId": 33,
+          "courses": [
+           "33:PHYC 4A"
+          ]
+         },
+         {
+          "institutionId": 136,
+          "courses": [
+           "136:PHYS 004A"
+          ]
+         },
+         {
+          "institutionId": 92,
+          "courses": [
+           "92:PHYS 121"
+          ]
+         },
+         {
+          "institutionId": 65,
+          "courses": [
+           "65:PHYS 4A"
+          ]
+         },
+         {
+          "institutionId": 80,
+          "courses": [
+           "80:PHYS 004A"
+          ]
+         },
+         {
+          "institutionId": 32,
+          "courses": [
+           "32:PHY 004A"
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "kind": "node",
+    "type": "AND",
+    "title": "HISTORICAL STUDIES",
+    "required": true,
+    "children": [
+     {
+      "kind": "req",
+      "id": "HILD 7B",
+      "label": "Race and Ethnicity in the United States",
+      "units": 4,
+      "groups": [
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:ASAM 10"
+        ]
+       },
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:ASAM 1"
+        ]
+       }
+      ]
+     },
+     {
+      "kind": "req",
+      "id": "HILD 11",
+      "label": "East Asia and the West",
+      "units": 4,
+      "groups": [
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:ASAM 42A"
+        ]
+       },
+       {
+        "institutionId": 114,
+        "courses": [
+         "114:HIST 151",
+         "114:HIST 150"
+        ]
+       },
+       {
+        "institutionId": 124,
+        "courses": [
+         "124:HIST 41",
+         "124:HIST 40"
+        ]
+       }
+      ]
+     },
+     {
+      "kind": "req",
+      "id": "HILD 7A",
+      "label": "Race and Ethnicity in the United States",
+      "units": 4,
+      "groups": [
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:AFAM 12B"
+        ]
+       },
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:AFAM 12A"
+        ]
+       },
+       {
+        "institutionId": 124,
+        "courses": [
+         "124:HIST 30"
+        ]
+       },
+       {
+        "institutionId": 103,
+        "courses": [
+         "103:HIST 122"
+        ]
+       },
+       {
+        "institutionId": 103,
+        "courses": [
+         "103:HIST 122H"
+        ]
+       },
+       {
+        "institutionId": 65,
+        "courses": [
+         "65:HIST 20"
+        ]
+       }
+      ]
+     },
+     {
+      "kind": "req",
+      "id": "HILD 12",
+      "label": "Twentieth-Century East Asia",
+      "units": 4,
+      "groups": [
+       {
+        "institutionId": 114,
+        "courses": [
+         "114:HIST 151"
+        ]
+       },
+       {
+        "institutionId": 124,
+        "courses": [
+         "124:HIST 41"
+        ]
+       }
+      ]
+     },
+     {
+      "kind": "req",
+      "id": "HILD 10",
+      "label": "East Asia: The Great Tradition",
+      "units": 4,
+      "groups": [
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:ASAM 42A"
+        ]
+       },
+       {
+        "institutionId": 114,
+        "courses": [
+         "114:HIST 150"
+        ]
+       },
+       {
+        "institutionId": 124,
+        "courses": [
+         "124:HIST 40"
+        ]
+       }
+      ]
+     },
+     {
+      "kind": "req",
+      "id": "HILD 7C",
+      "label": "Race and Ethnicity in the United States",
+      "units": 4,
+      "groups": [
+       {
+        "institutionId": 51,
+        "courses": [
+         "51:SOC 23"
+        ]
+       },
+       {
+        "institutionId": 114,
+        "courses": [
+         "114:HIST 125"
+        ]
+       },
+       {
+        "institutionId": 136,
+        "courses": [
+         "136:ETH 030"
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "kind": "node",
+    "type": "AND",
+    "title": "ECONOMICS STUDIES",
+    "required": true,
+    "children": [
+     {
+      "kind": "req",
+      "id": "ECON 1",
+      "label": "Principles of Microeconomics",
+      "units": 4,
+      "groups": [
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:ECON 2"
+        ]
+       },
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:ECON 2H"
+        ]
+       },
+       {
+        "institutionId": 51,
+        "courses": [
+         "51:ECON 1B"
+        ]
+       },
+       {
+        "institutionId": 137,
+        "courses": [
+         "137:ECON 1"
+        ]
+       },
+       {
+        "institutionId": 49,
+        "courses": [
+         "49:ECON 001B"
+        ]
+       },
+       {
+        "institutionId": 114,
+        "courses": [
+         "114:ECON 221"
+        ]
+       },
+       {
+        "institutionId": 124,
+        "courses": [
+         "124:ECON 1"
+        ]
+       },
+       {
+        "institutionId": 124,
+        "courses": [
+         "124:ECON 1H"
+        ]
+       },
+       {
+        "institutionId": 74,
+        "courses": [
+         "74:ECON A170"
+        ]
+       },
+       {
+        "institutionId": 103,
+        "courses": [
+         "103:ECON 102"
+        ]
+       },
+       {
+        "institutionId": 58,
+        "courses": [
+         "58:ECON 2"
+        ]
+       },
+       {
+        "institutionId": 33,
+        "courses": [
+         "33:ECON 3"
+        ]
+       },
+       {
+        "institutionId": 136,
+        "courses": [
+         "136:ECON 010B"
+        ]
+       },
+       {
+        "institutionId": 92,
+        "courses": [
+         "92:ECON 101"
+        ]
+       },
+       {
+        "institutionId": 65,
+        "courses": [
+         "65:ECON 4H"
+        ]
+       },
+       {
+        "institutionId": 65,
+        "courses": [
+         "65:ECON 4"
+        ]
+       },
+       {
+        "institutionId": 80,
+        "courses": [
+         "80:ECON 001B"
+        ]
+       },
+       {
+        "institutionId": 80,
+        "courses": [
+         "80:ECON 001BH"
+        ]
+       },
+       {
+        "institutionId": 32,
+        "courses": [
+         "32:ECN 001B"
+        ]
+       }
+      ]
+     },
+     {
+      "kind": "req",
+      "id": "ECON 4",
+      "label": "Financial Accounting",
+      "units": 4,
+      "groups": [
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:ACCT 1AH"
+        ]
+       },
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:ACCT 1A"
+        ]
+       },
+       {
+        "institutionId": 51,
+        "courses": [
+         "51:ACTG 1A"
+        ]
+       },
+       {
+        "institutionId": 51,
+        "courses": [
+         "51:ACTG 1B"
+        ]
+       },
+       {
+        "institutionId": 137,
+        "courses": [
+         "137:ACCTG 1"
+        ]
+       },
+       {
+        "institutionId": 49,
+        "courses": [
+         "49:ACCT 001A"
+        ]
+       },
+       {
+        "institutionId": 114,
+        "courses": [
+         "114:BUSAC 186"
+        ]
+       },
+       {
+        "institutionId": 124,
+        "courses": [
+         "124:ACCT 1A"
+        ]
+       },
+       {
+        "institutionId": 74,
+        "courses": [
+         "74:ACCT A101"
+        ]
+       },
+       {
+        "institutionId": 103,
+        "courses": [
+         "103:BUS 150"
+        ]
+       },
+       {
+        "institutionId": 58,
+        "courses": [
+         "58:BUS 1A"
+        ]
+       },
+       {
+        "institutionId": 33,
+        "courses": [
+         "33:ACCT 1"
+        ]
+       },
+       {
+        "institutionId": 136,
+        "courses": [
+         "136:ACCTG 020"
+        ]
+       },
+       {
+        "institutionId": 92,
+        "courses": [
+         "92:ACCT 230"
+        ]
+       },
+       {
+        "institutionId": 65,
+        "courses": [
+         "65:ACCT 1A"
+        ]
+       },
+       {
+        "institutionId": 80,
+        "courses": [
+         "80:ACCT 010"
+        ]
+       },
+       {
+        "institutionId": 32,
+        "courses": [
+         "32:ACC 001A"
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "kind": "node",
+    "type": "AND",
+    "title": "POLITICAL SCIENCE STUDIES",
+    "required": true,
+    "children": [
+     {
+      "kind": "req",
+      "id": "POLI 13",
+      "label": "Power and Justice",
+      "units": 4,
+      "groups": [
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:POLI 5"
+        ]
+       },
+       {
+        "institutionId": 51,
+        "courses": [
+         "51:POLI 3"
+        ]
+       },
+       {
+        "institutionId": 137,
+        "courses": [
+         "137:POL SC 51"
+        ]
+       },
+       {
+        "institutionId": 49,
+        "courses": [
+         "49:POLS 022"
+        ]
+       },
+       {
+        "institutionId": 114,
+        "courses": [
+         "114:POLS 240"
+        ]
+       },
+       {
+        "institutionId": 74,
+        "courses": [
+         "74:PSCI A188"
+        ]
+       },
+       {
+        "institutionId": 103,
+        "courses": [
+         "103:POLI 7"
+        ]
+       },
+       {
+        "institutionId": 33,
+        "courses": [
+         "33:POLS 3"
+        ]
+       },
+       {
+        "institutionId": 92,
+        "courses": [
+         "92:POLS 132"
+        ]
+       },
+       {
+        "institutionId": 65,
+        "courses": [
+         "65:PS 10H"
+        ]
+       }
+      ],
+      "noArticulation": {
+       "32": "No Course Articulated"
+      }
+     },
+     {
+      "kind": "req",
+      "id": "POLI 30",
+      "label": "Political Inquiry",
+      "units": 4,
+      "groups": [],
+      "noArticulation": {
+       "32": "This course must be taken at the university after transfer",
+       "33": "This course must be taken at the university after transfer",
+       "49": "This course must be taken at the university after transfer",
+       "51": "This course must be taken at the university after transfer",
+       "58": "This course must be taken at the university after transfer",
+       "65": "This course must be taken at the university after transfer",
+       "74": "This course must be taken at the university after transfer",
+       "80": "This course must be taken at the university after transfer",
+       "92": "This course must be taken at the university after transfer",
+       "103": "This course must be taken at the university after transfer",
+       "113": "This course must be taken at the university after transfer",
+       "114": "This course must be taken at the university after transfer",
+       "124": "This course must be taken at the university after transfer",
+       "136": "This course must be taken at the university after transfer",
+       "137": "This course must be taken at the university after transfer"
+      }
+     },
+     {
+      "kind": "req",
+      "id": "POLI 12",
+      "label": "Introduction to Political Science: International Relations",
+      "units": 4,
+      "groups": [
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:POLI 3"
+        ]
+       },
+       {
+        "institutionId": 51,
+        "courses": [
+         "51:POLI 15H"
+        ]
+       },
+       {
+        "institutionId": 51,
+        "courses": [
+         "51:POLI 15"
+        ]
+       },
+       {
+        "institutionId": 137,
+        "courses": [
+         "137:POL SC 7"
+        ]
+       },
+       {
+        "institutionId": 49,
+        "courses": [
+         "49:POLS 006"
+        ]
+       },
+       {
+        "institutionId": 114,
+        "courses": [
+         "114:POLS 250"
+        ]
+       },
+       {
+        "institutionId": 124,
+        "courses": [
+         "124:POLS 14H"
+        ]
+       },
+       {
+        "institutionId": 124,
+        "courses": [
+         "124:POLS 14"
+        ]
+       },
+       {
+        "institutionId": 74,
+        "courses": [
+         "74:PSCI A110"
+        ]
+       },
+       {
+        "institutionId": 103,
+        "courses": [
+         "103:POLI 10"
+        ]
+       },
+       {
+        "institutionId": 58,
+        "courses": [
+         "58:POSCI 3"
+        ]
+       },
+       {
+        "institutionId": 33,
+        "courses": [
+         "33:POLS 5"
+        ]
+       },
+       {
+        "institutionId": 136,
+        "courses": [
+         "136:POLSC 004"
+        ]
+       },
+       {
+        "institutionId": 92,
+        "courses": [
+         "92:POLS 121"
+        ]
+       },
+       {
+        "institutionId": 65,
+        "courses": [
+         "65:PS 14"
+        ]
+       },
+       {
+        "institutionId": 80,
+        "courses": [
+         "80:POLS 004"
+        ]
+       },
+       {
+        "institutionId": 32,
+        "courses": [
+         "32:POL 004"
+        ]
+       }
+      ]
+     },
+     {
+      "kind": "req",
+      "id": "POLI 10",
+      "label": "Introduction to Political Science: American Politics",
+      "units": 4,
+      "groups": [
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:POLS C1000"
+        ]
+       },
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:POLS C1000H"
+        ]
+       },
+       {
+        "institutionId": 51,
+        "courses": [
+         "51:POLS C1000"
+        ]
+       },
+       {
+        "institutionId": 137,
+        "courses": [
+         "137:POLS C1000"
+        ]
+       },
+       {
+        "institutionId": 49,
+        "courses": [
+         "49:POLS C1000"
+        ]
+       },
+       {
+        "institutionId": 114,
+        "courses": [
+         "114:POLS C1000"
+        ]
+       },
+       {
+        "institutionId": 124,
+        "courses": [
+         "124:POLS C1000H"
+        ]
+       },
+       {
+        "institutionId": 124,
+        "courses": [
+         "124:POLS C1000"
+        ]
+       },
+       {
+        "institutionId": 74,
+        "courses": [
+         "74:POLS C1000H"
+        ]
+       },
+       {
+        "institutionId": 74,
+        "courses": [
+         "74:POLS C1000"
+        ]
+       },
+       {
+        "institutionId": 103,
+        "courses": [
+         "103:POLS C1000"
+        ]
+       },
+       {
+        "institutionId": 58,
+        "courses": [
+         "58:POLS C1000"
+        ]
+       },
+       {
+        "institutionId": 33,
+        "courses": [
+         "33:POLS C1000"
+        ]
+       },
+       {
+        "institutionId": 136,
+        "courses": [
+         "136:POLS C1000"
+        ]
+       },
+       {
+        "institutionId": 92,
+        "courses": [
+         "92:POLS C1000"
+        ]
+       },
+       {
+        "institutionId": 65,
+        "courses": [
+         "65:POLS C1000H"
+        ]
+       },
+       {
+        "institutionId": 65,
+        "courses": [
+         "65:POLS C1000"
+        ]
+       },
+       {
+        "institutionId": 80,
+        "courses": [
+         "80:POLS C1000"
+        ]
+       },
+       {
+        "institutionId": 32,
+        "courses": [
+         "32:POLS C1000"
+        ]
+       }
+      ]
+     },
+     {
+      "kind": "req",
+      "id": "POLI 11",
+      "label": "Introduction to Political Science: Comparative Politics",
+      "units": 4,
+      "groups": [
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:POLI 2"
+        ]
+       },
+       {
+        "institutionId": 51,
+        "courses": [
+         "51:POLI 2H"
+        ]
+       },
+       {
+        "institutionId": 51,
+        "courses": [
+         "51:POLI 2"
+        ]
+       },
+       {
+        "institutionId": 137,
+        "courses": [
+         "137:POL SC 2"
+        ]
+       },
+       {
+        "institutionId": 49,
+        "courses": [
+         "49:POLS 002"
+        ]
+       },
+       {
+        "institutionId": 114,
+        "courses": [
+         "114:POLS 220"
+        ]
+       },
+       {
+        "institutionId": 124,
+        "courses": [
+         "124:POLS 12"
+        ]
+       },
+       {
+        "institutionId": 124,
+        "courses": [
+         "124:POLS 12H"
+        ]
+       },
+       {
+        "institutionId": 74,
+        "courses": [
+         "74:PSCI A185"
+        ]
+       },
+       {
+        "institutionId": 103,
+        "courses": [
+         "103:POLI 2"
+        ]
+       },
+       {
+        "institutionId": 58,
+        "courses": [
+         "58:POSCI 2"
+        ]
+       },
+       {
+        "institutionId": 33,
+        "courses": [
+         "33:POLS 2"
+        ]
+       },
+       {
+        "institutionId": 136,
+        "courses": [
+         "136:POLSC 002"
+        ]
+       },
+       {
+        "institutionId": 92,
+        "courses": [
+         "92:POLS 131"
+        ]
+       },
+       {
+        "institutionId": 65,
+        "courses": [
+         "65:PS 12"
+        ]
+       },
+       {
+        "institutionId": 80,
+        "courses": [
+         "80:POLS 002"
+        ]
+       },
+       {
+        "institutionId": 32,
+        "courses": [
+         "32:POL 002"
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "kind": "node",
+    "type": "AND",
+    "title": "SOCIOLOGY STUDIES",
+    "required": true,
+    "children": [
+     {
+      "kind": "req",
+      "id": "SOCI 1",
+      "label": "Introduction to Sociology",
+      "units": 4,
+      "groups": [
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:SOC 1"
+        ]
+       },
+       {
+        "institutionId": 51,
+        "courses": [
+         "51:SOC 1"
+        ]
+       },
+       {
+        "institutionId": 137,
+        "courses": [
+         "137:SOCIOL 1"
+        ]
+       },
+       {
+        "institutionId": 137,
+        "courses": [
+         "137:SOCIOL 1S"
+        ]
+       },
+       {
+        "institutionId": 49,
+        "courses": [
+         "49:SOC 001"
+        ]
+       },
+       {
+        "institutionId": 114,
+        "courses": [
+         "114:SOCIO 120"
+        ]
+       },
+       {
+        "institutionId": 124,
+        "courses": [
+         "124:SOC 1H"
+        ]
+       },
+       {
+        "institutionId": 124,
+        "courses": [
+         "124:SOC 1"
+        ]
+       },
+       {
+        "institutionId": 74,
+        "courses": [
+         "74:SOC A100H"
+        ]
+       },
+       {
+        "institutionId": 74,
+        "courses": [
+         "74:SOC A100"
+        ]
+       },
+       {
+        "institutionId": 103,
+        "courses": [
+         "103:SOCI 101"
+        ]
+       },
+       {
+        "institutionId": 58,
+        "courses": [
+         "58:SOC 1"
+        ]
+       },
+       {
+        "institutionId": 33,
+        "courses": [
+         "33:SOC 1"
+        ]
+       },
+       {
+        "institutionId": 136,
+        "courses": [
+         "136:SOC 010"
+        ]
+       },
+       {
+        "institutionId": 92,
+        "courses": [
+         "92:SOC 101"
+        ]
+       },
+       {
+        "institutionId": 65,
+        "courses": [
+         "65:SOC 1"
+        ]
+       },
+       {
+        "institutionId": 65,
+        "courses": [
+         "65:SOC 1H"
+        ]
+       },
+       {
+        "institutionId": 80,
+        "courses": [
+         "80:SOCI 001"
+        ]
+       },
+       {
+        "institutionId": 32,
+        "courses": [
+         "32:SOC 001"
+        ]
+       }
+      ]
+     },
+     {
+      "kind": "req",
+      "id": "SOCI 30",
+      "label": "SOCI 30",
+      "units": 0,
+      "groups": [],
+      "noArticulation": {
+       "32": "No articulation listed",
+       "33": "No articulation listed",
+       "49": "No articulation listed",
+       "51": "No articulation listed",
+       "58": "No articulation listed",
+       "65": "No articulation listed",
+       "74": "No articulation listed",
+       "80": "No articulation listed",
+       "92": "No articulation listed",
+       "103": "No articulation listed",
+       "113": "No articulation listed",
+       "114": "No articulation listed",
+       "124": "No articulation listed",
+       "136": "No articulation listed",
+       "137": "No articulation listed"
+      }
+     },
+     {
+      "kind": "req",
+      "id": "SOCI 2",
+      "label": "The Study of Society",
+      "units": 4,
+      "groups": [
+       {
+        "institutionId": 113,
+        "courses": [
+         "113:SOC 20"
+        ]
+       },
+       {
+        "institutionId": 51,
+        "courses": [
+         "51:SOC 20"
+        ]
+       },
+       {
+        "institutionId": 137,
+        "courses": [
+         "137:SOCIOL 2S"
+        ]
+       },
+       {
+        "institutionId": 137,
+        "courses": [
+         "137:SOCIOL 2"
+        ]
+       },
+       {
+        "institutionId": 49,
+        "courses": [
+         "49:SOC 002"
+        ]
+       },
+       {
+        "institutionId": 114,
+        "courses": [
+         "114:SOCIO 121"
+        ]
+       },
+       {
+        "institutionId": 124,
+        "courses": [
+         "124:SOC 2"
+        ]
+       },
+       {
+        "institutionId": 74,
+        "courses": [
+         "74:SOC A185H"
+        ]
+       },
+       {
+        "institutionId": 74,
+        "courses": [
+         "74:SOC A185"
+        ]
+       },
+       {
+        "institutionId": 103,
+        "courses": [
+         "103:SOCI 104"
+        ]
+       },
+       {
+        "institutionId": 58,
+        "courses": [
+         "58:SOC 2"
+        ]
+       },
+       {
+        "institutionId": 33,
+        "courses": [
+         "33:SOC 3"
+        ]
+       },
+       {
+        "institutionId": 136,
+        "courses": [
+         "136:SOC 011"
+        ]
+       },
+       {
+        "institutionId": 92,
+        "courses": [
+         "92:SOC 109"
+        ]
+       },
+       {
+        "institutionId": 65,
+        "courses": [
+         "65:SOC 2"
+        ]
+       },
+       {
+        "institutionId": 65,
+        "courses": [
+         "65:SOC 2H"
+        ]
+       },
+       {
+        "institutionId": 80,
+        "courses": [
+         "80:SOCI 002"
+        ]
+       },
+       {
+        "institutionId": 32,
+        "courses": [
+         "32:SOC 002"
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "catalog": {
+  "113:SOC 1": {
+   "id": "113:SOC 1",
+   "institutionId": 113,
+   "prefix": "SOC",
+   "number": "1",
+   "title": "Introduction to Sociology",
+   "units": 4
+  },
+  "113:SOC 20": {
+   "id": "113:SOC 20",
+   "institutionId": 113,
+   "prefix": "SOC",
+   "number": "20",
+   "title": "Social Problems",
+   "units": 4
+  },
+  "113:ECON 2": {
+   "id": "113:ECON 2",
+   "institutionId": 113,
+   "prefix": "ECON",
+   "number": "2",
+   "title": "Principles of Microeconomics",
+   "units": 4
+  },
+  "113:ECON 2H": {
+   "id": "113:ECON 2H",
+   "institutionId": 113,
+   "prefix": "ECON",
+   "number": "2H",
+   "title": "Principles of Microeconomics - HONORS",
+   "units": 4
+  },
+  "113:ACCT 1AH": {
+   "id": "113:ACCT 1AH",
+   "institutionId": 113,
+   "prefix": "ACCT",
+   "number": "1AH",
+   "title": "Financial Accounting I - HONORS",
+   "units": 5
+  },
+  "113:ACCT 1A": {
+   "id": "113:ACCT 1A",
+   "institutionId": 113,
+   "prefix": "ACCT",
+   "number": "1A",
+   "title": "Financial Accounting I",
+   "units": 5
+  },
+  "113:MATH 2BH": {
+   "id": "113:MATH 2BH",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "2BH",
+   "title": "Linear Algebra - HONORS",
+   "units": 5
+  },
+  "113:MATH 2B": {
+   "id": "113:MATH 2B",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "2B",
+   "title": "Linear Algebra",
+   "units": 5
+  },
+  "113:MATH 1C": {
+   "id": "113:MATH 1C",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "1C",
+   "title": "Calculus III",
+   "units": 5
+  },
+  "113:MATH 1D": {
+   "id": "113:MATH 1D",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "1D",
+   "title": "Calculus IV",
+   "units": 5
+  },
+  "113:MATH 1BH": {
+   "id": "113:MATH 1BH",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "1BH",
+   "title": "Calculus II - HONORS",
+   "units": 5
+  },
+  "113:MATH 1B": {
+   "id": "113:MATH 1B",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "1B",
+   "title": "Calculus II",
+   "units": 5
+  },
+  "113:MATH 1CH": {
+   "id": "113:MATH 1CH",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "1CH",
+   "title": "Calculus III - HONORS",
+   "units": 5
+  },
+  "113:MATH 1DH": {
+   "id": "113:MATH 1DH",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "1DH",
+   "title": "Calculus IV - HONORS",
+   "units": 5
+  },
+  "113:MATH 1A": {
+   "id": "113:MATH 1A",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "1A",
+   "title": "Calculus I",
+   "units": 5
+  },
+  "113:MATH 1AH": {
+   "id": "113:MATH 1AH",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "1AH",
+   "title": "Calculus I - HONORS",
+   "units": 5
+  },
+  "113:MATH 2AH": {
+   "id": "113:MATH 2AH",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "2AH",
+   "title": "Differential Equations - HONORS",
+   "units": 5
+  },
+  "113:MATH 2A": {
+   "id": "113:MATH 2A",
+   "institutionId": 113,
+   "prefix": "MATH",
+   "number": "2A",
+   "title": "Differential Equations",
+   "units": 5
+  },
+  "113:PHYS 4C": {
+   "id": "113:PHYS 4C",
+   "institutionId": 113,
+   "prefix": "PHYS",
+   "number": "4C",
+   "title": "Physics for Scientists and Engineers: Fluids, Waves, Optics and Thermodynamics",
+   "units": 6
+  },
+  "113:PHYS 4D": {
+   "id": "113:PHYS 4D",
+   "institutionId": 113,
+   "prefix": "PHYS",
+   "number": "4D",
+   "title": "Physics for Scientists and Engineers: Modern Physics",
+   "units": 6
+  },
+  "113:PHYS 4B": {
+   "id": "113:PHYS 4B",
+   "institutionId": 113,
+   "prefix": "PHYS",
+   "number": "4B",
+   "title": "Physics for Scientists and Engineers: Electricity and Magnetism",
+   "units": 6
+  },
+  "113:PHYS 4A": {
+   "id": "113:PHYS 4A",
+   "institutionId": 113,
+   "prefix": "PHYS",
+   "number": "4A",
+   "title": "Physics for Scientists and Engineers: Mechanics",
+   "units": 6
+  },
+  "113:ASAM 10": {
+   "id": "113:ASAM 10",
+   "institutionId": 113,
+   "prefix": "ASAM",
+   "number": "10",
+   "title": "Contemporary Asian American Communities",
+   "units": 4
+  },
+  "113:ASAM 1": {
+   "id": "113:ASAM 1",
+   "institutionId": 113,
+   "prefix": "ASAM",
+   "number": "1",
+   "title": "Asian American Experiences Past to Present",
+   "units": 4
+  },
+  "113:ASAM 42A": {
+   "id": "113:ASAM 42A",
+   "institutionId": 113,
+   "prefix": "ASAM",
+   "number": "42A",
+   "title": "History of Asian Civilization: China and Japan (to the 19th Century)",
+   "units": 4
+  },
+  "113:AFAM 12B": {
+   "id": "113:AFAM 12B",
+   "institutionId": 113,
+   "prefix": "AFAM",
+   "number": "12B",
+   "title": "African American History Since 1865",
+   "units": 4
+  },
+  "113:AFAM 12A": {
+   "id": "113:AFAM 12A",
+   "institutionId": 113,
+   "prefix": "AFAM",
+   "number": "12A",
+   "title": "African American History to 1865",
+   "units": 4
+  },
+  "113:POLI 5": {
+   "id": "113:POLI 5",
+   "institutionId": 113,
+   "prefix": "POLI",
+   "number": "5",
+   "title": "Introduction to Political Thought and Theory",
+   "units": 4
+  },
+  "113:POLI 3": {
+   "id": "113:POLI 3",
+   "institutionId": 113,
+   "prefix": "POLI",
+   "number": "3",
+   "title": "International Relations",
+   "units": 4
+  },
+  "113:POLS C1000": {
+   "id": "113:POLS C1000",
+   "institutionId": 113,
+   "prefix": "POLS",
+   "number": "C1000",
+   "title": "American Government and Politics",
+   "units": 5
+  },
+  "113:POLS C1000H": {
+   "id": "113:POLS C1000H",
+   "institutionId": 113,
+   "prefix": "POLS",
+   "number": "C1000H",
+   "title": "American Government and Politics - HONORS",
+   "units": 5
+  },
+  "113:POLI 2": {
+   "id": "113:POLI 2",
+   "institutionId": 113,
+   "prefix": "POLI",
+   "number": "2",
+   "title": "Comparative Politics",
+   "units": 4
+  },
+  "51:SOC 1": {
+   "id": "51:SOC 1",
+   "institutionId": 51,
+   "prefix": "SOC",
+   "number": "1",
+   "title": "Introduction to Sociology",
+   "units": 5
+  },
+  "51:SOC 20": {
+   "id": "51:SOC 20",
+   "institutionId": 51,
+   "prefix": "SOC",
+   "number": "20",
+   "title": "Major Social Problems",
+   "units": 4
+  },
+  "51:ECON 1B": {
+   "id": "51:ECON 1B",
+   "institutionId": 51,
+   "prefix": "ECON",
+   "number": "1B",
+   "title": "Principles of Microeconomics",
+   "units": 5
+  },
+  "51:ACTG 1A": {
+   "id": "51:ACTG 1A",
+   "institutionId": 51,
+   "prefix": "ACTG",
+   "number": "1A",
+   "title": "Financial Accounting I",
+   "units": 5
+  },
+  "51:ACTG 1B": {
+   "id": "51:ACTG 1B",
+   "institutionId": 51,
+   "prefix": "ACTG",
+   "number": "1B",
+   "title": "Financial Accounting II",
+   "units": 5
+  },
+  "51:MATH 2B": {
+   "id": "51:MATH 2B",
+   "institutionId": 51,
+   "prefix": "MATH",
+   "number": "2B",
+   "title": "Linear Algebra",
+   "units": 5
+  },
+  "51:MATH 1C": {
+   "id": "51:MATH 1C",
+   "institutionId": 51,
+   "prefix": "MATH",
+   "number": "1C",
+   "title": "Calculus",
+   "units": 5
+  },
+  "51:MATH 1D": {
+   "id": "51:MATH 1D",
+   "institutionId": 51,
+   "prefix": "MATH",
+   "number": "1D",
+   "title": "Calculus",
+   "units": 5
+  },
+  "51:MATH 1B": {
+   "id": "51:MATH 1B",
+   "institutionId": 51,
+   "prefix": "MATH",
+   "number": "1B",
+   "title": "Calculus",
+   "units": 5
+  },
+  "51:MATH 1AH": {
+   "id": "51:MATH 1AH",
+   "institutionId": 51,
+   "prefix": "MATH",
+   "number": "1AH",
+   "title": "Honors Calculus I ",
+   "units": 5
+  },
+  "51:MATH 1A": {
+   "id": "51:MATH 1A",
+   "institutionId": 51,
+   "prefix": "MATH",
+   "number": "1A",
+   "title": "Calculus",
+   "units": 5
+  },
+  "51:MATH 2A": {
+   "id": "51:MATH 2A",
+   "institutionId": 51,
+   "prefix": "MATH",
+   "number": "2A",
+   "title": "Differential Equations",
+   "units": 5
+  },
+  "51:PHYS 4C": {
+   "id": "51:PHYS 4C",
+   "institutionId": 51,
+   "prefix": "PHYS",
+   "number": "4C",
+   "title": "General Physics (Calculus)",
+   "units": 6
+  },
+  "51:PHYS 4D": {
+   "id": "51:PHYS 4D",
+   "institutionId": 51,
+   "prefix": "PHYS",
+   "number": "4D",
+   "title": "General Physics (Calculus)",
+   "units": 6
+  },
+  "51:PHYS 4B": {
+   "id": "51:PHYS 4B",
+   "institutionId": 51,
+   "prefix": "PHYS",
+   "number": "4B",
+   "title": "General Physics (Calculus)",
+   "units": 6
+  },
+  "51:PHYS 4A": {
+   "id": "51:PHYS 4A",
+   "institutionId": 51,
+   "prefix": "PHYS",
+   "number": "4A",
+   "title": "General Physics (Calculus)",
+   "units": 6
+  },
+  "51:SOC 23": {
+   "id": "51:SOC 23",
+   "institutionId": 51,
+   "prefix": "SOC",
+   "number": "23",
+   "title": "Race & Ethnic Relations",
+   "units": 4
+  },
+  "51:POLI 3": {
+   "id": "51:POLI 3",
+   "institutionId": 51,
+   "prefix": "POLI",
+   "number": "3",
+   "title": "Introduction to Political Philosophy/Political Theory",
+   "units": 5
+  },
+  "51:POLI 15H": {
+   "id": "51:POLI 15H",
+   "institutionId": 51,
+   "prefix": "POLI",
+   "number": "15H",
+   "title": "Honors International Relations/World Politics",
+   "units": 4
+  },
+  "51:POLI 15": {
+   "id": "51:POLI 15",
+   "institutionId": 51,
+   "prefix": "POLI",
+   "number": "15",
+   "title": "International Relations/World Politics",
+   "units": 4
+  },
+  "51:POLS C1000": {
+   "id": "51:POLS C1000",
+   "institutionId": 51,
+   "prefix": "POLS",
+   "number": "C1000",
+   "title": "American Government and Politics",
+   "units": 5
+  },
+  "51:POLI 2H": {
+   "id": "51:POLI 2H",
+   "institutionId": 51,
+   "prefix": "POLI",
+   "number": "2H",
+   "title": "Honors Comparative Government & Politics",
+   "units": 4
+  },
+  "51:POLI 2": {
+   "id": "51:POLI 2",
+   "institutionId": 51,
+   "prefix": "POLI",
+   "number": "2",
+   "title": "Comparative Government & Politics",
+   "units": 4
+  },
+  "137:SOCIOL 1": {
+   "id": "137:SOCIOL 1",
+   "institutionId": 137,
+   "prefix": "SOCIOL",
+   "number": "1",
+   "title": "Introduction to Sociology",
+   "units": 3
+  },
+  "137:SOCIOL 1S": {
+   "id": "137:SOCIOL 1S",
+   "institutionId": 137,
+   "prefix": "SOCIOL",
+   "number": "1S",
+   "title": "Introduction to Sociology-Service Learning",
+   "units": 3
+  },
+  "137:SOCIOL 2S": {
+   "id": "137:SOCIOL 2S",
+   "institutionId": 137,
+   "prefix": "SOCIOL",
+   "number": "2S",
+   "title": "Social Problems-Service Learning",
+   "units": 3
+  },
+  "137:SOCIOL 2": {
+   "id": "137:SOCIOL 2",
+   "institutionId": 137,
+   "prefix": "SOCIOL",
+   "number": "2",
+   "title": "Social Problems",
+   "units": 3
+  },
+  "137:ECON 1": {
+   "id": "137:ECON 1",
+   "institutionId": 137,
+   "prefix": "ECON",
+   "number": "1",
+   "title": "Principles of Microeconomics",
+   "units": 3
+  },
+  "137:ACCTG 1": {
+   "id": "137:ACCTG 1",
+   "institutionId": 137,
+   "prefix": "ACCTG",
+   "number": "1",
+   "title": "Introduction to Financial Accounting",
+   "units": 5
+  },
+  "137:MATH 13": {
+   "id": "137:MATH 13",
+   "institutionId": 137,
+   "prefix": "MATH",
+   "number": "13",
+   "title": "Linear Algebra",
+   "units": 3
+  },
+  "137:MATH 11": {
+   "id": "137:MATH 11",
+   "institutionId": 137,
+   "prefix": "MATH",
+   "number": "11",
+   "title": "Multivariable Calculus",
+   "units": 5
+  },
+  "137:MATH 8": {
+   "id": "137:MATH 8",
+   "institutionId": 137,
+   "prefix": "MATH",
+   "number": "8",
+   "title": "Calculus 2",
+   "units": 5
+  },
+  "137:MATH 7": {
+   "id": "137:MATH 7",
+   "institutionId": 137,
+   "prefix": "MATH",
+   "number": "7",
+   "title": "Calculus 1",
+   "units": 5
+  },
+  "137:MATH 15": {
+   "id": "137:MATH 15",
+   "institutionId": 137,
+   "prefix": "MATH",
+   "number": "15",
+   "title": "Differential Equations",
+   "units": 3
+  },
+  "137:PHYSCS 23": {
+   "id": "137:PHYSCS 23",
+   "institutionId": 137,
+   "prefix": "PHYSCS",
+   "number": "23",
+   "title": "Fluids, Waves, Thermodynamics, Optics with Lab",
+   "units": 5
+  },
+  "137:PHYSCS 24": {
+   "id": "137:PHYSCS 24",
+   "institutionId": 137,
+   "prefix": "PHYSCS",
+   "number": "24",
+   "title": "Modern Physics with Lab",
+   "units": 3
+  },
+  "137:PHYSCS 22": {
+   "id": "137:PHYSCS 22",
+   "institutionId": 137,
+   "prefix": "PHYSCS",
+   "number": "22",
+   "title": "Electricity and Magnetism with Lab",
+   "units": 5
+  },
+  "137:PHYSCS 21": {
+   "id": "137:PHYSCS 21",
+   "institutionId": 137,
+   "prefix": "PHYSCS",
+   "number": "21",
+   "title": "Mechanics with Lab",
+   "units": 5
+  },
+  "137:POL SC 51": {
+   "id": "137:POL SC 51",
+   "institutionId": 137,
+   "prefix": "POL SC",
+   "number": "51",
+   "title": "Political Philosophy",
+   "units": 3
+  },
+  "137:POL SC 7": {
+   "id": "137:POL SC 7",
+   "institutionId": 137,
+   "prefix": "POL SC",
+   "number": "7",
+   "title": "International Politics",
+   "units": 3
+  },
+  "137:POLS C1000": {
+   "id": "137:POLS C1000",
+   "institutionId": 137,
+   "prefix": "POLS",
+   "number": "C1000",
+   "title": "American Government and Politics",
+   "units": 3
+  },
+  "137:POL SC 2": {
+   "id": "137:POL SC 2",
+   "institutionId": 137,
+   "prefix": "POL SC",
+   "number": "2",
+   "title": "Comparative Government and Politics",
+   "units": 3
+  },
+  "49:SOC 001": {
+   "id": "49:SOC 001",
+   "institutionId": 49,
+   "prefix": "SOC",
+   "number": "001",
+   "title": "Introductory Sociology",
+   "units": 3
+  },
+  "49:SOC 002": {
+   "id": "49:SOC 002",
+   "institutionId": 49,
+   "prefix": "SOC",
+   "number": "002",
+   "title": "Contemporary Social Problems",
+   "units": 3
+  },
+  "49:ECON 001B": {
+   "id": "49:ECON 001B",
+   "institutionId": 49,
+   "prefix": "ECON",
+   "number": "001B",
+   "title": "Principles of Microeconomics",
+   "units": 3
+  },
+  "49:ACCT 001A": {
+   "id": "49:ACCT 001A",
+   "institutionId": 49,
+   "prefix": "ACCT",
+   "number": "001A",
+   "title": "Financial Accounting",
+   "units": 4
+  },
+  "49:MATH 010H": {
+   "id": "49:MATH 010H",
+   "institutionId": 49,
+   "prefix": "MATH",
+   "number": "010H",
+   "title": "Honors Linear Algebra and Applications",
+   "units": 4
+  },
+  "49:MATH 010": {
+   "id": "49:MATH 010",
+   "institutionId": 49,
+   "prefix": "MATH",
+   "number": "010",
+   "title": "Linear Algebra and Applications",
+   "units": 4
+  },
+  "49:MATH 005C": {
+   "id": "49:MATH 005C",
+   "institutionId": 49,
+   "prefix": "MATH",
+   "number": "005C",
+   "title": "Multivariable Calculus",
+   "units": 5
+  },
+  "49:MATH 005CH": {
+   "id": "49:MATH 005CH",
+   "institutionId": 49,
+   "prefix": "MATH",
+   "number": "005CH",
+   "title": "Honors Multivariable Calculus",
+   "units": 5
+  },
+  "49:MATH 005BH": {
+   "id": "49:MATH 005BH",
+   "institutionId": 49,
+   "prefix": "MATH",
+   "number": "005BH",
+   "title": "Honors Single Variable Calculus II",
+   "units": 5
+  },
+  "49:MATH 005B": {
+   "id": "49:MATH 005B",
+   "institutionId": 49,
+   "prefix": "MATH",
+   "number": "005B",
+   "title": "Single Variable Calculus II",
+   "units": 5
+  },
+  "49:MATH 005BE": {
+   "id": "49:MATH 005BE",
+   "institutionId": 49,
+   "prefix": "MATH",
+   "number": "005BE",
+   "title": "Single Variable Calculus II with Embedded Support",
+   "units": 5.5
+  },
+  "49:MATH 005AH": {
+   "id": "49:MATH 005AH",
+   "institutionId": 49,
+   "prefix": "MATH",
+   "number": "005AH",
+   "title": "Honors Single Variable Calculus I",
+   "units": 5
+  },
+  "49:MATH 005A": {
+   "id": "49:MATH 005A",
+   "institutionId": 49,
+   "prefix": "MATH",
+   "number": "005A",
+   "title": "Single Variable Calculus I",
+   "units": 5
+  },
+  "49:MATH 005AE": {
+   "id": "49:MATH 005AE",
+   "institutionId": 49,
+   "prefix": "MATH",
+   "number": "005AE",
+   "title": "Single Variable Calculus I with Embedded Support",
+   "units": 5.5
+  },
+  "49:MATH 055": {
+   "id": "49:MATH 055",
+   "institutionId": 49,
+   "prefix": "MATH",
+   "number": "055",
+   "title": "Differential Equations",
+   "units": 4
+  },
+  "49:MATH 055H": {
+   "id": "49:MATH 055H",
+   "institutionId": 49,
+   "prefix": "MATH",
+   "number": "055H",
+   "title": "Honors Differential Equations",
+   "units": 4
+  },
+  "49:PHYS 008C": {
+   "id": "49:PHYS 008C",
+   "institutionId": 49,
+   "prefix": "PHYS",
+   "number": "008C",
+   "title": "Physics for Scientists and Engineers III: Thermodynamics, Optics, and Modern Physics",
+   "units": 5
+  },
+  "49:PHYS 008A": {
+   "id": "49:PHYS 008A",
+   "institutionId": 49,
+   "prefix": "PHYS",
+   "number": "008A",
+   "title": "Physics for Scientists and Engineers I: Mechanics",
+   "units": 5
+  },
+  "49:PHYS 008B": {
+   "id": "49:PHYS 008B",
+   "institutionId": 49,
+   "prefix": "PHYS",
+   "number": "008B",
+   "title": "Physics for Scientists and Engineers II: Waves, Electricity & Magnetism",
+   "units": 5
+  },
+  "49:POLS 022": {
+   "id": "49:POLS 022",
+   "institutionId": 49,
+   "prefix": "POLS",
+   "number": "022",
+   "title": "Introduction to Political Theory",
+   "units": 3
+  },
+  "49:POLS 006": {
+   "id": "49:POLS 006",
+   "institutionId": 49,
+   "prefix": "POLS",
+   "number": "006",
+   "title": "The U.S. and World Politics",
+   "units": 3
+  },
+  "49:POLS C1000": {
+   "id": "49:POLS C1000",
+   "institutionId": 49,
+   "prefix": "POLS",
+   "number": "C1000",
+   "title": "American Government and Politics",
+   "units": 3
+  },
+  "49:POLS 002": {
+   "id": "49:POLS 002",
+   "institutionId": 49,
+   "prefix": "POLS",
+   "number": "002",
+   "title": "Comparative Government and Politics",
+   "units": 3
+  },
+  "114:SOCIO 120": {
+   "id": "114:SOCIO 120",
+   "institutionId": 114,
+   "prefix": "SOCIO",
+   "number": "120",
+   "title": "Introduction to Sociology",
+   "units": 3
+  },
+  "114:SOCIO 121": {
+   "id": "114:SOCIO 121",
+   "institutionId": 114,
+   "prefix": "SOCIO",
+   "number": "121",
+   "title": "Introduction to Social Problems",
+   "units": 3
+  },
+  "114:ECON 221": {
+   "id": "114:ECON 221",
+   "institutionId": 114,
+   "prefix": "ECON",
+   "number": "221",
+   "title": "Principles of Microeconomics",
+   "units": 3
+  },
+  "114:BUSAC 186": {
+   "id": "114:BUSAC 186",
+   "institutionId": 114,
+   "prefix": "BUSAC",
+   "number": "186",
+   "title": "Financial Accounting",
+   "units": 4
+  },
+  "114:MATH 194": {
+   "id": "114:MATH 194",
+   "institutionId": 114,
+   "prefix": "MATH",
+   "number": "194",
+   "title": "Linear Algebra",
+   "units": 3
+  },
+  "114:MATH 292": {
+   "id": "114:MATH 292",
+   "institutionId": 114,
+   "prefix": "MATH",
+   "number": "292",
+   "title": "Analytic Geometry and Calculus III",
+   "units": 5
+  },
+  "114:MATH 193": {
+   "id": "114:MATH 193",
+   "institutionId": 114,
+   "prefix": "MATH",
+   "number": "193",
+   "title": "Analytic Geometry and Calculus II",
+   "units": 5
+  },
+  "114:MATH 192": {
+   "id": "114:MATH 192",
+   "institutionId": 114,
+   "prefix": "MATH",
+   "number": "192",
+   "title": "Analytic Geometry and Calculus I",
+   "units": 5
+  },
+  "114:MATH 294": {
+   "id": "114:MATH 294",
+   "institutionId": 114,
+   "prefix": "MATH",
+   "number": "294",
+   "title": "Differential Equations",
+   "units": 5
+  },
+  "114:PHYS 231": {
+   "id": "114:PHYS 231",
+   "institutionId": 114,
+   "prefix": "PHYS",
+   "number": "231",
+   "title": "Physics for Engineers and Scientists C: Optics and Modern Physics",
+   "units": 4
+  },
+  "114:PHYS 230": {
+   "id": "114:PHYS 230",
+   "institutionId": 114,
+   "prefix": "PHYS",
+   "number": "230",
+   "title": "Physics for Engineers and Scientists B: Heat and Electro-Magnetism",
+   "units": 4
+  },
+  "114:PHYS 130": {
+   "id": "114:PHYS 130",
+   "institutionId": 114,
+   "prefix": "PHYS",
+   "number": "130",
+   "title": "Physics for Engineers and Scientists A: Mechanics and Wave Motion",
+   "units": 4
+  },
+  "114:HIST 151": {
+   "id": "114:HIST 151",
+   "institutionId": 114,
+   "prefix": "HIST",
+   "number": "151",
+   "title": "History of East Asia (from 1600 - Present)",
+   "units": 3
+  },
+  "114:HIST 150": {
+   "id": "114:HIST 150",
+   "institutionId": 114,
+   "prefix": "HIST",
+   "number": "150",
+   "title": "History of East Asia (to 1600)",
+   "units": 3
+  },
+  "114:HIST 125": {
+   "id": "114:HIST 125",
+   "institutionId": 114,
+   "prefix": "HIST",
+   "number": "125",
+   "title": "History of the United States: A Mexican American Perspective",
+   "units": 3
+  },
+  "114:POLS 240": {
+   "id": "114:POLS 240",
+   "institutionId": 114,
+   "prefix": "POLS",
+   "number": "240",
+   "title": "Political Theory",
+   "units": 3
+  },
+  "114:POLS 250": {
+   "id": "114:POLS 250",
+   "institutionId": 114,
+   "prefix": "POLS",
+   "number": "250",
+   "title": "International Relations",
+   "units": 3
+  },
+  "114:POLS C1000": {
+   "id": "114:POLS C1000",
+   "institutionId": 114,
+   "prefix": "POLS",
+   "number": "C1000",
+   "title": "American Government and Politics",
+   "units": 3
+  },
+  "114:POLS 220": {
+   "id": "114:POLS 220",
+   "institutionId": 114,
+   "prefix": "POLS",
+   "number": "220",
+   "title": "Comparative Politics",
+   "units": 3
+  },
+  "124:SOC 1H": {
+   "id": "124:SOC 1H",
+   "institutionId": 124,
+   "prefix": "SOC",
+   "number": "1H",
+   "title": "Introduction to Sociology Honors",
+   "units": 3
+  },
+  "124:SOC 1": {
+   "id": "124:SOC 1",
+   "institutionId": 124,
+   "prefix": "SOC",
+   "number": "1",
+   "title": "Introduction to Sociology",
+   "units": 3
+  },
+  "124:SOC 2": {
+   "id": "124:SOC 2",
+   "institutionId": 124,
+   "prefix": "SOC",
+   "number": "2",
+   "title": "Social Problems",
+   "units": 3
+  },
+  "124:ECON 1": {
+   "id": "124:ECON 1",
+   "institutionId": 124,
+   "prefix": "ECON",
+   "number": "1",
+   "title": "Principles of Economics - Micro",
+   "units": 3
+  },
+  "124:ECON 1H": {
+   "id": "124:ECON 1H",
+   "institutionId": 124,
+   "prefix": "ECON",
+   "number": "1H",
+   "title": "Principles of Economics-Micro Honors",
+   "units": 3
+  },
+  "124:ACCT 1A": {
+   "id": "124:ACCT 1A",
+   "institutionId": 124,
+   "prefix": "ACCT",
+   "number": "1A",
+   "title": "Financial Accounting",
+   "units": 4
+  },
+  "124:MATH 26": {
+   "id": "124:MATH 26",
+   "institutionId": 124,
+   "prefix": "MATH",
+   "number": "26",
+   "title": "Introduction to Linear Algebra",
+   "units": 4
+  },
+  "124:MATH 4A": {
+   "id": "124:MATH 4A",
+   "institutionId": 124,
+   "prefix": "MATH",
+   "number": "4A",
+   "title": "Analytic Geometry and Calculus III",
+   "units": 5
+  },
+  "124:MATH 3B": {
+   "id": "124:MATH 3B",
+   "institutionId": 124,
+   "prefix": "MATH",
+   "number": "3B",
+   "title": "Analytic Geometry and Calculus II",
+   "units": 5
+  },
+  "124:MATH 3BH": {
+   "id": "124:MATH 3BH",
+   "institutionId": 124,
+   "prefix": "MATH",
+   "number": "3BH",
+   "title": "Analytic Geometry and Calculus II Honors",
+   "units": 5
+  },
+  "124:MATH 3A": {
+   "id": "124:MATH 3A",
+   "institutionId": 124,
+   "prefix": "MATH",
+   "number": "3A",
+   "title": "Analytic Geometry and Calculus I",
+   "units": 5
+  },
+  "124:MATH 3AH": {
+   "id": "124:MATH 3AH",
+   "institutionId": 124,
+   "prefix": "MATH",
+   "number": "3AH",
+   "title": "Analytic Geometry and Calculus I Honors",
+   "units": 5
+  },
+  "124:MATH 24H": {
+   "id": "124:MATH 24H",
+   "institutionId": 124,
+   "prefix": "MATH",
+   "number": "24H",
+   "title": "Elementary Differential Equations Honors",
+   "units": 4
+  },
+  "124:MATH 24": {
+   "id": "124:MATH 24",
+   "institutionId": 124,
+   "prefix": "MATH",
+   "number": "24",
+   "title": "Elementary Differential Equations",
+   "units": 4
+  },
+  "124:CS 40A": {
+   "id": "124:CS 40A",
+   "institutionId": 124,
+   "prefix": "CS",
+   "number": "40A",
+   "title": "Computer Organization and Assembly Language I",
+   "units": 3
+  },
+  "124:CS 40B": {
+   "id": "124:CS 40B",
+   "institutionId": 124,
+   "prefix": "CS",
+   "number": "40B",
+   "title": "Computer Organization and Assembly Language II",
+   "units": 3
+  },
+  "124:PHYS 4C": {
+   "id": "124:PHYS 4C",
+   "institutionId": 124,
+   "prefix": "PHYS",
+   "number": "4C",
+   "title": "General Physics",
+   "units": 4
+  },
+  "124:PHYS 4B": {
+   "id": "124:PHYS 4B",
+   "institutionId": 124,
+   "prefix": "PHYS",
+   "number": "4B",
+   "title": "General Physics",
+   "units": 4
+  },
+  "124:PHYS 4A": {
+   "id": "124:PHYS 4A",
+   "institutionId": 124,
+   "prefix": "PHYS",
+   "number": "4A",
+   "title": "General Physics",
+   "units": 4
+  },
+  "124:HIST 41": {
+   "id": "124:HIST 41",
+   "institutionId": 124,
+   "prefix": "HIST",
+   "number": "41",
+   "title": "The History of East Asia since 1800",
+   "units": 3
+  },
+  "124:HIST 40": {
+   "id": "124:HIST 40",
+   "institutionId": 124,
+   "prefix": "HIST",
+   "number": "40",
+   "title": "The History of East Asia Before 1800",
+   "units": 3
+  },
+  "124:HIST 30": {
+   "id": "124:HIST 30",
+   "institutionId": 124,
+   "prefix": "HIST",
+   "number": "30",
+   "title": "History of Ethnicity and Culture in the United States",
+   "units": 3
+  },
+  "124:POLS 14H": {
+   "id": "124:POLS 14H",
+   "institutionId": 124,
+   "prefix": "POLS",
+   "number": "14H",
+   "title": "International Relations Honors",
+   "units": 3
+  },
+  "124:POLS 14": {
+   "id": "124:POLS 14",
+   "institutionId": 124,
+   "prefix": "POLS",
+   "number": "14",
+   "title": "International Relations",
+   "units": 3
+  },
+  "124:POLS C1000H": {
+   "id": "124:POLS C1000H",
+   "institutionId": 124,
+   "prefix": "POLS",
+   "number": "C1000H",
+   "title": "American Government and Politics - Honors",
+   "units": 3
+  },
+  "124:POLS C1000": {
+   "id": "124:POLS C1000",
+   "institutionId": 124,
+   "prefix": "POLS",
+   "number": "C1000",
+   "title": "American Government and Politics",
+   "units": 3
+  },
+  "124:POLS 12": {
+   "id": "124:POLS 12",
+   "institutionId": 124,
+   "prefix": "POLS",
+   "number": "12",
+   "title": "Comparative Politics",
+   "units": 3
+  },
+  "124:POLS 12H": {
+   "id": "124:POLS 12H",
+   "institutionId": 124,
+   "prefix": "POLS",
+   "number": "12H",
+   "title": "Comparative Politics Honors",
+   "units": 3
+  },
+  "74:SOC A100H": {
+   "id": "74:SOC A100H",
+   "institutionId": 74,
+   "prefix": "SOC",
+   "number": "A100H",
+   "title": "Introduction to Sociology Honors",
+   "units": 3
+  },
+  "74:SOC A100": {
+   "id": "74:SOC A100",
+   "institutionId": 74,
+   "prefix": "SOC",
+   "number": "A100",
+   "title": "Introduction to Sociology",
+   "units": 3
+  },
+  "74:SOC A185H": {
+   "id": "74:SOC A185H",
+   "institutionId": 74,
+   "prefix": "SOC",
+   "number": "A185H",
+   "title": "Analysis of Social Problems Honors ",
+   "units": 3
+  },
+  "74:SOC A185": {
+   "id": "74:SOC A185",
+   "institutionId": 74,
+   "prefix": "SOC",
+   "number": "A185",
+   "title": "Analysis of Social Problems",
+   "units": 3
+  },
+  "74:ECON A170": {
+   "id": "74:ECON A170",
+   "institutionId": 74,
+   "prefix": "ECON",
+   "number": "A170",
+   "title": "Microeconomics",
+   "units": 3
+  },
+  "74:ACCT A101": {
+   "id": "74:ACCT A101",
+   "institutionId": 74,
+   "prefix": "ACCT",
+   "number": "A101",
+   "title": "Financial Accounting",
+   "units": 4
+  },
+  "74:MATH A235": {
+   "id": "74:MATH A235",
+   "institutionId": 74,
+   "prefix": "MATH",
+   "number": "A235",
+   "title": "Applied Linear Algebra",
+   "units": 3
+  },
+  "74:MATH A285": {
+   "id": "74:MATH A285",
+   "institutionId": 74,
+   "prefix": "MATH",
+   "number": "A285",
+   "title": "Introduction to Linear Algebra and Differential Equations",
+   "units": 5
+  },
+  "74:MATH A285H": {
+   "id": "74:MATH A285H",
+   "institutionId": 74,
+   "prefix": "MATH",
+   "number": "A285H",
+   "title": "Introduction to Linear Algebra and Differential Equations Honors",
+   "units": 6
+  },
+  "74:MATH A280": {
+   "id": "74:MATH A280",
+   "institutionId": 74,
+   "prefix": "MATH",
+   "number": "A280",
+   "title": "Calculus 3",
+   "units": 5
+  },
+  "74:MATH A280H": {
+   "id": "74:MATH A280H",
+   "institutionId": 74,
+   "prefix": "MATH",
+   "number": "A280H",
+   "title": "Calculus 3 Honors  ",
+   "units": 6
+  },
+  "74:MATH A185": {
+   "id": "74:MATH A185",
+   "institutionId": 74,
+   "prefix": "MATH",
+   "number": "A185",
+   "title": "Calculus 2",
+   "units": 5
+  },
+  "74:MATH A185H": {
+   "id": "74:MATH A185H",
+   "institutionId": 74,
+   "prefix": "MATH",
+   "number": "A185H",
+   "title": "Calculus 2 Honors",
+   "units": 5
+  },
+  "74:MATH A182H": {
+   "id": "74:MATH A182H",
+   "institutionId": 74,
+   "prefix": "MATH",
+   "number": "A182H",
+   "title": "Calculus 1 and 2 Honors  ",
+   "units": 5
+  },
+  "74:MATH A180": {
+   "id": "74:MATH A180",
+   "institutionId": 74,
+   "prefix": "MATH",
+   "number": "A180",
+   "title": "Calculus 1",
+   "units": 5
+  },
+  "74:MATH A180H": {
+   "id": "74:MATH A180H",
+   "institutionId": 74,
+   "prefix": "MATH",
+   "number": "A180H",
+   "title": "Calculus 1 Honors  ",
+   "units": 5
+  },
+  "74:PHYS A285": {
+   "id": "74:PHYS A285",
+   "institutionId": 74,
+   "prefix": "PHYS",
+   "number": "A285",
+   "title": "Calculus Based Physics: Modern with Lab",
+   "units": 5
+  },
+  "74:PHYS A280": {
+   "id": "74:PHYS A280",
+   "institutionId": 74,
+   "prefix": "PHYS",
+   "number": "A280",
+   "title": "Calculus Based Physics: Electricty/Magnetism with Lab",
+   "units": 5
+  },
+  "74:PHYS A185": {
+   "id": "74:PHYS A185",
+   "institutionId": 74,
+   "prefix": "PHYS",
+   "number": "A185",
+   "title": "Calculus Based Physics: Mechanics with Lab",
+   "units": 5
+  },
+  "74:PSCI A188": {
+   "id": "74:PSCI A188",
+   "institutionId": 74,
+   "prefix": "PSCI",
+   "number": "A188",
+   "title": "Introduction to Political Theory",
+   "units": 3
+  },
+  "74:PSCI A110": {
+   "id": "74:PSCI A110",
+   "institutionId": 74,
+   "prefix": "PSCI",
+   "number": "A110",
+   "title": "International Relations",
+   "units": 3
+  },
+  "74:POLS C1000H": {
+   "id": "74:POLS C1000H",
+   "institutionId": 74,
+   "prefix": "POLS",
+   "number": "C1000H",
+   "title": "American Government and Politics Honors",
+   "units": 3
+  },
+  "74:POLS C1000": {
+   "id": "74:POLS C1000",
+   "institutionId": 74,
+   "prefix": "POLS",
+   "number": "C1000",
+   "title": "American Government and Politics",
+   "units": 3
+  },
+  "74:PSCI A185": {
+   "id": "74:PSCI A185",
+   "institutionId": 74,
+   "prefix": "PSCI",
+   "number": "A185",
+   "title": "Comparative Politics",
+   "units": 3
+  },
+  "103:SOCI 101": {
+   "id": "103:SOCI 101",
+   "institutionId": 103,
+   "prefix": "SOCI",
+   "number": "101",
+   "title": "Introduction to Sociology",
+   "units": 3
+  },
+  "103:SOCI 104": {
+   "id": "103:SOCI 104",
+   "institutionId": 103,
+   "prefix": "SOCI",
+   "number": "104",
+   "title": "Social Problems",
+   "units": 3
+  },
+  "103:ECON 102": {
+   "id": "103:ECON 102",
+   "institutionId": 103,
+   "prefix": "ECON",
+   "number": "102",
+   "title": "Principles of Economics: Microeconomics Theory",
+   "units": 3
+  },
+  "103:BUS 150": {
+   "id": "103:BUS 150",
+   "institutionId": 103,
+   "prefix": "BUS",
+   "number": "150",
+   "title": "Financial Accounting",
+   "units": 4
+  },
+  "103:MATH 270": {
+   "id": "103:MATH 270",
+   "institutionId": 103,
+   "prefix": "MATH",
+   "number": "270",
+   "title": "Differential Equations with Linear Algebra",
+   "units": 5
+  },
+  "103:MATH 220": {
+   "id": "103:MATH 220",
+   "institutionId": 103,
+   "prefix": "MATH",
+   "number": "220",
+   "title": "Multi-Variable Calculus",
+   "units": 5
+  },
+  "103:MATH 191": {
+   "id": "103:MATH 191",
+   "institutionId": 103,
+   "prefix": "MATH",
+   "number": "191",
+   "title": "Single Variable Calculus and Analytic Geometry II",
+   "units": 5
+  },
+  "103:MATH 190": {
+   "id": "103:MATH 190",
+   "institutionId": 103,
+   "prefix": "MATH",
+   "number": "190",
+   "title": "Single Variable Calculus and Analytic Geometry I",
+   "units": 5
+  },
+  "103:PHYS 1B": {
+   "id": "103:PHYS 1B",
+   "institutionId": 103,
+   "prefix": "PHYS",
+   "number": "1B",
+   "title": "Fluids, Heat and Sound",
+   "units": 3
+  },
+  "103:PHYS 1D": {
+   "id": "103:PHYS 1D",
+   "institutionId": 103,
+   "prefix": "PHYS",
+   "number": "1D",
+   "title": "Optics and Modern Physics",
+   "units": 4
+  },
+  "103:PHYS 1C": {
+   "id": "103:PHYS 1C",
+   "institutionId": 103,
+   "prefix": "PHYS",
+   "number": "1C",
+   "title": "Electricity and Magnetism",
+   "units": 4
+  },
+  "103:PHYS 1A": {
+   "id": "103:PHYS 1A",
+   "institutionId": 103,
+   "prefix": "PHYS",
+   "number": "1A",
+   "title": "Mechanics of Solids",
+   "units": 4
+  },
+  "103:HIST 122": {
+   "id": "103:HIST 122",
+   "institutionId": 103,
+   "prefix": "HIST",
+   "number": "122",
+   "title": "United States Social History: Cultural Pluralism in America",
+   "units": 3
+  },
+  "103:HIST 122H": {
+   "id": "103:HIST 122H",
+   "institutionId": 103,
+   "prefix": "HIST",
+   "number": "122H",
+   "title": "Honors United States Social History: Cultural Pluralism in America",
+   "units": 3
+  },
+  "103:POLI 7": {
+   "id": "103:POLI 7",
+   "institutionId": 103,
+   "prefix": "POLI",
+   "number": "7",
+   "title": "Political Philosophy",
+   "units": 3
+  },
+  "103:POLI 10": {
+   "id": "103:POLI 10",
+   "institutionId": 103,
+   "prefix": "POLI",
+   "number": "10",
+   "title": "Introduction to International Relations",
+   "units": 3
+  },
+  "103:POLS C1000": {
+   "id": "103:POLS C1000",
+   "institutionId": 103,
+   "prefix": "POLS",
+   "number": "C1000",
+   "title": "American Government and Politics",
+   "units": 3
+  },
+  "103:POLI 2": {
+   "id": "103:POLI 2",
+   "institutionId": 103,
+   "prefix": "POLI",
+   "number": "2",
+   "title": "Introduction to Comparative Politics",
+   "units": 3
+  },
+  "58:SOC 1": {
+   "id": "58:SOC 1",
+   "institutionId": 58,
+   "prefix": "SOC",
+   "number": "1",
+   "title": "Introduction to Sociology",
+   "units": 3
+  },
+  "58:SOC 2": {
+   "id": "58:SOC 2",
+   "institutionId": 58,
+   "prefix": "SOC",
+   "number": "2",
+   "title": "Social Problems",
+   "units": 3
+  },
+  "58:ECON 2": {
+   "id": "58:ECON 2",
+   "institutionId": 58,
+   "prefix": "ECON",
+   "number": "2",
+   "title": "Principles of Economics (Micro-Economics)",
+   "units": 3
+  },
+  "58:BUS 1A": {
+   "id": "58:BUS 1A",
+   "institutionId": 58,
+   "prefix": "BUS",
+   "number": "1A",
+   "title": "Financial Accounting",
+   "units": 4
+  },
+  "58:MATH 3E": {
+   "id": "58:MATH 3E",
+   "institutionId": 58,
+   "prefix": "MATH",
+   "number": "3E",
+   "title": "Linear Algebra",
+   "units": 3
+  },
+  "58:MATH 3B": {
+   "id": "58:MATH 3B",
+   "institutionId": 58,
+   "prefix": "MATH",
+   "number": "3B",
+   "title": "Calculus II",
+   "units": 5
+  },
+  "58:MATH 3C": {
+   "id": "58:MATH 3C",
+   "institutionId": 58,
+   "prefix": "MATH",
+   "number": "3C",
+   "title": "Calculus III",
+   "units": 5
+  },
+  "58:MATH 3A": {
+   "id": "58:MATH 3A",
+   "institutionId": 58,
+   "prefix": "MATH",
+   "number": "3A",
+   "title": "Calculus I",
+   "units": 5
+  },
+  "58:MATH 3F": {
+   "id": "58:MATH 3F",
+   "institutionId": 58,
+   "prefix": "MATH",
+   "number": "3F",
+   "title": "Differential Equations",
+   "units": 3
+  },
+  "58:PHYS 4C": {
+   "id": "58:PHYS 4C",
+   "institutionId": 58,
+   "prefix": "PHYS",
+   "number": "4C",
+   "title": "General Physics with Calculus",
+   "units": 5
+  },
+  "58:PHYS 4A": {
+   "id": "58:PHYS 4A",
+   "institutionId": 58,
+   "prefix": "PHYS",
+   "number": "4A",
+   "title": "General Physics with Calculus",
+   "units": 5
+  },
+  "58:PHYS 4B": {
+   "id": "58:PHYS 4B",
+   "institutionId": 58,
+   "prefix": "PHYS",
+   "number": "4B",
+   "title": "General Physics with Calculus",
+   "units": 5
+  },
+  "58:POSCI 3": {
+   "id": "58:POSCI 3",
+   "institutionId": 58,
+   "prefix": "POSCI",
+   "number": "3",
+   "title": "International Relations",
+   "units": 3
+  },
+  "58:POLS C1000": {
+   "id": "58:POLS C1000",
+   "institutionId": 58,
+   "prefix": "POLS",
+   "number": "C1000",
+   "title": "American Government and Politics",
+   "units": 3
+  },
+  "58:POSCI 2": {
+   "id": "58:POSCI 2",
+   "institutionId": 58,
+   "prefix": "POSCI",
+   "number": "2",
+   "title": "Comparative Government",
+   "units": 3
+  },
+  "33:SOC 1": {
+   "id": "33:SOC 1",
+   "institutionId": 33,
+   "prefix": "SOC",
+   "number": "1",
+   "title": "Introduction to Sociology",
+   "units": 3
+  },
+  "33:SOC 3": {
+   "id": "33:SOC 3",
+   "institutionId": 33,
+   "prefix": "SOC",
+   "number": "3",
+   "title": "Social Problems",
+   "units": 3
+  },
+  "33:ECON 3": {
+   "id": "33:ECON 3",
+   "institutionId": 33,
+   "prefix": "ECON",
+   "number": "3",
+   "title": "Principles of Microeconomics",
+   "units": 3
+  },
+  "33:ACCT 1": {
+   "id": "33:ACCT 1",
+   "institutionId": 33,
+   "prefix": "ACCT",
+   "number": "1",
+   "title": "Financial Accounting",
+   "units": 5
+  },
+  "33:MATH 130": {
+   "id": "33:MATH 130",
+   "institutionId": 33,
+   "prefix": "MATH",
+   "number": "130",
+   "title": "Linear Algebra and Differential Equations",
+   "units": 5
+  },
+  "33:MATH 120": {
+   "id": "33:MATH 120",
+   "institutionId": 33,
+   "prefix": "MATH",
+   "number": "120",
+   "title": "Linear Algebra",
+   "units": 3
+  },
+  "33:MATH 110B": {
+   "id": "33:MATH 110B",
+   "institutionId": 33,
+   "prefix": "MATH",
+   "number": "110B",
+   "title": "Calculus II",
+   "units": 5
+  },
+  "33:MATH 110C": {
+   "id": "33:MATH 110C",
+   "institutionId": 33,
+   "prefix": "MATH",
+   "number": "110C",
+   "title": "Calculus III",
+   "units": 5
+  },
+  "33:MATH 110A": {
+   "id": "33:MATH 110A",
+   "institutionId": 33,
+   "prefix": "MATH",
+   "number": "110A",
+   "title": "Calculus I",
+   "units": 5
+  },
+  "33:MATH 125": {
+   "id": "33:MATH 125",
+   "institutionId": 33,
+   "prefix": "MATH",
+   "number": "125",
+   "title": "Differential Equations",
+   "units": 3
+  },
+  "33:CS 270": {
+   "id": "33:CS 270",
+   "institutionId": 33,
+   "prefix": "CS",
+   "number": "270",
+   "title": "Computer Architecture with Assembly Language",
+   "units": 4
+  },
+  "33:PHYC 4C": {
+   "id": "33:PHYC 4C",
+   "institutionId": 33,
+   "prefix": "PHYC",
+   "number": "4C",
+   "title": "Waves and Thermodynamics for Scientists and Engineers",
+   "units": 3
+  },
+  "33:PHYC 4D": {
+   "id": "33:PHYC 4D",
+   "institutionId": 33,
+   "prefix": "PHYC",
+   "number": "4D",
+   "title": "Modern Physics for Scientists and Engineers",
+   "units": 3
+  },
+  "33:PHYC 4B": {
+   "id": "33:PHYC 4B",
+   "institutionId": 33,
+   "prefix": "PHYC",
+   "number": "4B",
+   "title": "Electromagnetism for Scientists and Engineers",
+   "units": 3
+  },
+  "33:PHYC 4A": {
+   "id": "33:PHYC 4A",
+   "institutionId": 33,
+   "prefix": "PHYC",
+   "number": "4A",
+   "title": "Classical Mechanics for Scientists and Engineers",
+   "units": 3
+  },
+  "33:POLS 3": {
+   "id": "33:POLS 3",
+   "institutionId": 33,
+   "prefix": "POLS",
+   "number": "3",
+   "title": "Political Theory",
+   "units": 3
+  },
+  "33:POLS 5": {
+   "id": "33:POLS 5",
+   "institutionId": 33,
+   "prefix": "POLS",
+   "number": "5",
+   "title": "International Relations",
+   "units": 3
+  },
+  "33:POLS C1000": {
+   "id": "33:POLS C1000",
+   "institutionId": 33,
+   "prefix": "POLS",
+   "number": "C1000",
+   "title": "American Government and Politics",
+   "units": 3
+  },
+  "33:POLS 2": {
+   "id": "33:POLS 2",
+   "institutionId": 33,
+   "prefix": "POLS",
+   "number": "2",
+   "title": "Comparative Government",
+   "units": 3
+  },
+  "136:SOC 010": {
+   "id": "136:SOC 010",
+   "institutionId": 136,
+   "prefix": "SOC",
+   "number": "010",
+   "title": "Introduction to Sociology",
+   "units": 3
+  },
+  "136:SOC 011": {
+   "id": "136:SOC 011",
+   "institutionId": 136,
+   "prefix": "SOC",
+   "number": "011",
+   "title": "Social Problems",
+   "units": 3
+  },
+  "136:ECON 010B": {
+   "id": "136:ECON 010B",
+   "institutionId": 136,
+   "prefix": "ECON",
+   "number": "010B",
+   "title": "Introduction to Microeconomics Theory",
+   "units": 3
+  },
+  "136:ACCTG 020": {
+   "id": "136:ACCTG 020",
+   "institutionId": 136,
+   "prefix": "ACCTG",
+   "number": "020",
+   "title": "Financial Accounting",
+   "units": 5
+  },
+  "136:MATH 079": {
+   "id": "136:MATH 079",
+   "institutionId": 136,
+   "prefix": "MATH",
+   "number": "079",
+   "title": "Linear Algebra",
+   "units": 3
+  },
+  "136:MATH 072": {
+   "id": "136:MATH 072",
+   "institutionId": 136,
+   "prefix": "MATH",
+   "number": "072",
+   "title": "Calculus II with Analytic Geometry",
+   "units": 5
+  },
+  "136:MATH 073": {
+   "id": "136:MATH 073",
+   "institutionId": 136,
+   "prefix": "MATH",
+   "number": "073",
+   "title": "Multivariable Calculus",
+   "units": 5
+  },
+  "136:MATH 071": {
+   "id": "136:MATH 071",
+   "institutionId": 136,
+   "prefix": "MATH",
+   "number": "071",
+   "title": "Calculus I with Analytic Geometry",
+   "units": 5
+  },
+  "136:MATH 078": {
+   "id": "136:MATH 078",
+   "institutionId": 136,
+   "prefix": "MATH",
+   "number": "078",
+   "title": "Differential Equations",
+   "units": 4
+  },
+  "136:PHYS 004C": {
+   "id": "136:PHYS 004C",
+   "institutionId": 136,
+   "prefix": "PHYS",
+   "number": "004C",
+   "title": "General Physics",
+   "units": 5
+  },
+  "136:PHYS 004B": {
+   "id": "136:PHYS 004B",
+   "institutionId": 136,
+   "prefix": "PHYS",
+   "number": "004B",
+   "title": "General Physics",
+   "units": 5
+  },
+  "136:PHYS 004A": {
+   "id": "136:PHYS 004A",
+   "institutionId": 136,
+   "prefix": "PHYS",
+   "number": "004A",
+   "title": "General Physics",
+   "units": 5
+  },
+  "136:ETH 030": {
+   "id": "136:ETH 030",
+   "institutionId": 136,
+   "prefix": "ETH",
+   "number": "030",
+   "title": "Chicana/o Culture",
+   "units": 3
+  },
+  "136:POLSC 004": {
+   "id": "136:POLSC 004",
+   "institutionId": 136,
+   "prefix": "POLSC",
+   "number": "004",
+   "title": "International Relations",
+   "units": 3
+  },
+  "136:POLS C1000": {
+   "id": "136:POLS C1000",
+   "institutionId": 136,
+   "prefix": "POLS",
+   "number": "C1000",
+   "title": "American Government and Politics",
+   "units": 3
+  },
+  "136:POLSC 002": {
+   "id": "136:POLSC 002",
+   "institutionId": 136,
+   "prefix": "POLSC",
+   "number": "002",
+   "title": "Comparative Politics",
+   "units": 3
+  },
+  "92:SOC 101": {
+   "id": "92:SOC 101",
+   "institutionId": 92,
+   "prefix": "SOC",
+   "number": "101",
+   "title": "Introduction to Sociology",
+   "units": 3
+  },
+  "92:SOC 109": {
+   "id": "92:SOC 109",
+   "institutionId": 92,
+   "prefix": "SOC",
+   "number": "109",
+   "title": "Social Problems",
+   "units": 3
+  },
+  "92:ECON 101": {
+   "id": "92:ECON 101",
+   "institutionId": 92,
+   "prefix": "ECON",
+   "number": "101",
+   "title": "Microeconomics",
+   "units": 3
+  },
+  "92:ACCT 230": {
+   "id": "92:ACCT 230",
+   "institutionId": 92,
+   "prefix": "ACCT",
+   "number": "230",
+   "title": "Financial Accounting",
+   "units": 5
+  },
+  "92:MATH 210": {
+   "id": "92:MATH 210",
+   "institutionId": 92,
+   "prefix": "MATH",
+   "number": "210",
+   "title": "Linear Algebra",
+   "units": 4
+  },
+  "92:MATH 160": {
+   "id": "92:MATH 160",
+   "institutionId": 92,
+   "prefix": "MATH",
+   "number": "160",
+   "title": "Calculus with Analytic Geometry II",
+   "units": 5
+  },
+  "92:MATH 200": {
+   "id": "92:MATH 200",
+   "institutionId": 92,
+   "prefix": "MATH",
+   "number": "200",
+   "title": "Multivariable Calculus",
+   "units": 4
+  },
+  "92:MATH 150": {
+   "id": "92:MATH 150",
+   "institutionId": 92,
+   "prefix": "MATH",
+   "number": "150",
+   "title": "Calculus with Analytic Geometry I",
+   "units": 5
+  },
+  "92:MATH 220": {
+   "id": "92:MATH 220",
+   "institutionId": 92,
+   "prefix": "MATH",
+   "number": "220",
+   "title": "Differential Equations",
+   "units": 4
+  },
+  "92:PHYS 123": {
+   "id": "92:PHYS 123",
+   "institutionId": 92,
+   "prefix": "PHYS",
+   "number": "123",
+   "title": "Heat, Light and Modern Physics",
+   "units": 5
+  },
+  "92:PHYS 121": {
+   "id": "92:PHYS 121",
+   "institutionId": 92,
+   "prefix": "PHYS",
+   "number": "121",
+   "title": "Mechanics of Solids and Fluids",
+   "units": 5
+  },
+  "92:PHYS 122": {
+   "id": "92:PHYS 122",
+   "institutionId": 92,
+   "prefix": "PHYS",
+   "number": "122",
+   "title": "Electricity and Magnetism",
+   "units": 5
+  },
+  "92:POLS 132": {
+   "id": "92:POLS 132",
+   "institutionId": 92,
+   "prefix": "POLS",
+   "number": "132",
+   "title": "Political Thinking",
+   "units": 3
+  },
+  "92:POLS 121": {
+   "id": "92:POLS 121",
+   "institutionId": 92,
+   "prefix": "POLS",
+   "number": "121",
+   "title": "International Politics",
+   "units": 3
+  },
+  "92:POLS C1000": {
+   "id": "92:POLS C1000",
+   "institutionId": 92,
+   "prefix": "POLS",
+   "number": "C1000",
+   "title": "American Government and Politics",
+   "units": 3
+  },
+  "92:POLS 131": {
+   "id": "92:POLS 131",
+   "institutionId": 92,
+   "prefix": "POLS",
+   "number": "131",
+   "title": "Comparative Politics",
+   "units": 3
+  },
+  "65:SOC 1": {
+   "id": "65:SOC 1",
+   "institutionId": 65,
+   "prefix": "SOC",
+   "number": "1",
+   "title": "Introduction to Sociology",
+   "units": 3
+  },
+  "65:SOC 1H": {
+   "id": "65:SOC 1H",
+   "institutionId": 65,
+   "prefix": "SOC",
+   "number": "1H",
+   "title": "Honors Introduction to Sociology ",
+   "units": 3
+  },
+  "65:SOC 2": {
+   "id": "65:SOC 2",
+   "institutionId": 65,
+   "prefix": "SOC",
+   "number": "2",
+   "title": "Social Problems",
+   "units": 3
+  },
+  "65:SOC 2H": {
+   "id": "65:SOC 2H",
+   "institutionId": 65,
+   "prefix": "SOC",
+   "number": "2H",
+   "title": "Honors Social Problems ",
+   "units": 3
+  },
+  "65:ECON 4H": {
+   "id": "65:ECON 4H",
+   "institutionId": 65,
+   "prefix": "ECON",
+   "number": "4H",
+   "title": "Honors Principles of Microeconomics",
+   "units": 3
+  },
+  "65:ECON 4": {
+   "id": "65:ECON 4",
+   "institutionId": 65,
+   "prefix": "ECON",
+   "number": "4",
+   "title": "Principles (Micro)",
+   "units": 3
+  },
+  "65:ACCT 1A": {
+   "id": "65:ACCT 1A",
+   "institutionId": 65,
+   "prefix": "ACCT",
+   "number": "1A",
+   "title": "Financial Accounting",
+   "units": 4
+  },
+  "65:MATH 26": {
+   "id": "65:MATH 26",
+   "institutionId": 65,
+   "prefix": "MATH",
+   "number": "26",
+   "title": "Introduction to Linear Algebra",
+   "units": 4
+  },
+  "65:MATH 3C": {
+   "id": "65:MATH 3C",
+   "institutionId": 65,
+   "prefix": "MATH",
+   "number": "3C",
+   "title": "Analytic Geometry and Calculus",
+   "units": 5
+  },
+  "65:MATH 3B": {
+   "id": "65:MATH 3B",
+   "institutionId": 65,
+   "prefix": "MATH",
+   "number": "3B",
+   "title": "Analytic Geometry and Calculus",
+   "units": 5
+  },
+  "65:MATH 3AH": {
+   "id": "65:MATH 3AH",
+   "institutionId": 65,
+   "prefix": "MATH",
+   "number": "3AH",
+   "title": "Honors Analytic Geometry and Calculus",
+   "units": 5
+  },
+  "65:MATH 3A": {
+   "id": "65:MATH 3A",
+   "institutionId": 65,
+   "prefix": "MATH",
+   "number": "3A",
+   "title": "Analytic Geometry and Calculus",
+   "units": 5
+  },
+  "65:MATH 24": {
+   "id": "65:MATH 24",
+   "institutionId": 65,
+   "prefix": "MATH",
+   "number": "24",
+   "title": "Elementary Differential Equations",
+   "units": 4
+  },
+  "65:PHYS 4C": {
+   "id": "65:PHYS 4C",
+   "institutionId": 65,
+   "prefix": "PHYS",
+   "number": "4C",
+   "title": "General Physics",
+   "units": 5
+  },
+  "65:PHYS 4B": {
+   "id": "65:PHYS 4B",
+   "institutionId": 65,
+   "prefix": "PHYS",
+   "number": "4B",
+   "title": "General Physics",
+   "units": 5
+  },
+  "65:PHYS 4A": {
+   "id": "65:PHYS 4A",
+   "institutionId": 65,
+   "prefix": "PHYS",
+   "number": "4A",
+   "title": "General Physics",
+   "units": 5
+  },
+  "65:HIST 20": {
+   "id": "65:HIST 20",
+   "institutionId": 65,
+   "prefix": "HIST",
+   "number": "20",
+   "title": "Ethnic Cultures of the United States",
+   "units": 3
+  },
+  "65:PS 10H": {
+   "id": "65:PS 10H",
+   "institutionId": 65,
+   "prefix": "PS",
+   "number": "10H",
+   "title": "Honors Political Theory",
+   "units": 3
+  },
+  "65:PS 14": {
+   "id": "65:PS 14",
+   "institutionId": 65,
+   "prefix": "PS",
+   "number": "14",
+   "title": "International Relations",
+   "units": 3
+  },
+  "65:POLS C1000H": {
+   "id": "65:POLS C1000H",
+   "institutionId": 65,
+   "prefix": "POLS",
+   "number": "C1000H",
+   "title": "American Government and Politics - Honors",
+   "units": 3
+  },
+  "65:POLS C1000": {
+   "id": "65:POLS C1000",
+   "institutionId": 65,
+   "prefix": "POLS",
+   "number": "C1000",
+   "title": "American Government and Politics",
+   "units": 3
+  },
+  "65:PS 12": {
+   "id": "65:PS 12",
+   "institutionId": 65,
+   "prefix": "PS",
+   "number": "12",
+   "title": "Comparative Politics and Government",
+   "units": 3
+  },
+  "80:SOCI 001": {
+   "id": "80:SOCI 001",
+   "institutionId": 80,
+   "prefix": "SOCI",
+   "number": "001",
+   "title": "Introduction to Sociology",
+   "units": 3
+  },
+  "80:SOCI 002": {
+   "id": "80:SOCI 002",
+   "institutionId": 80,
+   "prefix": "SOCI",
+   "number": "002",
+   "title": "Social Problems",
+   "units": 3
+  },
+  "80:ECON 001B": {
+   "id": "80:ECON 001B",
+   "institutionId": 80,
+   "prefix": "ECON",
+   "number": "001B",
+   "title": "Principles of Microeconomics",
+   "units": 4
+  },
+  "80:ECON 001BH": {
+   "id": "80:ECON 001BH",
+   "institutionId": 80,
+   "prefix": "ECON",
+   "number": "001BH",
+   "title": "Honors Principles of Microeconomics",
+   "units": 4
+  },
+  "80:ACCT 010": {
+   "id": "80:ACCT 010",
+   "institutionId": 80,
+   "prefix": "ACCT",
+   "number": "010",
+   "title": "Financial Accounting",
+   "units": 5
+  },
+  "80:MATH 004C": {
+   "id": "80:MATH 004C",
+   "institutionId": 80,
+   "prefix": "MATH",
+   "number": "004C",
+   "title": "Linear Algebra",
+   "units": 4
+  },
+  "80:MATH 003BH": {
+   "id": "80:MATH 003BH",
+   "institutionId": 80,
+   "prefix": "MATH",
+   "number": "003BH",
+   "title": "Honors Calculus and Analytical Geometry",
+   "units": 5
+  },
+  "80:MATH 003B": {
+   "id": "80:MATH 003B",
+   "institutionId": 80,
+   "prefix": "MATH",
+   "number": "003B",
+   "title": "Calculus and Analytic Geometry",
+   "units": 5
+  },
+  "80:MATH 004A": {
+   "id": "80:MATH 004A",
+   "institutionId": 80,
+   "prefix": "MATH",
+   "number": "004A",
+   "title": "Intermediate Calculus",
+   "units": 5
+  },
+  "80:MATH 003AH": {
+   "id": "80:MATH 003AH",
+   "institutionId": 80,
+   "prefix": "MATH",
+   "number": "003AH",
+   "title": "Honors Calculus and Analytical Geometry",
+   "units": 5
+  },
+  "80:MATH 003A": {
+   "id": "80:MATH 003A",
+   "institutionId": 80,
+   "prefix": "MATH",
+   "number": "003A",
+   "title": "Calculus and Analytic Geometry",
+   "units": 5
+  },
+  "80:MATH 004B": {
+   "id": "80:MATH 004B",
+   "institutionId": 80,
+   "prefix": "MATH",
+   "number": "004B",
+   "title": "Differential Equations",
+   "units": 4
+  },
+  "80:PHYS 004C": {
+   "id": "80:PHYS 004C",
+   "institutionId": 80,
+   "prefix": "PHYS",
+   "number": "004C",
+   "title": "Engineering Physics - Light, Heat and Waves",
+   "units": 5
+  },
+  "80:PHYS 004B": {
+   "id": "80:PHYS 004B",
+   "institutionId": 80,
+   "prefix": "PHYS",
+   "number": "004B",
+   "title": "Engineering Physics - Electricity and Magnetism",
+   "units": 5
+  },
+  "80:PHYS 004A": {
+   "id": "80:PHYS 004A",
+   "institutionId": 80,
+   "prefix": "PHYS",
+   "number": "004A",
+   "title": "Engineering Physics - Mechanics",
+   "units": 5
+  },
+  "80:POLS 004": {
+   "id": "80:POLS 004",
+   "institutionId": 80,
+   "prefix": "POLS",
+   "number": "004",
+   "title": "International Relations",
+   "units": 3
+  },
+  "80:POLS C1000": {
+   "id": "80:POLS C1000",
+   "institutionId": 80,
+   "prefix": "POLS",
+   "number": "C1000",
+   "title": "American Government and Politics",
+   "units": 3
+  },
+  "80:POLS 002": {
+   "id": "80:POLS 002",
+   "institutionId": 80,
+   "prefix": "POLS",
+   "number": "002",
+   "title": "Comparative Governments",
+   "units": 3
+  },
+  "32:SOC 001": {
+   "id": "32:SOC 001",
+   "institutionId": 32,
+   "prefix": "SOC",
+   "number": "001",
+   "title": "Introduction to Sociology",
+   "units": 3
+  },
+  "32:SOC 002": {
+   "id": "32:SOC 002",
+   "institutionId": 32,
+   "prefix": "SOC",
+   "number": "002",
+   "title": "Social Problems",
+   "units": 3
+  },
+  "32:ECN 001B": {
+   "id": "32:ECN 001B",
+   "institutionId": 32,
+   "prefix": "ECN",
+   "number": "001B",
+   "title": "Principles of Microeconomics",
+   "units": 4
+  },
+  "32:ACC 001A": {
+   "id": "32:ACC 001A",
+   "institutionId": 32,
+   "prefix": "ACC",
+   "number": "001A",
+   "title": "Financial Accounting",
+   "units": 4
+  },
+  "32:MAT 004C": {
+   "id": "32:MAT 004C",
+   "institutionId": 32,
+   "prefix": "MAT",
+   "number": "004C",
+   "title": "Linear Algebra",
+   "units": 4
+  },
+  "32:MAT 004A": {
+   "id": "32:MAT 004A",
+   "institutionId": 32,
+   "prefix": "MAT",
+   "number": "004A",
+   "title": "Multivariable Calculus",
+   "units": 5
+  },
+  "32:MAT 003B": {
+   "id": "32:MAT 003B",
+   "institutionId": 32,
+   "prefix": "MAT",
+   "number": "003B",
+   "title": "Analytic Geometry and Calculus II",
+   "units": 5
+  },
+  "32:MAT 003A": {
+   "id": "32:MAT 003A",
+   "institutionId": 32,
+   "prefix": "MAT",
+   "number": "003A",
+   "title": "Analytic Geometry and Calculus I",
+   "units": 5
+  },
+  "32:MAT 003AH": {
+   "id": "32:MAT 003AH",
+   "institutionId": 32,
+   "prefix": "MAT",
+   "number": "003AH",
+   "title": "Analytic Geometry and Calculus I - Honors",
+   "units": 5
+  },
+  "32:MAT 004B": {
+   "id": "32:MAT 004B",
+   "institutionId": 32,
+   "prefix": "MAT",
+   "number": "004B",
+   "title": "Differential Equations",
+   "units": 4
+  },
+  "32:PHY 004C": {
+   "id": "32:PHY 004C",
+   "institutionId": 32,
+   "prefix": "PHY",
+   "number": "004C",
+   "title": "Engineering Physics - Light and Heat",
+   "units": 4
+  },
+  "32:PHY 004B": {
+   "id": "32:PHY 004B",
+   "institutionId": 32,
+   "prefix": "PHY",
+   "number": "004B",
+   "title": "Engineering Physics - Electricity and Magnetism",
+   "units": 4
+  },
+  "32:PHY 004A": {
+   "id": "32:PHY 004A",
+   "institutionId": 32,
+   "prefix": "PHY",
+   "number": "004A",
+   "title": "Engineering Physics - Mechanics",
+   "units": 5
+  },
+  "32:POL 004": {
+   "id": "32:POL 004",
+   "institutionId": 32,
+   "prefix": "POL",
+   "number": "004",
+   "title": "International Relations",
+   "units": 3
+  },
+  "32:POLS C1000": {
+   "id": "32:POLS C1000",
+   "institutionId": 32,
+   "prefix": "POLS",
+   "number": "C1000",
+   "title": "American Government and Politics",
+   "units": 3
+  },
+  "32:POL 002": {
+   "id": "32:POL 002",
+   "institutionId": 32,
+   "prefix": "POL",
+   "number": "002",
+   "title": "Comparative Government",
+   "units": 3
+  }
+ }
+}

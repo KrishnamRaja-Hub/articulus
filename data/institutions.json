@@ -1,0 +1,142 @@
+[
+  {
+    "id": 7,
+    "name": "University of California, San Diego",
+    "short": "UC San Diego",
+    "isCC": false,
+    "terms": "quarter"
+  },
+  {
+    "id": 32,
+    "name": "Mission College",
+    "short": "Mission",
+    "isCC": true,
+    "terms": "semester"
+  },
+  {
+    "id": 33,
+    "name": "City College of San Francisco",
+    "short": "CCSF",
+    "isCC": true,
+    "terms": "semester"
+  },
+  {
+    "id": 49,
+    "name": "Pasadena City College",
+    "short": "Pasadena City",
+    "isCC": true,
+    "terms": "semester"
+  },
+  {
+    "id": 51,
+    "name": "Foothill College",
+    "short": "Foothill",
+    "isCC": true,
+    "terms": "quarter"
+  },
+  {
+    "id": 58,
+    "name": "Berkeley City College",
+    "short": "Berkeley City",
+    "isCC": true,
+    "terms": "semester"
+  },
+  {
+    "id": 65,
+    "name": "Saddleback College",
+    "short": "Saddleback",
+    "isCC": true,
+    "terms": "semester"
+  },
+  {
+    "id": 74,
+    "name": "Orange Coast College",
+    "short": "Orange Coast",
+    "isCC": true,
+    "terms": "semester"
+  },
+  {
+    "id": 79,
+    "name": "University of California, Berkeley",
+    "short": "UC Berkeley",
+    "isCC": false,
+    "terms": "semester"
+  },
+  {
+    "id": 80,
+    "name": "West Valley College",
+    "short": "West Valley",
+    "isCC": true,
+    "terms": "semester"
+  },
+  {
+    "id": 89,
+    "name": "University of California, Davis",
+    "short": "UC Davis",
+    "isCC": false,
+    "terms": "quarter"
+  },
+  {
+    "id": 92,
+    "name": "Santa Barbara City College",
+    "short": "Santa Barbara City",
+    "isCC": true,
+    "terms": "semester"
+  },
+  {
+    "id": 103,
+    "name": "El Camino College",
+    "short": "El Camino",
+    "isCC": true,
+    "terms": "semester"
+  },
+  {
+    "id": 113,
+    "name": "De Anza College",
+    "short": "De Anza",
+    "isCC": true,
+    "terms": "quarter"
+  },
+  {
+    "id": 114,
+    "name": "Diablo Valley College",
+    "short": "Diablo Valley",
+    "isCC": true,
+    "terms": "semester"
+  },
+  {
+    "id": 117,
+    "name": "University of California, Los Angeles",
+    "short": "UCLA",
+    "isCC": false,
+    "terms": "quarter"
+  },
+  {
+    "id": 120,
+    "name": "University of California, Irvine",
+    "short": "UC Irvine",
+    "isCC": false,
+    "terms": "quarter"
+  },
+  {
+    "id": 124,
+    "name": "Irvine Valley College",
+    "short": "Irvine Valley",
+    "isCC": true,
+    "terms": "semester"
+  },
+  {
+    "id": 136,
+    "name": "San Jose City College",
+    "short": "San Jose City",
+    "isCC": true,
+    "terms": "semester"
+  },
+  {
+    "id": 137,
+    "name": "Santa Monica College",
+    "short": "Santa Monica",
+    "isCC": true,
+    "terms": "semester"
+  }
+]

@@ -1,0 +1,112 @@
+[
+  {
+    "file": "79-computer-science-b-a.json",
+    "receivingId": 79,
+    "major": "Computer Science, B.A."
+  },
+  {
+    "file": "79-electrical-engineering-computer-sciences-b-s.json",
+    "receivingId": 79,
+    "major": "Electrical Engineering & Computer Sciences, B.S."
+  },
+  {
+    "file": "79-mechanical-engineering-b-s.json",
+    "receivingId": 79,
+    "major": "Mechanical Engineering, B.S."
+  },
+  {
+    "file": "117-electrical-engineering-b-s.json",
+    "receivingId": 117,
+    "major": "Electrical Engineering/B.S."
+  },
+  {
+    "file": "117-mechanical-engineering-b-s.json",
+    "receivingId": 117,
+    "major": "Mechanical Engineering/B.S."
+  },
+  {
+    "file": "117-linguistics-and-computer-science-b-a.json",
+    "receivingId": 117,
+    "major": "Linguistics and Computer Science/B.A."
+  },
+  {
+    "file": "117-computer-science-and-engineering-b-s.json",
+    "receivingId": 117,
+    "major": "Computer Science and Engineering/B.S."
+  },
+  {
+    "file": "117-computer-science-b-s.json",
+    "receivingId": 117,
+    "major": "Computer Science/B.S."
+  },
+  {
+    "file": "7-mae-mechanical-engineering-b-s.json",
+    "receivingId": 7,
+    "major": "MAE: Mechanical Engineering B.S."
+  },
+  {
+    "file": "7-cse-computer-science-with-a-specialization-in-bioinformatics-b-s.json",
+    "receivingId": 7,
+    "major": "CSE: Computer Science with a Specialization in Bioinformatics B.S."
+  },
+  {
+    "file": "7-ece-electrical-engineering-and-society-b-a.json",
+    "receivingId": 7,
+    "major": "ECE: Electrical Engineering and Society B.A."
+  },
+  {
+    "file": "7-mathematics-computer-science-b-s.json",
+    "receivingId": 7,
+    "major": "Mathematics/Computer Science B.S."
+  },
+  {
+    "file": "7-cse-computer-science-b-s.json",
+    "receivingId": 7,
+    "major": "CSE: Computer Science B.S."
+  },
+  {
+    "file": "7-ece-electrical-engineering-b-s.json",
+    "receivingId": 7,
+    "major": "ECE: Electrical Engineering B.S."
+  },
+  {
+    "file": "120-computer-science-and-engineering-b-s.json",
+    "receivingId": 120,
+    "major": "Computer Science and Engineering, B.S."
+  },
+  {
+    "file": "120-computer-science-b-s.json",
+    "receivingId": 120,
+    "major": "Computer Science, B.S."
+  },
+  {
+    "file": "120-mechanical-engineering-b-s.json",
+    "receivingId": 120,
+    "major": "Mechanical Engineering, B.S."
+  },
+  {
+    "file": "120-electrical-engineering-b-s.json",
+    "receivingId": 120,
+    "major": "Electrical Engineering, B.S."
+  },
+  {
+    "file": "89-computer-science-b-s.json",
+    "receivingId": 89,
+    "major": "Computer Science B.S."
+  },
+  {
+    "file": "89-electrical-engineering-b-s.json",
+    "receivingId": 89,
+    "major": "Electrical Engineering B.S."
+  },
+  {
+    "file": "89-computer-science-engineering-b-s.json",
+    "receivingId": 89,
+    "major": "Computer Science & Engineering B.S."
+  },
+  {
+    "file": "89-mechanical-engineering-b-s.json",
+    "receivingId": 89,
+    "major": "Mechanical Engineering B.S."
+  }
+]
