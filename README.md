@@ -140,6 +140,28 @@ Fixtures on disk (`data/index.json`): 22 agreements, each merged across all 15 c
 
 Run `npm run fetch` to regenerate. The major filter is a substring match, so a few adjacent programs (Linguistics and Computer Science, Bioinformatics, Electrical Engineering and Society) are included as well.
 
+## Tech stack, in plain language
+
+Everything runs in the browser. There is no server, no database, and no account. Open the page and the whole planner is already there.
+
+- **TypeScript** everywhere. The engine, the fetch script, and the UI share one set of type definitions in `src/engine/types.ts`, so a course or a requirement means the same thing in every file.
+- **React 19 + Vite 8** for the page. Vite is the build tool and dev server; it also lets each of the 22 agreement files load on demand with `import.meta.glob`, so you only download the university and major you picked.
+- **Tailwind CSS 4** for styling. Colors, spacing, and type are declared once as theme tokens in `src/index.css` and reused as class names.
+- **GSAP 3 with ScrollTrigger** for motion: the hero draw-in, the scroll-scrubbed paragraph, the stacking story cards, the pinned requirement map. Motion is turned off automatically for users who set reduce-motion in their OS.
+- **Geist** variable font, self-hosted through `@fontsource-variable/geist`.
+- **Vitest** for the 11 engine tests and **Playwright** (dev-only, driving your installed Chrome) for screenshots and the smoke script in `scripts/`.
+- **Node 22** runs `scripts/fetch-assist.ts` as TypeScript directly, no build step.
+
+Things we learned that are not written down anywhere else:
+
+- ASSIST's REST API is public but refuses every call with HTTP 400 unless you first `GET https://assist.org/`, keep the cookies it sets, and echo the `X-XSRF-TOKEN` cookie back as a request header.
+- The API rate-limits per session cookie, not per IP. A 429 goes away the moment you start a fresh session, so the fetcher just opens a new one and retries.
+- Several fields that look like objects in the response (`templateAssets`, `articulations`, `receivingInstitution`, `academicYear`) are JSON strings inside JSON and need a second `JSON.parse`.
+- The institution IDs shown in the ASSIST web UI are not the API IDs. Berkeley is 79, UCLA 117, De Anza 113, Foothill 51.
+- A UC course with no articulation at a college is simply absent from the payload rather than marked "none", so the tree builder has to fill those rows in.
+- Requirement titles and requirement groups are two parallel lists ordered by `position`; the k-th title labels the k-th group.
+- Every course group ASSIST publishes belongs to exactly one college. Across 5,611 groups in our fixtures, none spans two. That single fact is what makes split-series detection exact instead of heuristic.
+
 ## Run it
 
 ```
@@ -177,6 +199,33 @@ scripts/fetch-assist.ts      ASSIST fetcher and fixture writer
 scripts/shots.mjs            Playwright screenshots
 data/                        cached fixtures (see Data)
 ```
+
+## Impact so far
+
+This is a build-day prototype, so the numbers below are what the demo can do today, not usage figures.
+
+- **Real data, not a mock.** Every check runs against the live 2025-26 ASSIST agreements for 5 UCs, 22 majors, and 15 community colleges. That is 5,611 articulated course groups a student would otherwise have to cross-reference by hand, one pairwise report at a time.
+- **The trap is verified, not asserted.** UC Berkeley PHYSICS 7B requires PHYS 4B + 4C from one college. Take 4B at De Anza and 4C at Foothill and the app shows zero credit and names the fix. Before this, the only way to learn that was the July transcript audit.
+- **Deterministic.** The same inputs give the same schedule every time, and each verdict points at a specific ASSIST row. There is no language model in the loop to hallucinate an equivalence.
+- **Multi-campus by default.** ASSIST answers "does college A articulate to university U". Articulus answers "does this exact set of courses from colleges A, B, and C articulate to U, and what should I take next term". Nothing public does that today.
+- **Tested end to end.** 11 unit tests and a smoke run of 95 solve-and-verify passes across every agreement, both quarter and semester home colleges, with zero split violations produced by the solver.
+
+## Future scope
+
+Near term, each is a contained change:
+
+- **All 116 California community colleges.** The fetch list is one array. The cost is roughly 700 requests and a few megabytes of fixtures, already loaded lazily.
+- **CSU campuses and more majors.** Same script, different IDs and a wider major filter. San Jose State, Cal Poly SLO, and San Diego State are the obvious next three.
+- **General education and IGETC.** ASSIST publishes these under a different `categoryCode`. Modeling them completes the "am I actually done" question.
+- **Surface articulation notes.** Grade minimums, lab requirements, and "must be completed within N years" remarks are already parsed and just need a place in the UI.
+- **Live class availability.** Join the plan to CVC and district schedules so the solver only proposes sections that are open this term.
+
+Longer term:
+
+- **Exact optimization.** Replace the greedy set cover with a small ILP or SAT pass over the same tree to guarantee minimum units.
+- **Real prerequisites.** Pull college catalogs so sequence order comes from data instead of a letter-suffix heuristic.
+- **Counselor mode.** Export the verified plan as a signed PDF a counselor can approve, and re-verify automatically when ASSIST publishes a new academic year.
+- **Alerts.** Watch a student's plan and notify them if an agreement changes underneath it before they enroll.
 
 ## Limitations and next steps
 
