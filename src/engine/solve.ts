@@ -1,6 +1,7 @@
 import type { Agreement, CourseGroup, CourseId, Institution, Partial, Plan, ReqNode, Requirement, Term } from './types'
 import { has, honorsColleges, reqStatus, ucOnly, verifySchedule, type ReqStatus } from './verify.ts'
 import institutions from '../../data/institutions.json' with { type: 'json' }
+import { prereqs } from './sequence.ts'
 
 export type TermSystem = 'quarter' | 'semester'
 
@@ -482,44 +483,16 @@ export function solve(taken: Set<CourseId>, a: Agreement, opts: SolveOptions): P
 
 /* ---- term packing ---- */
 
-/** "113:PHYS 4B" -> { stem: "113:PHYS 4", seq: 1 }  (A=0, B=1 ...; plain number = -1). Honors "1BH" collapses to "1B",
- *  "7H" to "7". The stem keeps the college: series order never crosses campuses. */
-const seqKey = (id: CourseId) => {
-  const m = /^(\d+):(.+?)\s(\d+)(?:H|([A-Z])H?)?$/.exec(id)
-  return m ? { stem: `${m[1]}:${m[2]} ${Number(m[3])}`, prev: `${m[1]}:${m[2]} ${Number(m[3]) - 1}`, seq: m[4] ? m[4].charCodeAt(0) - 65 : -1 } : null
-}
-
-/** "General Chemistry II" -> { base: "general chemistry #", n: 2 }: exactly one ordinal token (I-IV or 1-4). */
-const ordinalTitle = (t: string) => {
-  const toks = t.trim().toLowerCase().split(/\s+/)
-  const at = toks.flatMap((w, i) => (/^(i{1,3}|iv|[1-4])$/.test(w) ? [i] : []))
-  if (at.length !== 1) return null
-  const w = toks[at[0]], n = /\d/.test(w) ? Number(w) : w === 'iv' ? 4 : w.length
-  return { base: toks.map((x, i) => (i === at[0] ? '#' : x)).join(' '), n }
-}
-
-// ponytail: sequence order inferred from letter suffix (4A < 4B < 4C) within one college, and for plain numbers only
-// when titles say so (CHEM 11 "General Chemistry I" < CHEM 12 "... II"); swap for real requisite data if ASSIST ever
-// populates `requisites`. Plain PHYSCS 21/22/23 ("Mechanics", "Electricity and Magnetism", ...) stay unordered.
+// ponytail: prerequisite order is inferred from ids and titles (sequence.ts); swap for real requisite data if ASSIST
+// ever populates `requisites`.
 function pack(courses: CourseId[], unitsOf: (c: CourseId) => number, cap: number, maxTerms: number, start: NonNullable<SolveOptions['startTerm']>, system: TermSystem, titleOf: (c: CourseId) => string = () => ''): Term[] {
   if (!(cap > 0 && Number.isFinite(cap))) cap = system === 'semester' ? 12 : 16 // NaN / <=0 / Infinity -> default
-  const keys = new Map(courses.map((c) => [c, seqKey(c)]))
-  // pred: nearest lower letter planned in the same series (1A -> 1C when 1B is not needed); for the first course of a
-  // series (2A), the last planned course of the numerically previous series at the same college (1C -> 2A); for a
-  // plain number, the previous plain number whose title differs only by ordinal (CHEM 11 -> CHEM 12).
-  const pred = (c: CourseId) => {
-    const k = keys.get(c)
-    if (!k) return undefined
-    if (k.seq < 0) {
-      const t = ordinalTitle(titleOf(c))
-      return t ? courses.find((o) => { const ko = keys.get(o), to = ordinalTitle(titleOf(o)); return ko?.stem === k.prev && ko.seq < 0 && to?.base === t.base && to.n === t.n - 1 }) : undefined
-    }
-    if (k.seq > 0) return courses.filter((o) => { const ko = keys.get(o); return ko?.stem === k.stem && ko.seq >= 0 && ko.seq < k.seq }).sort((x, y) => keys.get(y)!.seq - keys.get(x)!.seq)[0]
-    // ponytail: assume the third course (C) of the lower series is the gate, as with MATH 1C -> 2A; real requisites if ASSIST ever ships them
-    const lowerCourses = courses.filter((o) => keys.get(o)?.stem === k.prev)
-    return lowerCourses.find((o) => keys.get(o)!.seq === 2) ?? lowerCourses.sort((x, y) => keys.get(y)!.seq - keys.get(x)!.seq)[0]
-  }
-  const depth = (c: CourseId, d = 0): number => { const p = pred(c); return p && d < 10 ? depth(p, d + 1) : d }
+  // preds: [course, gap]: gap 1 = strictly later term, 0 = same term or later (a lab after its lecture)
+  const preds = new Map<CourseId, [CourseId, number][]>(courses.map((c) => [c, []]))
+  for (const e of prereqs(courses, titleOf).edges) preds.get(e.to)!.push([e.from, e.rule === 'co' ? 0 : 1])
+  // depth: longest prerequisite chain below a course (the edges are acyclic); a lab sorts just after its lecture
+  const memo = new Map<CourseId, number>()
+  const depth = (c: CourseId): number => memo.get(c) ?? (memo.set(c, Math.max(0, ...preds.get(c)!.map(([p, g]) => depth(p) + (g || 0.5)))), memo.get(c)!)
   const ordered = [...courses].sort((x, y) => depth(x) - depth(y) || unitsOf(y) - unitsOf(x))
 
   const seasons: string[] = system === 'semester' ? ['Fall', 'Spring'] : ['Fall', 'Winter', 'Spring']
@@ -533,13 +506,20 @@ function pack(courses: CourseId[], unitsOf: (c: CourseId) => number, cap: number
   const EPS = 1e-9 // units are exact (unrounded) conversions, e.g. 5q = 3.333s
   const terms: Term[] = []
   const placed = new Map<CourseId, number>()
+  const labs = new Map<CourseId, CourseId[]>()
+  for (const [l, ps] of preds) for (const [p, g] of ps) if (!g) labs.set(p, [...(labs.get(p) ?? []), l])
+  const after = (x: CourseId, skip?: CourseId) => Math.max(0, ...preds.get(x)!.filter(([p]) => p !== skip).map(([p, g]) => placed.get(p)! + g))
   for (const c of ordered) {
-    const units = unitsOf(c)
-    const p = pred(c)
-    let i = p !== undefined && placed.has(p) ? placed.get(p)! + 1 : 0
+    if (placed.has(c)) continue
+    // A lecture takes its labs into the same term when they fit and nothing else holds them back.
+    let go = (labs.get(c) ?? []).filter((l) => preds.get(l)!.every(([p]) => p === c || placed.has(p)))
+    if (go.reduce((s, l) => s + unitsOf(l), unitsOf(c)) > cap + EPS) go = []
+    const units = go.reduce((s, l) => s + unitsOf(l), unitsOf(c))
+    let i = Math.max(after(c), ...go.map((l) => after(l, c))) // after every prerequisite
     while (terms[i] && terms[i].units + units > cap + EPS) i++
     while (terms.length <= i) terms.push({ name: name(terms.length), courses: [], units: 0 })
-    terms[i].courses.push(c); terms[i].units += units; placed.set(c, i)
+    for (const x of [c, ...go]) { terms[i].courses.push(x); placed.set(x, i) }
+    terms[i].units += units
   }
   // Only a single course larger than the cap can overflow a term; flag it rather than hide it.
   for (const t of terms) { if (t.units > cap + EPS) t.overCap = true; t.units = half(t.units) }

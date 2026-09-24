@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import ee from '../../data/agreements/117-electrical-engineering-b-s.json'
+import bme from '../../data/agreements/79-mechanical-engineering-b-s.json'
 import institutions from '../../data/institutions.json'
 import type { Agreement, Course, Institution, Plan, Requirement } from './types'
 import { solve, type SolveOptions } from './solve'
+import { prereqs } from './sequence'
 
 const EC = 103
 const unitSystems = Object.fromEntries((institutions as Institution[]).map((i) => [i.id, i.terms]))
@@ -57,6 +59,79 @@ describe('pack: series stay within one college (F-18)', () => {
   it('a plain honors number (MATH 071H) is not read as letter H of a series', () => {
     const a = agreement([['136:MATH 070'], ['136:MATH 071H']], [['136:MATH 070', 4, 'Discrete Mathematics'], ['136:MATH 071H', 5, 'Honors Calculus I']])
     expect(run(a).terms).toHaveLength(1)
+  })
+})
+
+describe('pack: topic prerequisites (MED-3)', () => {
+  const before = (p: Plan, x: string, y: string) => {
+    expect(termOf(p, x)).toBeGreaterThanOrEqual(0)
+    expect(termOf(p, x)).toBeLessThan(termOf(p, y))
+  }
+  it('Berkeley ME at Santa Monica only: Calculus 1 < 2 < Multivariable < Linear Algebra / ODE; physics and chemistry in order', () => {
+    const SM = 137
+    const p = solve(new Set(), bme as unknown as Agreement, { allowed: [SM], home: SM, termSystem: 'semester', unitSystems })
+    const c = (x: string) => `${SM}:${x}`
+    before(p, c('MATH 7'), c('MATH 8'))
+    before(p, c('MATH 8'), c('MATH 11'))
+    for (const x of ['MATH 13', 'MATH 15']) before(p, c('MATH 8'), c(x))
+    before(p, c('PHYSCS 21'), c('PHYSCS 22'))
+    before(p, c('PHYSCS 22'), c('PHYSCS 23'))
+    before(p, c('CHEM 11'), c('CHEM 12'))
+  })
+  it('De Anza + Foothill: generic Foothill "Calculus" takes its level from the letter; physics by topic', () => {
+    const a = agreement([['113:MATH 1A'], ['51:MATH 1B'], ['113:MATH 1C'], ['51:MATH 2B'], ['51:PHYS 4X'], ['113:PHYS 4B'], ['137:PHYSCS 21']], [
+      ['113:MATH 1A', 5, 'Calculus I'], ['51:MATH 1B', 5, 'Calculus'], ['113:MATH 1C', 5, 'Calculus III'], ['51:MATH 2B', 5, 'Linear Algebra'],
+      ['51:PHYS 4X', 6, 'General Physics (Calculus)'], ['113:PHYS 4B', 6, 'Physics for Scientists and Engineers: Electricity and Magnetism'],
+      ['137:PHYSCS 21', 5, 'Mechanics with Lab'],
+    ])
+    const p = run(a, { unitCap: 30 })
+    before(p, '113:MATH 1A', '51:MATH 1B')
+    before(p, '51:MATH 1B', '113:MATH 1C')
+    before(p, '51:MATH 1B', '51:MATH 2B')
+    expect(termOf(p, '113:MATH 1C')).toBe(termOf(p, '51:MATH 2B')) // multivariable and linear algebra: no order
+    before(p, '137:PHYSCS 21', '113:PHYS 4B')
+    expect(termOf(p, '51:PHYS 4X')).toBe(0) // "General Physics" names no topic: unordered
+  })
+  it('cross-college Calc 1 -> Calc 2 (De Anza Calculus I, Santa Monica Calculus 2), even when Calc 2 is bigger', () => {
+    const p = run(agreement([['137:MATH 8'], ['113:MATH 1A']], [['137:MATH 8', 6, 'Calculus 2'], ['113:MATH 1A', 5, 'Calculus I']]))
+    before(p, '113:MATH 1A', '137:MATH 8')
+  })
+  it('a lab shares its lecture\'s term and never comes before it', () => {
+    const a = agreement([['137:ENGR 21', '137:ENGR 22'], ['33:PHYC 4A', '33:PHYC 4AL'], ['33:PHYC 4B', '33:PHYC 4BL']], [
+      ['137:ENGR 21', 3, 'Circuit Analysis'], ['137:ENGR 22', 1, 'Circuit Analysis Lab'],
+      ['33:PHYC 4A', 3, 'Classical Mechanics for Scientists and Engineers'], ['33:PHYC 4AL', 1, 'Mechanics Laboratory for Scientists and Engineers'],
+      ['33:PHYC 4B', 3, 'Electromagnetism for Scientists and Engineers'], ['33:PHYC 4BL', 1, 'Electromagnetism Laboratory for Scientists and Engineers'],
+    ])
+    for (const unitCap of [4, 8, 16]) {
+      const p = run(a, { unitCap, termSystem: 'semester', unitSystems: { 33: 'semester', 137: 'semester' } })
+      expect(termOf(p, '137:ENGR 22')).toBe(termOf(p, '137:ENGR 21'))
+      expect(termOf(p, '33:PHYC 4AL')).toBe(termOf(p, '33:PHYC 4A'))
+      expect(termOf(p, '33:PHYC 4BL')).toBe(termOf(p, '33:PHYC 4B'))
+      before(p, '33:PHYC 4A', '33:PHYC 4B')
+      expect(p.terms.every((t) => t.units <= unitCap)).toBe(true)
+    }
+  })
+  it('unknown and applied titles stay unordered', () => {
+    const a = agreement([['1:FOO 9'], ['2:BAR 1'], ['1:MATH 16'], ['2:MATH 5']], [
+      ['1:FOO 9', 3, 'Foundations of Widgets II'], ['2:BAR 1', 3, 'Widget Studio'],
+      ['1:MATH 16', 4, 'Calculus for Business and the Life and Social Sciences'], ['2:MATH 5', 4, 'Calculus II'],
+    ])
+    expect(run(a, { unitCap: 20 }).terms).toHaveLength(1)
+  })
+  it('every inferred prerequisite is respected on every real agreement (home, home + Foothill, all colleges)', () => {
+    const all = (institutions as Institution[]).filter((i) => i.isCC).map((i) => i.id)
+    const files = import.meta.glob('../../data/agreements/*.json', { eager: true, import: 'default' }) as Record<string, Agreement>
+    let checked = 0
+    for (const a of Object.values(files)) for (const [home, allowed] of [[137, [137]], [113, [113, 51]], [32, all]] as [number, number[]][]) {
+      const p = solve(new Set(), a, { allowed, home, termSystem: unitSystems[home], unitSystems })
+      const at = new Map(p.terms.flatMap((t, i) => t.courses.map((c): [string, number] => [c, i])))
+      for (const e of prereqs([...at.keys()], (c) => a.catalog[c]?.title ?? '').edges) {
+        checked++
+        if (e.rule === 'co') expect(at.get(e.from)!, `${e.from} -> ${e.to}`).toBeLessThanOrEqual(at.get(e.to)!)
+        else expect(at.get(e.from)!, `${e.rule} ${e.from} -> ${e.to}`).toBeLessThan(at.get(e.to)!)
+      }
+    }
+    expect(checked).toBeGreaterThan(500)
   })
 })
 
