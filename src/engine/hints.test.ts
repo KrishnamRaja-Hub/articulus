@@ -5,6 +5,8 @@ import { verifySchedule } from './verify'
 import ucsdMae from '../../data/agreements/7-mae-mechanical-engineering-b-s.json'
 import ucsdEce from '../../data/agreements/7-ece-electrical-engineering-b-s.json'
 import berkeleyMe from '../../data/agreements/79-mechanical-engineering-b-s.json'
+import ucdCs from '../../data/agreements/89-computer-science-b-s.json'
+import ucdMe from '../../data/agreements/89-mechanical-engineering-b-s.json'
 
 const DA = 113, FH = 51
 const reqs = (n: ReqNode, acc: Requirement[] = []): Requirement[] => {
@@ -109,5 +111,42 @@ describe('honorsHint on synthetic rows', () => {
   it('does not double-strip: a course ending in HH is not a twin of H', () => {
     const r = req('X 8', [[1, ['1:X 1A']]])
     expect(honorsHint(r, new Set(['1:X 1AHH']))).toEqual([])
+  })
+})
+
+describe('honors companions (TESTER1_REPORT L-4): UC Davis MAT 021A lists Foothill MATH 1AH only with the 1AHP seminar', () => {
+  for (const [name, json] of [['UC Davis CS', ucdCs], ['UC Davis ME', ucdMe]] as const) {
+    const a = json as unknown as Agreement
+    const row = find(a, 'MAT 021A')
+
+    it(`${name}: the fixture really lists [MATH 1A] and [MATH 1AH + MATH 1AHP] at Foothill`, () => {
+      expect(row.groups.filter((g) => g.institutionId === FH).map((g) => g.courses)).toEqual([[`${FH}:MATH 1A`], [`${FH}:MATH 1AH`, `${FH}:MATH 1AHP`]])
+    })
+
+    it(`${name}: 1AH without the seminar never says "honors versions are usually accepted"; it names the seminar`, () => {
+      const taken = new Set([`${FH}:MATH 1AH`])
+      expect(verifySchedule(taken, a).satisfied['MAT 021A']).toBeUndefined()
+      const h = honorsHint(row, taken)
+      expect(h).toEqual([{
+        requirementId: 'MAT 021A', institutionId: FH,
+        group: { institutionId: FH, courses: [`${FH}:MATH 1AH`, `${FH}:MATH 1AHP`] },
+        swaps: [], companions: [`${FH}:MATH 1AHP`],
+      }])
+      const note = honorsNote(h[0])
+      expect(note).not.toMatch(/usually accepted/)
+      expect(note).toBe('ASSIST accepts MATH 1AH for this row only together with MATH 1AHP, which you have not taken. MATH 1AH alone may not count — confirm with a counselor, or add MATH 1AHP.')
+    })
+
+    it(`${name}: no hint once the seminar is taken, or with the regular course`, () => {
+      expect(honorsHint(row, new Set([`${FH}:MATH 1AH`, `${FH}:MATH 1AHP`]))).toEqual([])
+      expect(honorsHint(row, new Set([`${FH}:MATH 1A`]))).toEqual([])
+      expect(honorsHint(row, new Set([`${FH}:MATH 1AHP`]))).toEqual([])
+    })
+  }
+
+  it('a clean swap at a college still wins over a companion group elsewhere in the row', () => {
+    const r = req('X 9', [[1, ['1:X 1A']], [1, ['1:X 1AH', '1:X 1AHP']], [2, ['2:X 1A']]])
+    const h = honorsHint(r, new Set(['1:X 1AH', '2:X 1AH']))
+    expect(h.map((x) => [x.institutionId, x.swaps.length, x.companions ?? null])).toEqual([[1, 0, ['1:X 1AHP']], [2, 1, null]])
   })
 })

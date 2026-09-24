@@ -1,14 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import type { Plan, ValidationResult, Violation } from '../engine/types'
-import { badgeStatus, CAVEAT, deferredOf, nothingLeftNote, optimalNote, splitUnsolvable, UNCONFIRMED_TITLE } from './plannerStatus'
+import { badgeStatus, CAVEAT, COMPLETE_NOTE, deferredOf, noMatchNote, optimalExplain, optimalNote, PREREQ_TAG, prereqOnlySet, unmetNames, scheduleCaveat, scheduleNote, splitUnsolvable, UNCONFIRMED_TITLE } from './plannerStatus'
 import type { TrustLevel } from '../data-trust'
 import { dataTrust } from '../data-trust'
 import { verifySchedule } from '../engine/verify'
+import { nextOpenTerm, termLabel } from '../terms'
 import { solve } from '../engine/solve'
 import type { Agreement, Institution } from '../engine/types'
 import bundledMeta from '../../data/meta.json'
 import institutionsJson from '../../data/institutions.json'
 import uclaMe from '../../data/agreements/117-mechanical-engineering-b-s.json'
+import berkeleyMe from '../../data/agreements/79-mechanical-engineering-b-s.json'
 
 const result = (over: Partial<ValidationResult> = {}): ValidationResult =>
   ({ isValid: true, satisfied: {}, missing: [], incomplete: {}, splitSeriesViolations: [], deferred: [], ...over })
@@ -108,11 +110,6 @@ describe('badgeStatus with data trust', () => {
     }
   })
 
-  it('never says "Everything required is already complete" on untrusted data', () => {
-    expect(nothingLeftNote()).toBe('Everything required is already complete. Nothing left to schedule.')
-    expect(nothingLeftNote('aging')).toBe('Everything required is already complete. Nothing left to schedule.')
-    expect(nothingLeftNote('untrusted')).not.toMatch(/complete\./)
-  })
 })
 
 describe('CRITICAL-1: UCLA ME with no calculus on the bundled data', () => {
@@ -151,14 +148,153 @@ describe('helpers', () => {
     expect(deferredOf(result({ deferred: ['A', 'B'] }), plan({}, { deferred: ['B', 'C'] }))).toEqual(['B', 'C', 'A'])
   })
 
-  it('only claims minimum units when proven', () => {
-    expect(optimalNote(plan({ optimal: true }))).toBe('minimum units')
-    expect(optimalNote(plan({ optimal: false }))).toBe('near-minimum')
+  it('never says "minimum units": the planner trades units against extra colleges and split subjects (M-1)', () => {
+    expect(optimalNote(plan({ optimal: true }))).toBe('lowest cost under our rules')
+    expect(optimalNote(plan({ optimal: false }))).toBe('near-lowest cost')
     expect(optimalNote(plan())).toBeNull()
+    for (const optimal of [true, false, undefined]) {
+      expect(optimalNote(plan({ optimal })) ?? '').not.toMatch(/minimum/i)
+      expect(optimalExplain(plan({ optimal }))).toMatch(/extra college/)
+    }
+    expect(optimalExplain(plan({ optimal: false }))).toMatch(/better plan may exist/)
   })
 
   it('splits the "offered at" suffix off unsolvable entries', () => {
     expect(splitUnsolvable('CHEM 1A — offered at Foothill, De Anza')).toEqual({ what: 'CHEM 1A', offeredAt: 'Foothill, De Anza' })
     expect(splitUnsolvable('2 of: MATH 1A, MATH 1B')).toEqual({ what: '2 of: MATH 1A, MATH 1B' })
+  })
+})
+
+describe('scheduleNote (C-1): "complete" only when the verdict is complete', () => {
+  const LEVELS: TrustLevel[] = ['trusted', 'aging', 'untrusted']
+  const term = { name: 'Winter 2027', courses: ['113:MATH 1A'], units: 5 }
+  const cases = {
+    complete: [result(), plan()],
+    unsolvable: [result(), plan({ unsolvable: ['CHEM 1A — offered at De Anza', 'CHEM 1B — offered at De Anza'] }, { isValid: false, missing: ['CHEM 1A', 'CHEM 1B'] })],
+    'one unsolvable': [result(), plan({ unsolvable: ['CHEM 1A — offered at De Anza'] }, { isValid: false, missing: ['CHEM 1A'] })],
+    'blocking split taken': [result({ isValid: false, splitSeriesViolations: [split('PHYSICS 7B', true)] }), plan({}, { isValid: false, splitSeriesViolations: [split('PHYSICS 7B', true)] })],
+    'invalid plan': [result(), plan({}, { isValid: false, missing: ['MATH 53'] })],
+  } as const
+
+  for (const [name, [cur, base]] of Object.entries(cases)) for (const t of LEVELS) for (const withTerms of [false, true]) {
+    it(`${name} · ${t} · ${withTerms ? 'terms scheduled' : 'nothing scheduled'}`, () => {
+      const p: Plan = { ...base, terms: withTerms ? [term] : [] }
+      const status = badgeStatus(cur, p, 'UCLA', t)
+      const n = scheduleNote(status, p, t)
+      const complete = name === 'complete'
+      // the completion sentence appears exactly when the verdict is complete, on data that may be trusted, with nothing left
+      expect(n?.text === COMPLETE_NOTE).toBe(complete && t !== 'untrusted' && !withTerms)
+      if (n) expect(n.text).not.toMatch(/minimum/i)
+      if (complete && withTerms) expect(n).toBeNull()
+      if (complete && !withTerms && t === 'untrusted') {
+        expect(n).toEqual({ tone: 'warn', text: "Nothing more to schedule, but the data needs a refresh, so we can't confirm you are done. Confirm with a counselor before you stop taking courses." })
+      }
+      if (!complete) {
+        expect(n?.tone).toBe('alert')
+        expect(n!.text).not.toMatch(/already complete|nothing left/i)
+        expect(n!.text).toMatch(/still unmet/)
+        expect(n!.text.includes('data also needs a refresh')).toBe(t === 'untrusted')
+        expect(n!.text.startsWith(withTerms ? 'This schedule does not finish your plan.' : 'Nothing more can be scheduled at the selected colleges.')).toBe(true)
+      }
+    })
+  }
+
+  it('counts the unmet requirements in plain words', () => {
+    const [cur, p] = cases.unsolvable
+    expect(scheduleNote(badgeStatus(cur, p, 'UCLA'), p)).toEqual({ tone: 'alert', text: 'Nothing more can be scheduled at the selected colleges. 2 requirements are still unmet: CHEM 1A (offered at De Anza); CHEM 1B (offered at De Anza).' })
+    const [c1, p1] = cases['one unsolvable']
+    expect(scheduleNote(badgeStatus(c1, p1, 'UCLA'), p1)!.text).toBe('Nothing more can be scheduled at the selected colleges. 1 requirement is still unmet: CHEM 1A (offered at De Anza).')
+    const withTerms = { ...p1, terms: [term] }
+    expect(scheduleNote(badgeStatus(c1, withTerms, 'UCLA'), withTerms)!.text)
+      .toBe('This schedule does not finish your plan. 1 requirement is still unmet and cannot be scheduled at the selected colleges: CHEM 1A (offered at De Anza).')
+  })
+
+  it('never trusts a green status that disagrees with the plan (defensive)', () => {
+    const p = plan({ unsolvable: ['CHEM 1A'] }, { isValid: false })
+    expect(scheduleNote({ ok: true, tone: 'ok', title: 'x', details: [] }, p)?.text).not.toBe(COMPLETE_NOTE)
+  })
+})
+
+describe('C-1 repro: Mission student, Berkeley ME, chemistry not offered (TESTER1_REPORT)', () => {
+  const a = berkeleyMe as unknown as Agreement
+  const institutions = institutionsJson as Institution[]
+  const unitSystems = Object.fromEntries(institutions.map((i) => [i.id, i.terms]))
+  const taken = new Set(['32:MAT 003A', '32:MAT 003B', '32:MAT 004A', '32:MAT 004B', '32:MAT 004C', '32:PHY 004A', '32:PHY 004B', '32:PHY 004C', '32:PHY 004D'])
+  const p = solve(taken, a, { allowed: [32], home: 32, termSystem: institutions.find((i) => i.id === 32)!.terms, unitSystems })
+
+  it('nothing can be scheduled, requirements remain, and the note says so on every trust level', () => {
+    expect(p.terms).toEqual([])
+    expect(p.unsolvable.length).toBeGreaterThan(0)
+    for (const t of ['trusted', 'aging', 'untrusted'] as TrustLevel[]) {
+      const status = badgeStatus(verifySchedule(taken, a), p, 'UC Berkeley', t)
+      expect(status.tone).toBe('problem')
+      const n = scheduleNote(status, p, t)!
+      expect(n.tone).toBe('alert')
+      expect(n.text).not.toBe(COMPLETE_NOTE)
+      expect(n.text).toMatch(new RegExp(`^Nothing more can be scheduled at the selected colleges\\. ${p.unsolvable.length} requirements? (is|are) still unmet`))
+    }
+  })
+})
+
+describe('scheduleCaveat (M-3)', () => {
+  const withTerms = plan({ terms: [{ name: 'Winter 2027', courses: ['113:MATH 1A'], units: 5 }] })
+  it('is on the schedule when the data is untrusted or aging, and absent when trusted or empty', () => {
+    expect(scheduleCaveat(withTerms, 'trusted')).toBeNull()
+    expect(scheduleCaveat(plan(), 'untrusted')).toBeNull()
+    expect(scheduleCaveat(withTerms, 'untrusted')).toEqual({ tone: 'alert', text: 'This schedule is built from ASSIST data that needs a refresh, so courses may be missing or wrong. Check every course with a counselor before you enroll.' })
+    expect(scheduleCaveat(withTerms, 'aging', 'Sep 12, 2026')).toEqual({ tone: 'warn', text: 'This schedule is built from ASSIST data downloaded Sep 12, 2026. Check it with a counselor before you enroll.' })
+  })
+})
+
+describe('noMatchNote (L-7)', () => {
+  const a = berkeleyMe as unknown as Agreement
+  const short = (i: number) => ({ 113: 'De Anza', 51: 'Foothill' } as Record<number, string>)[i] ?? String(i)
+  it('names an honors twin that is not articulated: it will not count', () => {
+    expect(a.catalog['51:MATH 1BH']).toBeUndefined()
+    expect(a.catalog['51:MATH 1B']).toBeDefined()
+    expect(noMatchNote('math 1bh', a.catalog, [51], new Set(), short))
+      .toBe('MATH 1BH is not articulated for this major at Foothill — it will not count. ASSIST lists MATH 1B instead; ask a counselor before you retake anything.')
+    expect(noMatchNote('MATH1BH', a.catalog, [51], new Set(), short)).toMatch(/^MATH 1BH is not articulated/)
+  })
+
+  it('names a course code with no articulation in a subject the college does articulate', () => {
+    expect(noMatchNote('MATH 99', a.catalog, [113, 51], new Set(), short))
+      .toBe('MATH 99 is not articulated for this major at De Anza or Foothill — it will not count.')
+  })
+
+  it('says a course is already added, and falls back to a general line for unknown subjects or words', () => {
+    expect(noMatchNote('math 1a', a.catalog, [113], new Set(['113:MATH 1A']), short)).toBe('MATH 1A at De Anza is already in your completed courses.')
+    expect(noMatchNote('HIST 17A', a.catalog, [113], new Set(), short)).toBe('No course at De Anza that counts for this major matches "HIST 17A". Courses not listed here are not articulated for this major and will not count.')
+    expect(noMatchNote('underwater basket', a.catalog, [113, 51], new Set(), short)).toMatch(/^No course at De Anza or Foothill that counts/)
+  })
+})
+
+describe('unmetNames (C-1: say what is unmet)', () => {
+  it('names unschedulable rows with where they are offered, else the missing ones, capped at 3', () => {
+    expect(unmetNames(plan({ unsolvable: ['CHEM 1A — offered at De Anza', 'CHEM 1B'] }))).toBe('CHEM 1A (offered at De Anza); CHEM 1B')
+    expect(unmetNames(plan({}, { missing: ['A', 'B', 'C', 'D', 'E'] }))).toBe('A; B; C; and 2 more')
+    expect(unmetNames(plan())).toBe('')
+  })
+})
+
+describe('prerequisite-only courses', () => {
+  it('reads Plan.prereqOnly defensively and tags with "prerequisite"', () => {
+    expect(PREREQ_TAG).toBe('prerequisite')
+    expect([...prereqOnlySet(plan())]).toEqual([])
+    expect(prereqOnlySet(plan({ prereqOnly: ['113:MATH 1A'] })).has('113:MATH 1A')).toBe(true)
+    expect([...prereqOnlySet({ ...plan(), prereqOnly: 'bad' } as unknown as Plan)]).toEqual([])
+  })
+})
+
+describe('start term (M-5)', () => {
+  it('the default start on the tester date is passed to solve and labels the first term', () => {
+    const a = berkeleyMe as unknown as Agreement
+    const institutions = institutionsJson as Institution[]
+    const unitSystems = Object.fromEntries(institutions.map((i) => [i.id, i.terms]))
+    const start = nextOpenTerm(new Date('2026-09-24T12:00:00Z'), 'quarter')!
+    const p = solve(new Set(), a, { allowed: [113], home: 113, termSystem: 'quarter', unitSystems, startTerm: start })
+    expect(p.terms.length).toBeGreaterThan(0)
+    expect(p.terms[0].name).toBe(termLabel(start))
+    expect(p.terms[0].name).not.toBe('Fall 2026')
   })
 })

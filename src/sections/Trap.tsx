@@ -2,8 +2,9 @@ import { useMemo, useRef, useState } from 'react'
 import { gsap } from 'gsap'
 import { useGSAP } from '@gsap/react'
 import { useReveal } from '../motion/useReveal'
-import { agreements, byId, trust } from '../data'
+import { agreements, byId, useTrust } from '../data'
 import { verifySchedule } from '../engine/verify'
+import { demoTone } from '../data-trust'
 
 const DA = 113, FH = 51
 
@@ -73,11 +74,15 @@ function Chain() {
 /** Runs the real engine against the real Berkeley ME agreement. */
 function LiveCheck() {
   const [split, setSplit] = useState(true)
+  const trust = useTrust()
+  // on untrusted data the demo is an illustration of the rule, not a verdict, so a pass is never shown in green
   const me = agreements.find((a) => a.receivingId === 79 && /Mechanical/.test(a.major))!
   const taken = useMemo(() => new Set(split ? [`${DA}:PHYS 4B`, `${FH}:PHYS 4C`] : [`${DA}:PHYS 4B`, `${DA}:PHYS 4C`]), [split])
   const result = useMemo(() => verifySchedule(taken, me), [taken, me])
   const v = result.splitSeriesViolations.find((x) => x.requirementId === 'PHYSICS 7B')
   const ok = !!result.satisfied['PHYSICS 7B']
+  const tone = demoTone(ok, trust.level)
+  const illustrate = tone === 'illustration'
   // credit in the university's own unit system: De Anza is on quarters, Berkeley on semesters (1 semester unit = 1.5 quarter)
   const sys = byId[me.receivingId].terms
   const credited = [...taken].reduce((u, c) => {
@@ -113,18 +118,19 @@ function LiveCheck() {
         <Campus name="Foothill" tone="b" courses={[['PHYS 4B', false], ['PHYS 4C', split]]} />
       </div>
 
-      <div className={`mt-6 flex items-center justify-between rounded-2xl px-5 py-4 ${ok ? 'bg-accent-soft text-accent' : 'bg-alert-soft text-alert'}`}>
+      <div data-trap-result={tone}
+        className={`mt-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-2xl px-5 py-4 ${ok ? (illustrate ? 'border border-dashed border-line bg-bg text-ink-2' : 'bg-accent-soft text-accent') : 'bg-alert-soft text-alert'}`}>
         <div className="flex items-center gap-3">
-          <span className={`grid h-7 w-7 place-items-center rounded-full ${ok ? 'bg-accent' : 'bg-alert'} text-white`}>
+          <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full ${ok ? (illustrate ? 'border border-line bg-white text-ink-3' : 'bg-accent text-white') : 'bg-alert text-white'}`}>
             {ok ? <Check /> : <Cross />}
           </span>
-          <span className="font-medium">{ok ? 'PHYSICS 7B satisfied at De Anza' : 'Split series. PHYSICS 7B not satisfied.'}</span>
+          <span className="font-medium">{ok ? (illustrate ? 'Same college: PHYSICS 7B would count, per this data' : 'PHYSICS 7B satisfied at De Anza') : 'Split series. PHYSICS 7B not satisfied.'}</span>
         </div>
         <span className="text-[14px] opacity-80">{ok ? `${Math.round(credited * 10) / 10} ${sys} units credited` : v ? '0 units credited' : ''}</span>
       </div>
       {trust.level === 'untrusted' && (
         <p data-trust-caption className="mt-3 text-[13px] text-ink-3">
-          An illustration on the bundled {trust.academicYear ? `${trust.academicYear} data` : 'data'}, which needs a refresh. Planner verdicts are paused until it is.
+          An illustration on the bundled {trust.academicYear ? `${trust.academicYear} data` : 'data'}, which needs a refresh. The planner won't mark any plan complete until it is.
         </p>
       )}
     </div>

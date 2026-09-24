@@ -41,20 +41,33 @@ const daysOld = (fetchedAt: Date, now: Date, limit: number) => {
   return d <= limit ? `more than ${limit} days` : `${d} days`
 }
 
-export function dataTrust(meta: unknown, now: Date, normalizeVersion: number = NORMALIZE_VERSION): DataTrust {
+/**
+ * `agreementCount`: how many agreements the app actually bundles (data/index.json). When given, meta.json must record
+ * the same number; a mismatch means the data files and their description come from different downloads.
+ */
+export function dataTrust(meta: unknown, now: Date, normalizeVersion: number = NORMALIZE_VERSION, agreementCount?: number): DataTrust {
   const reasons: string[] = []
   const m = isObj(meta) ? meta : {}
   if (!isObj(meta)) reasons.push('The data description file is missing or unreadable')
   else if (m.schema !== META_SCHEMA) reasons.push('The data description file is in a format this version of the app does not recognize')
 
   const nv = m.normalizeVersion
-  if (nv === undefined || nv === null) reasons.push('The importer version that built the data is not recorded')
-  else if (typeof nv === 'number' && Number.isInteger(nv) && nv < normalizeVersion) reasons.push('Agreement data was built by an older version of the importer')
-  else if (nv !== normalizeVersion) reasons.push('Agreement data was built by an importer version this app does not match')
+  if (nv === undefined || nv === null) reasons.push('It is not recorded which version of Articulus prepared the data')
+  else if (typeof nv === 'number' && Number.isInteger(nv) && nv < normalizeVersion) reasons.push('The data was prepared by an older version of Articulus')
+  else if (nv !== normalizeVersion) reasons.push('The data was prepared by a different version of Articulus than this page')
 
   const v = m.validation
-  if (!isObj(v)) reasons.push('Data has not passed validation')
-  else if (v.passed !== true) reasons.push('Data failed validation')
+  if (!isObj(v)) reasons.push('The data has not been checked for errors')
+  else if (v.passed === false) reasons.push('The data failed its error check')
+  else if (v.passed === undefined || v.passed === null) reasons.push('The result of the data error check is not recorded')
+  // strictly boolean: "true" (a string) or 1 is a pipeline bug, not a pass, and says so instead of "failed"
+  else if (v.passed !== true) reasons.push('The result of the data error check is not a plain yes or no, so it cannot be read')
+
+  if (agreementCount !== undefined) {
+    const n = m.agreements
+    if (typeof n !== 'number' || !Number.isInteger(n) || n < 0) reasons.push('The number of agreements in the data is not recorded')
+    else if (n !== agreementCount) reasons.push(`The data description lists ${n} agreements, but ${agreementCount} are included`)
+  }
 
   const clockOk = !Number.isNaN(now.getTime())
   if (!clockOk) reasons.push("This device's date is not valid")
@@ -97,14 +110,15 @@ const lower = (s: string) => s.charAt(0).toLowerCase() + s.slice(1)
 
 export interface TrustBanner { tone: 'alert' | 'warn' | 'quiet'; headline: string; detail: string }
 
-/** The site-wide data-status text for each trust level. */
+/** The site-wide data-status text for each trust level. Plain language: problems found are still shown when
+ *  untrusted, only "complete" is withheld, so the headline must not say verdicts are paused. */
 export function trustBanner(t: DataTrust): TrustBanner {
   const date = t.fetchedAt ? formatDataDate(t.fetchedAt) : null
   const year = t.academicYear ? `${t.academicYear} agreements` : 'academic year unknown'
   if (t.level === 'untrusted') return {
     tone: 'alert',
-    headline: `Verdicts are paused: ${t.reasons.map(lower).join('; ')}. Confirm with a counselor.`,
-    detail: `ASSIST data: ${year}${date ? `, downloaded ${date}` : ''}. Split-series and missing-course warnings still show; no plan is marked complete until the data is refreshed.`,
+    headline: `We can't confirm a plan is complete right now: ${t.reasons.map(lower).join('; ')}. Confirm with a counselor.`,
+    detail: `ASSIST data: ${year}${date ? `, downloaded ${date}` : ''}. Split series and courses you still need are still flagged, but no plan is marked complete until the data is refreshed.`,
   }
   if (t.level === 'aging') return {
     tone: 'warn',
@@ -114,9 +128,26 @@ export function trustBanner(t: DataTrust): TrustBanner {
   return { tone: 'quiet', headline: `ASSIST data updated ${date} (${year}).`, detail: '' }
 }
 
+/** Where the figure's example comes from, from the live trust state (TESTER1_REPORT L-1): never "real, current data"
+ *  when it needs a refresh. */
+export function heroDataNote(t: DataTrust): string {
+  const year = t.academicYear ? `${t.academicYear} ` : ''
+  if (t.level === 'untrusted') return `From the bundled ${year}ASSIST data, which needs a refresh.`
+  return `From ${year}ASSIST data${t.fetchedAt ? ` downloaded ${formatDataDate(t.fetchedAt)}` : ''}.`
+}
+
 /** One-line version for the fixed header. */
 export function trustChip(t: DataTrust): string | null {
-  if (t.level === 'untrusted') return "Verdicts paused: data needs a refresh"
+  if (t.level === 'untrusted') return "Can't confirm plans: data needs a refresh"
   if (t.level === 'aging') return `ASSIST data from ${formatDataDate(t.fetchedAt!)}`
   return null
 }
+
+/** Same level and reasons: lets a periodic re-check skip re-rendering when nothing changed. */
+export const sameTrust = (a: DataTrust, b: DataTrust) =>
+  a.level === b.level && a.academicYear === b.academicYear && a.fetchedAt?.getTime() === b.fetchedAt?.getTime()
+  && a.reasons.length === b.reasons.length && a.reasons.every((r, i) => r === b.reasons[i])
+
+/** Tone of a pass/fail demo verdict (TESTER1_REPORT L-5): a pass on untrusted data is an illustration, never green. */
+export const demoTone = (ok: boolean, level: TrustLevel): 'ok' | 'illustration' | 'split' =>
+  !ok ? 'split' : level === 'untrusted' ? 'illustration' : 'ok'

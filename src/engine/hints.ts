@@ -11,7 +11,10 @@ import { honorsColleges, reqStatus } from './verify'
 
 /** One course the student took in the other version: `listed` is on ASSIST, `taken` is what they have. */
 export interface HonorsSwap { listed: CourseId; taken: CourseId }
-export interface HonorsHint { requirementId: string; institutionId: number; group: CourseGroup; swaps: HonorsSwap[] }
+/** `companions` (only when set): ASSIST lists the course the student took for this row, but only together with these
+ *  courses, which the student has not taken (Foothill MATH 1AH + the MATH 1AHP seminar for UC Davis MAT 021A). `group`
+ *  is then that listed group and `swaps` is empty: the honors course alone is not what ASSIST accepts. */
+export interface HonorsHint { requirementId: string; institutionId: number; group: CourseGroup; swaps: HonorsSwap[]; companions?: CourseId[] }
 
 const stripH = (id: CourseId) => id.replace(/H$/, '')
 const code = (id: CourseId) => id.slice(id.indexOf(':') + 1)
@@ -32,6 +35,7 @@ export function honorsHint(req: Requirement, taken: ReadonlySet<CourseId>): Hono
   if (reqStatus(req, set).satisfied) return []
   const mixing = honorsColleges(req) // there the engine already swaps, so a hint would never apply
   const best = new Map<number, HonorsHint>()
+  const companion = new Map<number, HonorsHint>()
   for (const g of req.groups) {
     if (mixing.has(g.institutionId) || g.courses.length === 0) continue
     const swaps: HonorsSwap[] = []
@@ -43,10 +47,24 @@ export function honorsHint(req: Requirement, taken: ReadonlySet<CourseId>): Hono
       swaps.push({ listed: c, taken: t })
     }
     if (!complete || swaps.length === 0) continue
+    // ASSIST already lists a taken course for this row in another group at the same college, with courses the student
+    // lacks: that group is what ASSIST accepts for it, so "usually accepted" would contradict it. Name the companions.
+    const listedWith = req.groups.filter((o) => o !== g && o.institutionId === g.institutionId && swaps.some((s) => o.courses.includes(s.taken)))
+    if (listedWith.length) {
+      for (const o of listedWith) {
+        const companions = o.courses.filter((c) => !taken.has(c))
+        const prev = companion.get(g.institutionId)
+        if (companions.length && (!prev || companions.length < prev.companions!.length))
+          companion.set(g.institutionId, { requirementId: req.id, institutionId: g.institutionId, group: o, swaps: [], companions })
+      }
+      continue
+    }
     const prev = best.get(g.institutionId)
     if (!prev || swaps.length < prev.swaps.length) best.set(g.institutionId, { requirementId: req.id, institutionId: g.institutionId, group: g, swaps })
   }
-  return [...best.values()]
+  // a clean swap hint wins for its college; otherwise the companion note; colleges in order of first appearance
+  const order = [...new Set(req.groups.map((g) => g.institutionId))]
+  return order.flatMap((i) => best.get(i) ?? companion.get(i) ?? [])
 }
 
 /** Hints for every requirement in `reqs` (deduplicated by id). */
@@ -64,6 +82,11 @@ const list = (xs: string[]) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1
 
 /** Student-facing note, e.g. "ASSIST lists MATH 1C, not MATH 1CH, for this row. Honors versions are usually accepted — ..." */
 export function honorsNote(h: HonorsHint): string {
+  if (h.companions?.length) {
+    const have = list(h.group.courses.filter((c) => !h.companions!.includes(c)).map(code))
+    const need = list(h.companions.map(code))
+    return `ASSIST accepts ${have} for this row only together with ${need}, which you have not taken. ${have} alone may not count — confirm with a counselor, or add ${need}.`
+  }
   const listed = list(h.swaps.map((s) => code(s.listed)))
   const took = list(h.swaps.map((s) => code(s.taken)))
   const tookHonors = h.swaps.every((s) => s.taken.endsWith('H'))

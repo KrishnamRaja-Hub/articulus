@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { academicYearOn, dataTrust, formatDataDate, trustBanner, trustChip } from './data-trust'
+import { academicYearOn, dataTrust, formatDataDate, heroDataNote, demoTone, sameTrust, trustBanner, trustChip } from './data-trust'
 import { NORMALIZE_VERSION } from './engine/normalize'
 
 // data/meta.json as committed before the normalize fixes were re-fetched (DATA_CONTRACT.md "legacy file")
@@ -25,8 +25,8 @@ describe('dataTrust: the legacy data file', () => {
     expect(t.fetchedAt).toBeNull()
     expect(t.academicYear).toBe('2025-2026')
     expect(t.reasons).toEqual([
-      'Agreement data was built by an older version of the importer',
-      'Data has not passed validation',
+      'The data was prepared by an older version of Articulus',
+      'The data has not been checked for errors',
       'The date the data was downloaded from ASSIST is not recorded',
       'Data is for 2025-2026 but 2026-2027 agreements are in effect',
     ])
@@ -72,18 +72,18 @@ describe('dataTrust: levels', () => {
 
   it('evaluates the untrusted rules before aging: a stale importer version wins over fresh data', () => {
     expect(dataTrust(good({ normalizeVersion: NORMALIZE_VERSION - 1, fetchedAt: ago(10 * DAY) }), NOW))
-      .toMatchObject({ level: 'untrusted', reasons: ['Agreement data was built by an older version of the importer'] })
+      .toMatchObject({ level: 'untrusted', reasons: ['The data was prepared by an older version of Articulus'] })
   })
 })
 
 describe('dataTrust: importer version and schema', () => {
   it('rejects an older, newer, missing or malformed normalizeVersion', () => {
-    expect(dataTrust(good({ normalizeVersion: 1 }), NOW, 2).reasons).toEqual(['Agreement data was built by an older version of the importer'])
-    expect(dataTrust(good({ normalizeVersion: 3 }), NOW, 2).reasons).toEqual(['Agreement data was built by an importer version this app does not match'])
-    expect(dataTrust(good({ normalizeVersion: '2' }), NOW, 2).reasons).toEqual(['Agreement data was built by an importer version this app does not match'])
-    expect(dataTrust(good({ normalizeVersion: 1.5 }), NOW, 2).reasons).toEqual(['Agreement data was built by an importer version this app does not match'])
-    expect(dataTrust(good({ normalizeVersion: undefined }), NOW, 2).reasons).toEqual(['The importer version that built the data is not recorded'])
-    expect(dataTrust(good({ normalizeVersion: null }), NOW, 2).reasons).toEqual(['The importer version that built the data is not recorded'])
+    expect(dataTrust(good({ normalizeVersion: 1 }), NOW, 2).reasons).toEqual(['The data was prepared by an older version of Articulus'])
+    expect(dataTrust(good({ normalizeVersion: 3 }), NOW, 2).reasons).toEqual(['The data was prepared by a different version of Articulus than this page'])
+    expect(dataTrust(good({ normalizeVersion: '2' }), NOW, 2).reasons).toEqual(['The data was prepared by a different version of Articulus than this page'])
+    expect(dataTrust(good({ normalizeVersion: 1.5 }), NOW, 2).reasons).toEqual(['The data was prepared by a different version of Articulus than this page'])
+    expect(dataTrust(good({ normalizeVersion: undefined }), NOW, 2).reasons).toEqual(['It is not recorded which version of Articulus prepared the data'])
+    expect(dataTrust(good({ normalizeVersion: null }), NOW, 2).reasons).toEqual(['It is not recorded which version of Articulus prepared the data'])
   })
 
   it('compares against the version passed in, defaulting to NORMALIZE_VERSION', () => {
@@ -109,12 +109,49 @@ describe('dataTrust: importer version and schema', () => {
 
 describe('dataTrust: validation', () => {
   it('requires a validation record that passed', () => {
-    expect(dataTrust(good({ validation: null }), NOW).reasons).toEqual(['Data has not passed validation'])
-    expect(dataTrust(good({ validation: undefined }), NOW).reasons).toEqual(['Data has not passed validation'])
-    expect(dataTrust(good({ validation: true }), NOW).reasons).toEqual(['Data has not passed validation'])
-    expect(dataTrust(good({ validation: { passed: false, at: '2026-09-24T08:05:00Z' } }), NOW).reasons).toEqual(['Data failed validation'])
-    expect(dataTrust(good({ validation: { passed: 'true' } }), NOW).reasons).toEqual(['Data failed validation'])
-    expect(dataTrust(good({ validation: {} }), NOW).reasons).toEqual(['Data failed validation'])
+    expect(dataTrust(good({ validation: null }), NOW).reasons).toEqual(['The data has not been checked for errors'])
+    expect(dataTrust(good({ validation: undefined }), NOW).reasons).toEqual(['The data has not been checked for errors'])
+    expect(dataTrust(good({ validation: true }), NOW).reasons).toEqual(['The data has not been checked for errors'])
+    expect(dataTrust(good({ validation: { passed: false, at: '2026-09-24T08:05:00Z' } }), NOW).reasons).toEqual(['The data failed its error check'])
+    expect(dataTrust(good({ validation: {} }), NOW).reasons).toEqual(['The result of the data error check is not recorded'])
+    expect(dataTrust(good({ validation: { passed: null } }), NOW).reasons).toEqual(['The result of the data error check is not recorded'])
+  })
+
+  it('treats passed strictly as a boolean, and says a wrong type is unreadable rather than "failed" (L-3)', () => {
+    for (const passed of ['true', 1, 'yes', {}, []]) {
+      const t = dataTrust(good({ validation: { passed } }), NOW)
+      expect(t.level).toBe('untrusted')
+      expect(t.reasons).toEqual(['The result of the data error check is not a plain yes or no, so it cannot be read'])
+    }
+  })
+})
+
+describe('dataTrust: agreement count (L-3)', () => {
+  it('matches meta.agreements against the bundled index when a count is given', () => {
+    expect(dataTrust(good(), NOW, NORMALIZE_VERSION, 22).level).toBe('trusted')
+    expect(dataTrust(good({ agreements: 21 }), NOW, NORMALIZE_VERSION, 22))
+      .toMatchObject({ level: 'untrusted', reasons: ['The data description lists 21 agreements, but 22 are included'] })
+    for (const agreements of [undefined, null, '22', 2.5, -1])
+      expect(dataTrust(good({ agreements }), NOW, NORMALIZE_VERSION, 22).reasons).toEqual(['The number of agreements in the data is not recorded'])
+  })
+
+  it('skips the check when no count is given (older callers)', () => {
+    expect(dataTrust(good({ agreements: 3 }), NOW).level).toBe('trusted')
+  })
+
+  it('the legacy file still lists the right count', () => {
+    expect(dataTrust(legacyMeta, NOW, NORMALIZE_VERSION, 22).reasons.some((r) => /agreements in|agreements, but/.test(r))).toBe(false)
+  })
+})
+
+describe('sameTrust (periodic re-check)', () => {
+  it('is true only when level, reasons and dates match', () => {
+    const t = dataTrust(good(), NOW)
+    expect(sameTrust(t, dataTrust(good(), NOW))).toBe(true)
+    expect(sameTrust(t, dataTrust(good(), new Date(NOW.getTime() + 60_000)))).toBe(true)
+    // a tab left open for 8 days downgrades
+    expect(sameTrust(t, dataTrust(good(), new Date(NOW.getTime() + 8 * DAY)))).toBe(false)
+    expect(sameTrust(dataTrust(good(), new Date(NOW.getTime() + 9 * DAY)), dataTrust(good(), new Date(NOW.getTime() + 10 * DAY)))).toBe(false)
   })
 })
 
@@ -180,13 +217,14 @@ describe('dataTrust: academic year', () => {
 })
 
 describe('banner text', () => {
-  it('pauses verdicts and lists every reason when untrusted', () => {
+  it('says plainly that completion cannot be confirmed, and lists every reason, when untrusted (L-2)', () => {
     const b = trustBanner(dataTrust(legacyMeta, NOW))
     expect(b.tone).toBe('alert')
-    expect(b.headline).toBe('Verdicts are paused: agreement data was built by an older version of the importer; data has not passed validation; '
+    expect(b.headline).toBe("We can't confirm a plan is complete right now: the data was prepared by an older version of Articulus; the data has not been checked for errors; "
       + 'the date the data was downloaded from ASSIST is not recorded; data is for 2025-2026 but 2026-2027 agreements are in effect. Confirm with a counselor.')
-    expect(b.detail).toBe('ASSIST data: 2025-2026 agreements. Split-series and missing-course warnings still show; no plan is marked complete until the data is refreshed.')
-    expect(trustChip(dataTrust(legacyMeta, NOW))).toBe('Verdicts paused: data needs a refresh')
+    expect(b.detail).toBe('ASSIST data: 2025-2026 agreements. Split series and courses you still need are still flagged, but no plan is marked complete until the data is refreshed.')
+    expect(trustChip(dataTrust(legacyMeta, NOW))).toBe("Can't confirm plans: data needs a refresh")
+    for (const text of [b.headline, b.detail, trustChip(dataTrust(legacyMeta, NOW))!]) expect(text).not.toMatch(/paused|importer|validation|schema/i)
   })
 
   it('names the download date when an untrusted file has one', () => {
@@ -210,8 +248,23 @@ describe('banner text', () => {
     expect(trustChip(t)).toBeNull()
   })
 
+  it('describes the hero example source from the trust state (L-1)', () => {
+    expect(heroDataNote(dataTrust(legacyMeta, NOW))).toBe('From the bundled 2025-2026 ASSIST data, which needs a refresh.')
+    expect(heroDataNote(dataTrust(good(), NOW))).toBe('From 2026-2027 ASSIST data downloaded Sep 24, 2026.')
+    expect(heroDataNote(dataTrust(good({ fetchedAt: '2026-09-12T08:00:00Z' }), NOW))).toBe('From 2026-2027 ASSIST data downloaded Sep 12, 2026.')
+  })
+
   it('formats dates in UTC', () => {
     expect(formatDataDate(new Date('2026-09-24T23:30:00Z'))).toBe('Sep 24, 2026')
     expect(formatDataDate(new Date('2026-09-25T00:30:00Z'))).toBe('Sep 25, 2026')
+  })
+})
+
+describe('demoTone (L-5)', () => {
+  it('never shows a green pass on untrusted data', () => {
+    expect(demoTone(true, 'untrusted')).toBe('illustration')
+    expect(demoTone(true, 'aging')).toBe('ok')
+    expect(demoTone(true, 'trusted')).toBe('ok')
+    expect(demoTone(false, 'trusted')).toBe('split')
   })
 })

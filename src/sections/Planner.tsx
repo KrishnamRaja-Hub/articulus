@@ -2,20 +2,23 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { gsap } from 'gsap'
 import { useGSAP } from '@gsap/react'
 import { useReveal } from '../motion/useReveal'
-import { byId, colleges, loadAgreement, majorsFor, trust, unitSystems, universities } from '../data'
+import { byId, colleges, loadAgreement, majorsFor, unitSystems, universities, useTrust } from '../data'
+import { formatDataDate } from '../data-trust'
+import { nextOpenTerm, termKey, termLabel, termsFrom, type StartTerm } from '../terms'
 import { has, honorsColleges, ucOnly, verifySchedule } from '../engine/verify'
 import { solve } from '../engine/solve'
 import { honorsHints, honorsNote } from '../engine/hints'
 import type { Agreement, CourseGroup, CourseId, Plan, ReqNode, Requirement, ValidationResult } from '../engine/types'
 import Button from '../ui/Button'
 import { Check, Cross } from './Trap'
-import { badgeStatus, deferredOf, isBlocking, nothingLeftNote, optimalNote, splitUnsolvable } from './plannerStatus'
+import { badgeStatus, deferredOf, isBlocking, noMatchNote, optimalExplain, optimalNote, PREREQ_TAG, prereqOnlySet, scheduleCaveat, scheduleNote, splitUnsolvable, type ScheduleNote } from './plannerStatus'
 import { DataBanner, Exclaim } from './DataStatus'
 
 const MAX_TERMS = 6
 const EMPTY_RESULT: ValidationResult = { isValid: false, satisfied: {}, missing: [], incomplete: {}, splitSeriesViolations: [], deferred: [] }
 const EMPTY_PLAN: Plan = { terms: [], chosen: {}, result: EMPTY_RESULT, totalUnits: 0, unsolvable: [] }
 const capFor = (inst: number) => (byId[inst]?.terms === 'semester' ? 12 : 16)
+const START_OPTIONS = 6
 // one hue per selected college, assigned by position: home first
 const PALETTE = [
   { chip: 'bg-campus-a-soft text-campus-a border-campus-a/20', dot: 'bg-campus-a', text: 'text-campus-a' },
@@ -57,6 +60,9 @@ export default function Planner() {
   const [taken, setTaken] = useState<Set<CourseId>>(new Set())
   const [query, setQuery] = useState('')
   const [hover, setHover] = useState<CourseId | null>(null)
+  const [startPick, setStartPick] = useState<StartTerm | null>(null)
+  const [today] = useState(() => new Date())
+  const trust = useTrust()
 
   const [agreement, setAgreement] = useState<Agreement | null>(null)
   const majors = majorsFor(uc)
@@ -68,6 +74,9 @@ export default function Planner() {
     loadAgreement(entry.file).then((a) => { if (load.current === id) setAgreement(a) })
   }, [entry.file])
   const terms = byId[home].terms, UNIT_CAP = capFor(home)
+  // first term: the next one the student can still register for at the home college, unless they pick another
+  const startOptions = termsFrom(nextOpenTerm(today, terms) ?? { season: 'Fall', year: today.getUTCFullYear() || 2026 }, terms, START_OPTIONS)
+  const start = (startPick && startOptions.find((t) => termKey(t) === termKey(startPick))) || startOptions[0]
   const allowed = [home, ...extra.filter((id) => id !== home)]
   const paletteOf = (inst: number) => PALETTE[allowed.indexOf(inst)] ?? GREY
   const chip = (inst: number) => paletteOf(inst).chip
@@ -76,9 +85,9 @@ export default function Planner() {
 
   const current = useMemo(() => (agreement ? verifySchedule(taken, agreement) : EMPTY_RESULT), [taken, agreement])
   const plan = useMemo(
-    () => (agreement ? solve(taken, agreement, { allowed, home, unitCap: UNIT_CAP, maxTerms: MAX_TERMS, termSystem: terms, unitSystems })
+    () => (agreement ? solve(taken, agreement, { allowed, home, unitCap: UNIT_CAP, maxTerms: MAX_TERMS, termSystem: terms, unitSystems, startTerm: start })
       : EMPTY_PLAN),
-    [taken, agreement, allowed.join(), home])
+    [taken, agreement, allowed.join(), home, termKey(start)])
   const rows = useMemo(() => (agreement ? flatten(agreement.root) : []), [agreement])
   // informational only: ASSIST lists the regular course where the student took the honors one (or the reverse)
   const hints = useMemo(() => honorsHints(rows.map((r) => r.req), taken), [rows, taken])
@@ -145,7 +154,13 @@ export default function Planner() {
   const hintList = Object.values(hints).flat()
   const deferred = deferredOf(current, plan)
   const reqOf = (id: string) => rows.find((r) => r.req.id === id)?.req
-  const note = optimalNote(plan)
+  // a plan that leaves requirements unmet never gets an optimality label (TESTER1_REPORT C-1: "0 units · minimum units")
+  const incomplete = plan.unsolvable.length > 0 || !plan.result.isValid
+  const note = incomplete ? 'does not finish the plan' : optimalNote(plan)
+  const schedNote = scheduleNote(status, plan, trust.level)
+  const caveat = scheduleCaveat(plan, trust.level, trust.fetchedAt ? formatDataDate(trust.fetchedAt) : null)
+  const prereqOnly = prereqOnlySet(plan)
+  const prereqWarnings = plan.prereqWarnings ?? []
 
   return (
     <section id="plan" ref={ref} className="px-6 py-32 md:py-48">
@@ -168,9 +183,15 @@ export default function Planner() {
           </Field>
 
           <Field label="Colleges">
-            <Select value={home} onChange={(v) => setHome(Number(v))}>
+            <Select value={home} onChange={(v) => setHome(Number(v))} label="Home college">
               {colleges.map((c) => <option key={c.id} value={c.id}>{c.name} (home)</option>)}
             </Select>
+            <div>
+              <div className="mb-2 text-[13px] text-ink-3">First {terms} to plan</div>
+              <Select value={termKey(start)} label={`First ${terms} to plan`} onChange={(k) => setStartPick(startOptions.find((t) => termKey(t) === k) ?? null)}>
+                {startOptions.map((t, i) => <option key={termKey(t)} value={termKey(t)}>{termLabel(t)}{i === 0 ? ' (next open registration)' : ''}</option>)}
+              </Select>
+            </div>
             <div>
               <div className="mb-2 text-[13px] text-ink-3">Also enroll at, via CVC or district cross-enrollment</div>
               <div className="flex flex-wrap gap-1.5">
@@ -195,7 +216,7 @@ export default function Planner() {
                 className="h-12 w-full rounded-xl border border-line bg-bg px-4 text-[15px] placeholder:text-ink-3 transition-colors focus:border-ink/40" />
               {query.trim() && results.length === 0 && (
                 <div className="absolute z-40 mt-2 w-full rounded-xl border border-line bg-white px-4 py-3 text-[14px] text-ink-2 shadow-[var(--shadow-card-hover)]">
-                  No course at {allowed.map((i) => byId[i].short).join(', ')} matches "{query.trim()}" for this major.
+                  {noMatchNote(query, agreement?.catalog ?? {}, allowed, taken, (i) => byId[i]?.short ?? String(i))}
                 </div>
               )}
               {results.length > 0 && (
@@ -239,7 +260,7 @@ export default function Planner() {
             </div>
             <dl className="grid grid-cols-3 gap-6 text-[14px] text-ink-2 md:text-right">
               <Stat n={plan.terms.length} l={plan.terms.length === 1 ? terms : `${terms}s`} />
-              <Stat n={plan.totalUnits} l="units to go" note={note} />
+              <Stat n={plan.totalUnits} l={incomplete ? 'units scheduled' : 'units to go'} note={note} title={incomplete ? undefined : optimalExplain(plan)} />
               <Stat n={Object.keys(plan.result.satisfied).length} l="requirements" />
             </dl>
           </div>
@@ -349,7 +370,7 @@ export default function Planner() {
           {hintList.length > 0 && (
             <div data-hints className="card mt-4 p-6 text-[15px]">
               <div className="font-medium">Ask before you retake</div>
-              <p className="mt-1 text-[14px] text-ink-2">These rows still count as missing, because ASSIST lists a different version of a course you took. The schedule below plans the listed course.</p>
+              <p className="mt-1 text-[14px] text-ink-2">These rows still count as missing: ASSIST lists a different version of a course you took, or lists it only together with another course. The schedule below plans what ASSIST lists.</p>
               <ul className="mt-3">
                 {hintList.map((h) => (
                   <li key={`${h.requirementId}|${h.institutionId}`} className="border-t border-line py-2">
@@ -368,11 +389,18 @@ export default function Planner() {
           <div className="mt-12">
             <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
               <h3 className="h3">Your cross-enrollment schedule</h3>
-              <span className="text-[14px] text-ink-3">{UNIT_CAP} units per term max</span>
+              <span className="text-[14px] text-ink-3">Starts {termLabel(start)} · {UNIT_CAP} units per term max</span>
             </div>
-            {plan.terms.length === 0 ? (
-              <p className="mt-4 text-ink-2">{nothingLeftNote(trust.level)}</p>
-            ) : (
+            {plan.terms.length > 0 && !incomplete && note && <p data-optimal className="mt-1 max-w-3xl text-[13.5px] text-ink-3">How it is chosen: {optimalExplain(plan)}</p>}
+            {caveat && <Notice note={caveat} data="schedule-caveat" />}
+            {schedNote && <Notice note={schedNote} data="schedule-note" />}
+            {prereqWarnings.length > 0 && (
+              <div data-prereq-warnings className="mt-4 rounded-2xl border border-warn/30 bg-warn-soft px-5 py-3 text-[14px] text-warn">
+                <div className="font-medium">Check these prerequisites before you enroll</div>
+                <ul className="mt-1 list-disc space-y-0.5 pl-5 text-ink-2">{prereqWarnings.map((w) => <li key={w}>{w}</li>)}</ul>
+              </div>
+            )}
+            {plan.terms.length > 0 && (
               <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-3">
                 {plan.terms.map((t, i) => (
                   <div key={t.name} data-term className={`card card-hover min-w-0 p-5 ${i >= MAX_TERMS ? 'border-alert/30' : ''}`}>
@@ -387,7 +415,10 @@ export default function Planner() {
                           <li key={c} onMouseEnter={() => setHover(c)} onMouseLeave={() => setHover(null)}
                             className={`flex items-center gap-3 rounded-xl border px-3 py-2 transition-all duration-300 ${chip(instOf(c))} ${hover === c ? 'scale-[1.02] shadow' : ''}`}>
                             <span className={`h-2 w-2 shrink-0 rounded-full ${dot(instOf(c))}`} />
-                            <span className="min-w-0 flex-1 truncate text-[14.5px]"><span className="font-semibold">{code(c)}</span> <span className="opacity-70">{course?.title}</span></span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate text-[14.5px]"><span className="font-semibold">{code(c)}</span> <span className="opacity-70">{course?.title}</span></span>
+                              {prereqOnly.has(c) && <span data-prereq-only className="mt-0.5 inline-block rounded-full border border-current/30 px-1.5 text-[11.5px] font-medium opacity-80" title="Needed to enroll in a later course; not a UC requirement">{PREREQ_TAG}</span>}
+                            </span>
                             <span className="shrink-0 text-[12px] opacity-70">{byId[instOf(c)].short}</span>
                           </li>
                         )
@@ -484,10 +515,10 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
-function Select<T extends string | number>({ value, onChange, children }: { value: T; onChange: (v: string) => void; children: React.ReactNode }) {
+function Select<T extends string | number>({ value, onChange, children, label }: { value: T; onChange: (v: string) => void; children: React.ReactNode; label?: string }) {
   return (
     <div className="relative">
-      <select value={value} onChange={(e) => onChange(e.target.value)}
+      <select value={value} onChange={(e) => onChange(e.target.value)} aria-label={label}
         className="h-12 w-full appearance-none rounded-xl border border-line bg-bg pr-10 pl-4 text-[15px] transition-colors hover:border-ink/30 focus:border-ink/40">
         {children}
       </select>
@@ -496,9 +527,19 @@ function Select<T extends string | number>({ value, onChange, children }: { valu
   )
 }
 
-const Stat = ({ n, l, note }: { n: number; l: string; note?: string | null }) => (
-  <div>
+const Stat = ({ n, l, note, title }: { n: number; l: string; note?: string | null; title?: string }) => (
+  <div title={title}>
     <dt className="text-[22px] font-medium tracking-tight text-ink">{n}</dt>
-    <dd>{l}{note && <span className="block text-[12.5px] text-ink-3">{note}</span>}</dd>
+    <dd>{l}{note && <span className={`block text-[12.5px] text-ink-3 ${title ? 'cursor-help underline decoration-dotted underline-offset-2' : ''}`}>{note}</span>}</dd>
   </div>
 )
+
+const NOTICE: Record<ScheduleNote['tone'], string> = {
+  ok: 'text-ink-2',
+  warn: 'rounded-2xl border border-warn/30 bg-warn-soft px-5 py-3 text-warn',
+  alert: 'rounded-2xl border border-alert/30 bg-alert-soft px-5 py-3 text-alert',
+}
+/** A schedule-level message; its tone comes from the verdict, never from the number of terms. */
+function Notice({ note, data }: { note: ScheduleNote; data: string }) {
+  return <p {...{ [`data-${data}`]: note.tone }} role={note.tone === 'alert' ? 'note' : undefined} className={`mt-4 text-[14.5px] ${NOTICE[note.tone]}`}>{note.text}</p>
+}

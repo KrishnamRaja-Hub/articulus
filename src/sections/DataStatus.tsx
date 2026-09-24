@@ -1,8 +1,9 @@
-import { trust } from '../data'
+import { useTrust } from '../data'
 import { trustBanner, trustChip } from '../data-trust'
 
 /** Full data-status banner, at the top of the planner. */
 export function DataBanner({ className = '' }: { className?: string }) {
+  const trust = useTrust()
   const b = trustBanner(trust)
   if (b.tone === 'quiet') return (
     <p id="data-status" role="status" data-trust={trust.level} className={`flex items-center gap-2 text-[13.5px] text-ink-3 ${className}`}>
@@ -24,6 +25,7 @@ export function DataBanner({ className = '' }: { className?: string }) {
 
 /** Compact line under the nav, so the data state is visible from every part of the page. Hidden when trusted. */
 export function DataChip() {
+  const trust = useTrust()
   const text = trustChip(trust)
   if (!text) return null
   const alert = trust.level === 'untrusted'

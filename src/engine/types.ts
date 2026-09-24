@@ -78,4 +78,6 @@ export interface Plan {
   totalUnits: number
   unsolvable: string[]                     // required reqs with no group at allowed colleges
   optimal?: boolean                        // true: planned set proven minimal-cost (solve: units + penalties); false: not proven
+  prereqOnly?: string[]                    // course ids planned only to meet enrollment prerequisites (not UC requirements)
+  prereqWarnings?: string[]                // prerequisite problems the planner could not resolve, student-facing
 }

@@ -1,4 +1,4 @@
-import type { Plan, ValidationResult, Violation } from '../engine/types'
+import type { CourseId, Plan, ValidationResult, Violation } from '../engine/types'
 import type { TrustLevel } from '../data-trust'
 
 /** Pure verdict logic for the Planner, kept out of the component so it can be tested without a DOM. */
@@ -51,13 +51,107 @@ export function badgeStatus(current: ValidationResult, plan: Plan, uc: string, t
   return { ok: true, tone: 'ok', title: 'Every requirement covered', details }
 }
 
-/** Text when nothing is left to schedule: never claims completion on untrusted data. */
-export const nothingLeftNote = (trust: TrustLevel = 'trusted') => trust === 'untrusted'
-  ? 'Nothing left to schedule under the current data, but the data needs a refresh. Confirm with a counselor before you stop taking courses.'
-  : 'Everything required is already complete. Nothing left to schedule.'
+/** Everything the plan needs is done or scheduled: the only state in which "complete" wording may appear. */
+const planComplete = (status: Status, plan: Plan) => status.tone === 'ok' && plan.unsolvable.length === 0 && plan.result.isValid
 
-/** Note under "units to go": only claims minimality when the engine proved it. */
-export const optimalNote = (plan: Plan) => (plan.optimal === true ? 'minimum units' : plan.optimal === false ? 'near-minimum' : null)
+/** How many requirements the plan still leaves unmet: the unschedulable ones, else the plan's missing ones. */
+export const unmetCount = (plan: Plan) => plan.unsolvable.length || plan.result.missing.length
+
+/** The unmet requirements by name, with where each is offered when known (at most 3, then "and N more"). */
+export function unmetNames(plan: Plan, max = 3): string {
+  const all = plan.unsolvable.length
+    ? plan.unsolvable.map((e) => { const { what, offeredAt } = splitUnsolvable(e); return offeredAt ? `${what} (offered at ${offeredAt})` : what })
+    : plan.result.missing
+  if (!all.length) return ''
+  const shown = all.slice(0, max).join('; ')
+  return all.length > max ? `${shown}; and ${all.length - max} more` : shown
+}
+
+export type NoteTone = 'ok' | 'warn' | 'alert'
+export interface ScheduleNote { tone: NoteTone; text: string }
+
+export const COMPLETE_NOTE = 'Everything required is already complete. Nothing left to schedule.'
+
+/**
+ * The line in the schedule section that says what the schedule does and does not finish. Derived from the verdict
+ * (`status`, `plan.unsolvable`, `plan.result`), never from "no terms" alone (TESTER1_REPORT C-1): COMPLETE_NOTE
+ * appears only when the verdict is complete on data that may be trusted.
+ * null: terms are scheduled and they finish the plan, or the data caveat above the terms already says enough.
+ */
+export function scheduleNote(status: Status, plan: Plan, trust: TrustLevel = 'trusted'): ScheduleNote | null {
+  const empty = plan.terms.length === 0
+  const complete = planComplete(status, plan)
+  if (complete && trust !== 'untrusted') return empty ? { tone: 'ok', text: COMPLETE_NOTE } : null
+  // would be complete, but the data cannot be trusted (badgeStatus gives this the 'unconfirmed' tone)
+  if (complete || (status.tone === 'unconfirmed' && plan.unsolvable.length === 0 && plan.result.isValid)) return empty
+    ? { tone: 'warn', text: "Nothing more to schedule, but the data needs a refresh, so we can't confirm you are done. Confirm with a counselor before you stop taking courses." }
+    : null
+  const n = unmetCount(plan)
+  const unmet = n ? `${plural(n, 'requirement is', 'requirements are')} still unmet` : 'Some requirements are still unmet'
+  const refresh = trust === 'untrusted' ? ' The data also needs a refresh, so confirm with a counselor.' : ''
+  const names = unmetNames(plan)
+  const which = names ? `: ${names}.` : ' — see above.'
+  if (empty) return { tone: 'alert', text: `Nothing more can be scheduled at the selected colleges. ${unmet}${which}${refresh}` }
+  const why = plan.unsolvable.length ? ' and cannot be scheduled at the selected colleges' : ''
+  return { tone: 'alert', text: `This schedule does not finish your plan. ${unmet}${why}${which}${refresh}` }
+}
+
+/** Caveat on the schedule itself (TESTER1_REPORT M-3); null when the data is trusted or nothing is scheduled. */
+export function scheduleCaveat(plan: Plan, trust: TrustLevel, dataDate?: string | null): ScheduleNote | null {
+  if (plan.terms.length === 0 || trust === 'trusted') return null
+  if (trust === 'untrusted') return { tone: 'alert', text: 'This schedule is built from ASSIST data that needs a refresh, so courses may be missing or wrong. Check every course with a counselor before you enroll.' }
+  return { tone: 'warn', text: `This schedule is built from ASSIST data downloaded ${dataDate ?? 'more than a week ago'}. Check it with a counselor before you enroll.` }
+}
+
+/** Short label under "units to go" (TESTER1_REPORT M-1). The planner minimizes units plus a penalty for each extra
+ *  college and each subject split across colleges, so it never claims "minimum units". */
+export const optimalNote = (plan: Plan) => (plan.optimal === true ? 'lowest cost under our rules' : plan.optimal === false ? 'near-lowest cost' : null)
+
+/** Tag on a scheduled course that is planned only because a later course requires it to enroll. */
+export const PREREQ_TAG = 'prerequisite'
+/** Course ids the planner added only as enrollment prerequisites; empty when the engine does not report them. */
+export const prereqOnlySet = (plan: Plan): ReadonlySet<CourseId> => new Set(Array.isArray(plan.prereqOnly) ? plan.prereqOnly : [])
+
+/** The trade-off behind the label, for a tooltip and the schedule header. */
+export const optimalExplain = (plan: Plan) => {
+  const how = 'Lowest cost under our rules: units, counting each extra college and each subject (math, physics…) split across colleges as a few extra units. Spreading courses over more colleges can sometimes save units.'
+  return plan.optimal === false ? `${how} The search stopped early, so a slightly better plan may exist.` : how
+}
+
+/** A course as the search sees it (agreement.catalog entries). */
+export interface SearchCourse { id: CourseId; institutionId: number; prefix: string; number: string }
+
+const squash = (s: string) => s.replace(/\s+/g, '').toUpperCase()
+const listOr = (xs: string[]) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} or ${xs[xs.length - 1]}`)
+
+/**
+ * What to say when a completed-course search finds nothing (TESTER1_REPORT L-7). Courses that do not articulate for
+ * the major stay out of the transcript (they would never count), but the student is told why: a known honors or
+ * regular twin, or a course code at a college that articulates other courses in that subject, is "not articulated for
+ * this major — it will not count" rather than "no course matches".
+ */
+export function noMatchNote(query: string, catalog: Record<CourseId, SearchCourse>, allowed: number[], taken: ReadonlySet<CourseId>,
+  shortOf: (inst: number) => string): string {
+  const q = query.trim()
+  const at = listOr(allowed.map(shortOf))
+  const generic = `No course at ${at} that counts for this major matches "${q}". Courses not listed here are not articulated for this major and will not count.`
+  const m = /^([A-Z&]+)(\d[0-9A-Z.]*)$/.exec(squash(q))
+  if (!m) return generic
+  const [, prefix, number] = m
+  const inAllowed = Object.values(catalog).filter((c) => allowed.includes(c.institutionId) && squash(c.prefix) === prefix)
+  if (!inAllowed.length) return generic
+  const label = `${inAllowed[0].prefix} ${number}`
+  const same = inAllowed.find((c) => squash(c.number) === number && taken.has(c.id))
+  if (same) return `${same.prefix} ${same.number} at ${shortOf(same.institutionId)} is already in your completed courses.`
+  const twinNumber = number.endsWith('H') ? number.slice(0, -1) : `${number}H`
+  const twins = inAllowed.filter((c) => squash(c.number) === twinNumber)
+  if (twins.length) {
+    const colleges = [...new Set(twins.map((c) => c.institutionId))]
+    return `${label} is not articulated for this major at ${listOr(colleges.map(shortOf))} — it will not count. ASSIST lists ${twins[0].prefix} ${twins[0].number} instead; ask a counselor before you retake anything.`
+  }
+  const colleges = [...new Set(inAllowed.map((c) => c.institutionId))]
+  return `${label} is not articulated for this major at ${listOr(colleges.map(shortOf))} — it will not count.`
+}
 
 /** "PHYSICS 7B — offered at Foothill" -> { what: "PHYSICS 7B", offeredAt: "Foothill" } */
 export function splitUnsolvable(entry: string): { what: string; offeredAt?: string } {

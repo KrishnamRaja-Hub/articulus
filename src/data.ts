@@ -3,7 +3,9 @@ import institutionsJson from '../data/institutions.json'
 import indexJson from '../data/index.json'
 import berkeleyME from '../data/agreements/79-mechanical-engineering-b-s.json'
 import metaJson from '../data/meta.json'
-import { dataTrust } from './data-trust'
+import { useSyncExternalStore } from 'react'
+import { dataTrust, sameTrust, type DataTrust } from './data-trust'
+import { NORMALIZE_VERSION } from './engine/normalize'
 
 export interface IndexEntry { file: string; receivingId: number; major: string }
 
@@ -32,6 +34,45 @@ export const agreements: Agreement[] = [berkeleyME as unknown as Agreement]
 
 /** data/meta.json as bundled (DATA_CONTRACT.md). */
 export const meta: unknown = metaJson
-/** How far verdicts can be trusted. Evaluated when the page loads in the browser, with the viewer's current date, so a
- *  build that was fresh when deployed still turns amber, then untrusted, as it ages. */
-export const trust = dataTrust(meta, new Date())
+/** How far verdicts can be trusted, evaluated in the browser with the viewer's current date, so a build that was fresh
+ *  when deployed still turns amber, then untrusted, as it ages. meta.agreements must match the bundled index. */
+export const trustAt = (now: Date): DataTrust => dataTrust(meta, now, NORMALIZE_VERSION, index.length)
+
+// A tab left open for days must downgrade too: re-check every minute and whenever the tab becomes visible again.
+const RECHECK_MS = 60_000
+let current = trustAt(new Date())
+const listeners = new Set<() => void>()
+let timer: ReturnType<typeof setInterval> | undefined
+
+/** The trust state right now (a stable object until it changes). */
+export const getTrust = () => current
+
+/** Re-evaluate with the current clock; notifies subscribers only when the level, reasons or dates changed. */
+export function refreshTrust(now = new Date()) {
+  const next = trustAt(now)
+  if (sameTrust(next, current)) return
+  current = next
+  for (const l of listeners) l()
+}
+
+const onVisible = () => { if (document.visibilityState === 'visible') refreshTrust() }
+
+export function subscribeTrust(listener: () => void) {
+  listeners.add(listener)
+  if (listeners.size === 1 && typeof window !== 'undefined') {
+    timer = setInterval(() => refreshTrust(), RECHECK_MS)
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onVisible)
+  }
+  return () => {
+    listeners.delete(listener)
+    if (listeners.size === 0 && typeof window !== 'undefined') {
+      clearInterval(timer)
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onVisible)
+    }
+  }
+}
+
+/** React hook: the current trust state, re-rendering when it changes. */
+export const useTrust = () => useSyncExternalStore(subscribeTrust, getTrust, getTrust)

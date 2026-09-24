@@ -2,9 +2,12 @@ import { useRef } from 'react'
 import { gsap } from 'gsap'
 import { useGSAP } from '@gsap/react'
 import Button from '../ui/Button'
+import { useTrust } from '../data'
+import { heroDataNote } from '../data-trust'
 
 export default function Hero() {
   const ref = useRef<HTMLElement>(null)
+  const trust = useTrust()
   useGSAP(() => {
     const mm = gsap.matchMedia()
     mm.add('(prefers-reduced-motion: no-preference)', () => {
@@ -27,12 +30,12 @@ export default function Hero() {
   return (
     <section id="top" ref={ref} className="relative flex min-h-[100svh] flex-col items-center px-6 pt-36 pb-24 text-center md:pt-44">
       <h1 className="display mx-auto w-full max-w-6xl">
-        <span className="block overflow-hidden"><span data-line className="block">Transfer plans that</span></span>
-        <span className="block overflow-hidden"><span data-line className="block">survive the July audit.</span></span>
+        <span className="block overflow-hidden"><span data-line className="block">Catch a split series</span></span>
+        <span className="block overflow-hidden"><span data-line className="block">before the July audit.</span></span>
       </h1>
       <p data-lede className="lede mx-auto mt-7 max-w-2xl">
-        Articulus checks every course against the real ASSIST articulation for every college you enroll at, together, so a
-        split series never costs you your admission.
+        Articulus checks your courses against the ASSIST articulation for every college you enroll at, together, so you
+        can spot a split series while there is still time to fix it.
       </p>
       <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
         <span data-cta className="inline-flex"><Button href="#plan" size="lg">Plan my transfer</Button></span>
@@ -42,7 +45,7 @@ export default function Hero() {
       <figure data-figure className="card mx-auto mt-20 w-full max-w-5xl p-6 md:p-10 will-change-transform">
         <SplitGraph />
         <figcaption className="mt-6 text-[14px] text-ink-3">
-          Real 2025-26 data. UC Berkeley Physics 7B articulates from PHYS 4B + 4C at De Anza, or PHYS 4B + 4C at Foothill. Never one from each.
+          {heroDataNote(trust)} In it, UC Berkeley Physics 7B articulates from PHYS 4B + 4C at De Anza, or PHYS 4B + 4C at Foothill. Never one from each.
         </figcaption>
       </figure>
     </section>
