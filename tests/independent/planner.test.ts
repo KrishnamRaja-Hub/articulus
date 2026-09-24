@@ -1,77 +1,91 @@
 /**
  * The app's planner (solve) against the oracle and an independent brute force, on synthetic agreements and on the
  * real ones: allowed colleges only, no UC-only rows planned, no blocking split created, `unsolvable` iff infeasible,
- * a valid plan when solvable, deterministic under input order, and minimal under the objective in OBJECTIVE.
+ * a valid plan when solvable, deterministic under input order, and minimal under each objective in OBJECTIVES (the
+ * product default 5,5, then pure units).
  */
 import { afterAll, describe, expect, it } from 'vitest'
 import type { Agreement, CourseId, Plan, ReqNode, Requirement } from '../../src/engine/types'
 import { solve } from '../../src/engine/solve.ts'
 import { BUDGET, FULL, SEED, SLOW } from './budget.ts'
-import { bruteMin, feasible, planCost, PURE_UNITS } from './brute.ts'
+import { bruteMin, feasible, planCost, subjectChains, type Weights } from './brute.ts'
 import { CCS, FH, DA, INDEX, loadAgreement, SYS } from './fixtures.ts'
 import { writeMetrics } from './metrics.ts'
 import { instOf, oracle } from './oracle.ts'
-import { OBJECTIVE, PlannerStats, runPlanner } from './planner-harness.ts'
-import { NO_RECORD, randomAgreement, rng } from './synth.ts'
+import { describeWeights, OBJECTIVES, PlannerStats, runPlanner, solveOptions, type PlanRun } from './planner-harness.ts'
+import { NO_RECORD, permuteAgreement, randomAgreement, rng, type Rng } from './synth.ts'
 
-const SYNTH = new PlannerStats('synthetic realistic'), REAL = new PlannerStats('real grid + random'), LATENT = new PlannerStats('synthetic latent shapes')
-const determinism = { runs: 0, same: 0, diffs: [] as unknown[] }
+const LATENT = new PlannerStats('synthetic latent shapes')
 const knownIssues: Record<string, string> = {}
 const t0 = performance.now()
 const report = (S: PlannerStats) => `${JSON.stringify(S.summary())}\n${S.examples.map((e) => JSON.stringify(e)).join('\n')}`
 
-describe('planner vs brute force: synthetic agreements', () => {
-  it(`${BUDGET.plannerSynth} realistic agreements (inherited optional flags, choice shapes normalize produces)`, () => {
-    const r = rng(SEED + 10)
-    for (let i = 0; i < BUDGET.plannerSynth; i++) {
-      const a = randomAgreement(r, { inherit: true, latentShapes: false })
-      const taken = Object.keys(a.catalog).filter(() => r.next() < 0.2)
-      const allowed = a.sendingIds.filter(() => r.next() < 0.7)
-      if (!allowed.length) allowed.push(a.sendingIds[0])
-      runPlanner(SYNTH, { a, file: `synthetic seed=${SEED + 10} #${i} root=${JSON.stringify(a.root)}`, taken, allowed, home: allowed[0], brute: true, bruteBudget: 50_000 })
-    }
-    expect(SYNTH.violationCount, report(SYNTH)).toBe(0)
-    expect(SYNTH.minimality.checked).toBeGreaterThan(BUDGET.plannerSynth / 3)
-  }, SLOW)
+/** Everything a student reads off a plan: terms (courses in any order), chosen groups, unsolvable, totals, `optimal`. */
+const sig = (p: Plan) => JSON.stringify({
+  t: p.terms.map((t) => [t.name, [...t.courses].sort()]), u: p.unsolvable, tot: p.totalUnits, opt: p.optimal,
+  c: Object.keys(p.chosen).sort().map((id) => [id, p.chosen[id].institutionId, [...p.chosen[id].courses].sort()]),
 })
 
-const sig = (p: Plan) => JSON.stringify({ t: p.terms.map((t) => [t.name, [...t.courses].sort()]), u: [...p.unsolvable].sort(), tot: p.totalUnits })
+const results: Record<string, unknown> = {}
+for (const W of OBJECTIVES) {
+  const tag = describeWeights(W)
+  const SYNTH = new PlannerStats(`synthetic realistic, ${tag}`, W), REAL = new PlannerStats(`real grid + random, ${tag}`, W)
+  const determinism = { runs: 0, same: 0, diffs: [] as unknown[] }
+  /** The same run again with every input order shuffled (tree, groups, courses, catalog, sendingIds, allowed, taken). */
+  const again = (r: Rng, p: Plan | undefined, run: PlanRun) => {
+    const q = solve(new Set(r.shuffle(run.taken)), permuteAgreement(run.a, r), solveOptions({ ...run, allowed: r.shuffle(run.allowed) }, W))
+    determinism.runs++
+    if (p && sig(p) === sig(q)) determinism.same++
+    else if (determinism.diffs.length < 10) determinism.diffs.push({ file: run.file.slice(0, 200), home: run.home, allowed: run.allowed, taken: run.taken, p: p && sig(p), q: sig(q) })
+  }
+  results[tag] = { SYNTH, REAL, determinism }
 
-describe('planner rules on the real agreements', () => {
-  const homes = BUDGET.plannerHomes === 'all' ? CCS : BUDGET.plannerHomes
-  for (const e of INDEX) it(`${e.file}: homes ${homes.length === CCS.length ? 'all 15' : homes.join(', ')} x {home, home + Foothill (De Anza for Foothill), all 15}`, () => {
-    const a = loadAgreement(e.file), r = rng(SEED + e.file.length)
-    const before = REAL.violationCount
-    for (const home of homes) for (const allowed of [[home], home === FH ? [FH, DA] : [home, FH], [home, ...CCS.filter((x) => x !== home)]]) {
-      const p = runPlanner(REAL, { a, file: e.file, taken: [], allowed, home, systems: SYS, brute: allowed.length <= 2, bruteBudget: BUDGET.bruteBudget / 4 })
-      // same plan whatever the order of allowed colleges (home first stays home)
-      const again = solve(new Set(), a, { allowed: [home, ...r.shuffle(allowed.filter((x) => x !== home))], home, termSystem: SYS[home], unitSystems: SYS, unitCap: SYS[home] === 'semester' ? 12 : 16, maxTerms: 6 })
-      determinism.runs++
-      if (p && sig(p) === sig(again)) determinism.same++
-      else if (determinism.diffs.length < 10) determinism.diffs.push({ file: e.file, home, allowed })
-    }
-    expect(REAL.violationCount - before, report(REAL)).toBe(0)
-  }, SLOW)
+  describe(`planner vs brute force (${tag}): synthetic agreements`, () => {
+    it(`${BUDGET.plannerSynth} realistic agreements (inherited optional flags, choice shapes normalize produces)`, () => {
+      const r = rng(SEED + 10), rp = rng(SEED + 13)
+      for (let i = 0; i < BUDGET.plannerSynth; i++) {
+        // odd cases name rows by UC subject, so the chain penalty is exercised
+        const a = randomAgreement(r, { inherit: true, latentShapes: false, subjects: i % 2 === 1 })
+        const taken = Object.keys(a.catalog).filter(() => r.next() < 0.2)
+        const allowed = a.sendingIds.filter(() => r.next() < 0.7)
+        if (!allowed.length) allowed.push(a.sendingIds[0])
+        const run = { a, file: `synthetic seed=${SEED + 10} #${i} root=${JSON.stringify(a.root)}`, taken, allowed, home: allowed[0], brute: true, bruteBudget: 50_000 }
+        again(rp, runPlanner(SYNTH, run), run)
+      }
+      expect(SYNTH.violationCount, report(SYNTH)).toBe(0)
+      expect(SYNTH.minimality.checked).toBeGreaterThan(BUDGET.plannerSynth / 3)
+    }, SLOW)
+  })
 
-  it(`${BUDGET.plannerRealRandom} random transcripts at random college sets, taken order shuffled`, () => {
-    const r = rng(SEED + 11)
-    const before = REAL.violationCount
-    for (let i = 0; i < BUDGET.plannerRealRandom; i++) {
-      const e = r.pick(INDEX), a = loadAgreement(e.file), home = r.pick(CCS)
-      const allowed = [...new Set(r.pick([[home], [home, FH], [home, DA], [home, ...r.shuffle(CCS).slice(0, 3)], CCS]))]
-      const cols = r.shuffle(CCS).slice(0, 1 + r.int(3))
-      const taken = Object.keys(a.catalog).filter((c) => cols.includes(instOf(c)) && r.next() < 0.3)
-      const p = runPlanner(REAL, { a, file: e.file, taken, allowed, home, systems: SYS, brute: allowed.length <= 2 && taken.length < 12, bruteBudget: BUDGET.bruteBudget / 4 })
-      const again = solve(new Set(r.shuffle(taken)), a, { allowed, home, termSystem: SYS[home], unitSystems: SYS, unitCap: SYS[home] === 'semester' ? 12 : 16, maxTerms: 6 })
-      determinism.runs++
-      if (p && sig(p) === sig(again)) determinism.same++
-      else if (determinism.diffs.length < 10) determinism.diffs.push({ file: e.file, home, allowed, taken })
-    }
-    expect(REAL.violationCount - before, report(REAL)).toBe(0)
-  }, SLOW)
+  describe(`planner rules on the real agreements (${tag})`, () => {
+    const homes = BUDGET.plannerHomes === 'all' ? CCS : BUDGET.plannerHomes
+    for (const e of INDEX) it(`${e.file}: homes ${homes.length === CCS.length ? 'all 15' : homes.join(', ')} x {home, home + Foothill (De Anza for Foothill), all 15}`, () => {
+      const a = loadAgreement(e.file), r = rng(SEED + e.file.length)
+      const before = REAL.violationCount
+      for (const home of homes) for (const allowed of [[home], home === FH ? [FH, DA] : [home, FH], [home, ...CCS.filter((x) => x !== home)]]) {
+        const run = { a, file: e.file, taken: [], allowed, home, systems: SYS, brute: allowed.length <= 2, bruteBudget: BUDGET.bruteBudget / 4 }
+        again(r, runPlanner(REAL, run), run)
+      }
+      expect(REAL.violationCount - before, report(REAL)).toBe(0)
+    }, SLOW)
 
-  it('is deterministic under input order', () => expect(determinism.same, JSON.stringify(determinism.diffs)).toBe(determinism.runs))
-})
+    it(`${BUDGET.plannerRealRandom} random transcripts at random college sets, input order shuffled`, () => {
+      const r = rng(SEED + 11)
+      const before = REAL.violationCount
+      for (let i = 0; i < BUDGET.plannerRealRandom; i++) {
+        const e = r.pick(INDEX), a = loadAgreement(e.file), home = r.pick(CCS)
+        const allowed = [...new Set(r.pick([[home], [home, FH], [home, DA], [home, ...r.shuffle(CCS).slice(0, 3)], CCS]))]
+        const cols = r.shuffle(CCS).slice(0, 1 + r.int(3))
+        const taken = Object.keys(a.catalog).filter((c) => cols.includes(instOf(c)) && r.next() < 0.3)
+        const run = { a, file: e.file, taken, allowed, home, systems: SYS, brute: allowed.length <= 2 && taken.length < 12, bruteBudget: BUDGET.bruteBudget / 4 }
+        again(r, runPlanner(REAL, run), run)
+      }
+      expect(REAL.violationCount - before, report(REAL)).toBe(0)
+    }, SLOW)
+
+    it('is deterministic under input order', () => expect(determinism.same, JSON.stringify(determinism.diffs)).toBe(determinism.runs))
+  })
+}
 
 /* ---- the brute force itself (no app involved) ---- */
 const req = (id: string, ...groups: CourseId[][]): Requirement =>
@@ -83,23 +97,42 @@ const tiny = (children: (ReqNode | Requirement)[], units: Record<CourseId, numbe
 })
 
 describe('independent brute force', () => {
-  const a = tiny([req('R1', ['1:MATH 1'], ['2:MATH 1']), req('R2', ['1:MATH 2'], ['2:MATH 2'])], { '1:MATH 1': 5, '2:MATH 1': 4, '1:MATH 2': 5, '2:MATH 2': 4 })
+  const a = tiny([req('MATH 51', ['1:MATH 1'], ['2:MATH 1']), req('MATH 52', ['1:MATH 2'], ['2:MATH 2'])], { '1:MATH 1': 5, '2:MATH 1': 4, '1:MATH 2': 5, '2:MATH 2': 4 })
   const unitsOf = (c: CourseId) => a.catalog[c].units
+  const chains = subjectChains(a, [])
   it('units mode takes the cheapest groups wherever they are', () => {
     expect(bruteMin(a, new Set(), { allowed: [1, 2], home: 1, unitsOf })).toEqual({ cost: 8, units: 8, set: ['2:MATH 1', '2:MATH 2'] })
   })
   it('weighted mode charges each extra college and each subject chain across colleges', () => {
-    expect(planCost(['1:MATH 1', '2:MATH 2'], unitsOf, { college: 5, chain: 5 }, 1)).toEqual({ cost: 19, units: 9 })
+    expect(planCost(['1:MATH 1', '2:MATH 2'], unitsOf, { college: 5, chain: 5 }, 1, chains)).toEqual({ cost: 19, units: 9 })
     expect(bruteMin(a, new Set(), { allowed: [1, 2], home: 1, unitsOf, weights: { college: 5, chain: 5 } })).toEqual({ cost: 10, units: 10, set: ['1:MATH 1', '1:MATH 2'] })
     expect(bruteMin(a, new Set(), { allowed: [1, 2], home: 1, unitsOf, weights: { college: 1, chain: 0 } })).toEqual({ cost: 9, units: 8, set: ['2:MATH 1', '2:MATH 2'] })
+  })
+  it("subject chains follow the planner's definition: UC subject of the row id, 2+ rows with CC groups", () => {
+    const b = tiny([
+      req('COM SCI 31', ['1:CS 1'], ['2:CIS 22A']), req('COM SCI 32', ['1:CS 2H'], ['2:CIS 22B']), // chain COM SCI (CC prefix irrelevant)
+      req('CHEM 1A, CHEM 1AL', ['1:CHEM 1']), req('CHEM 1B', ['2:CHEM 2']),                      // chain CHEM (up to the comma)
+      req('PHYSICS 7A', ['1:PHYS 1']), req('PHYSICS 7B'),                                  // one row with groups: no chain
+      req('R1', ['1:X 1']), req('R2', ['2:X 2']),                                                // no subject: no chain
+    ], { '1:CS 1': 4, '2:CIS 22A': 4, '1:CS 2': 4, '1:CS 2H': 4, '2:CIS 22B': 4, '1:CHEM 1': 5, '2:CHEM 2': 5, '1:PHYS 1': 5, '1:X 1': 1, '2:X 2': 1 })
+    const ch = subjectChains(b, [])
+    expect(ch.map((c) => c.subject).sort()).toEqual(['CHEM', 'COM SCI'])
+    const cs = ch.find((c) => c.subject === 'COM SCI')!
+    expect(['1:CS 1', '1:CS 1H', '1:CS 2', '1:CS 2H', '2:CIS 22B'].every((c) => cs.members.has(c))).toBe(true)
+    const u = (c: CourseId) => b.catalog[c]?.units ?? 4, w = { college: 0, chain: 5 }
+    expect(planCost(['1:CS 2', '2:CIS 22A'], u, w, 1, ch).cost).toBe(13)                 // honors twin counts: split
+    expect(planCost(['1:X 1', '2:X 2'], u, w, 1, ch).cost).toBe(2)                        // no chain
+    expect(planCost(['2:CIS 22B'], u, w, 1, subjectChains(b, ['1:CS 1'])).cost).toBe(9)   // taken at 1, planned at 2
+    expect(planCost(['1:CHEM 1'], u, w, 1, subjectChains(b, ['1:CS 1', '2:CIS 22A'])).cost).toBe(5) // taken-only chain: 0
+    expect(planCost(['2:CHEM 2'], u, { college: 5, chain: 0 }, 1, ch).cost).toBe(10)     // one college away from home
   })
   it('agrees with the oracle on feasibility', () => {
     expect(bruteMin(a, new Set(), { allowed: [3], unitsOf })).toBeNull()
     expect(feasible(a, new Set(), [3])).toBe(false)
     expect(feasible(a, new Set(), [2])).toBe(true)
   })
-  it(`objective under test: ${OBJECTIVE === PURE_UNITS ? 'pure units (weights 0)' : `weighted ${JSON.stringify(OBJECTIVE)}`}`, () => {
-    expect(OBJECTIVE.college >= 0 && OBJECTIVE.chain >= 0).toBe(true)
+  it(`objectives under test: ${OBJECTIVES.map(describeWeights).join(', ')}`, () => {
+    expect(OBJECTIVES.every((w: Weights) => w.college >= 0 && w.chain >= 0)).toBe(true)
   })
 })
 
@@ -151,9 +184,14 @@ describe(`latent planner findings (${STRICT ? 'enforced' : 'reported only; INDEP
   }, SLOW)
 })
 
-afterAll(() => writeMetrics('planner', {
-  seconds: Number(((performance.now() - t0) / 1000).toFixed(1)),
-  objective: OBJECTIVE, synthetic: SYNTH.summary(), real: REAL.summary(), determinism: { runs: determinism.runs, same: determinism.same },
-  latent: FULL ? LATENT.summary() : 'run with INDEPENDENT_BUDGET=full', knownIssues,
-  ruleViolations: SYNTH.violationCount + REAL.violationCount,
-}))
+afterAll(() => {
+  const by = Object.fromEntries(Object.entries(results).map(([tag, x]) => {
+    const { SYNTH, REAL, determinism } = x as { SYNTH: PlannerStats; REAL: PlannerStats; determinism: { runs: number; same: number } }
+    return [tag, { synthetic: SYNTH.summary(), real: REAL.summary(), determinism: { runs: determinism.runs, same: determinism.same }, ruleViolations: SYNTH.violationCount + REAL.violationCount }]
+  }))
+  writeMetrics('planner', {
+    seconds: Number(((performance.now() - t0) / 1000).toFixed(1)),
+    objectives: OBJECTIVES, byObjective: by,
+    latent: FULL ? LATENT.summary() : 'run with INDEPENDENT_BUDGET=full', knownIssues,
+  })
+})

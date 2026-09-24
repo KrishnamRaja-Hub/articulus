@@ -41,10 +41,13 @@ export interface SynthOptions {
    * realistic generator keeps choices to the shapes normalize can produce today plus a plain N_OF(n).
    */
   latentShapes?: boolean
+  /** Name rows with UC subjects (MATH 0, PHYS 1, CHEM 2, R3, MATH 4, ...) so rows share subjects and form the
+   *  planner's subject chains; off: R0, R1, ... (no subject, no chain). Draws no extra randomness. */
+  subjects?: boolean
 }
 
 export function randomAgreement(r: Rng, o: SynthOptions = {}): Agreement {
-  const { inherit = false, ucOnly = 0.1, noRecord = 0.08, maxDepth = 2, colleges: maxCol = 3, latentShapes = true } = o
+  const { inherit = false, ucOnly = 0.1, noRecord = 0.08, maxDepth = 2, colleges: maxCol = 3, latentShapes = true, subjects = false } = o
   const colleges = [1, 2, 3, 4].slice(0, 1 + r.int(maxCol))
   const nCourses = 3 + r.int(6)
   const catalog: Record<CourseId, Course> = {}
@@ -59,7 +62,9 @@ export function randomAgreement(r: Rng, o: SynthOptions = {}): Agreement {
   const leaf = (allow: Set<Kind>): Requirement => {
     const reuse = made.filter((x) => allow.has(kindOf(x)))
     if (reuse.length && r.next() < 0.12) return r.pick(reuse) // the same row listed twice (Berkeley ME chemistry)
-    const req: Requirement = { kind: 'req', id: `R${rid++}`, label: 'r', units: 3, groups: [] }
+    const id = subjects && rid % 4 !== 3 ? `${['MATH', 'PHYS', 'CHEM'][rid % 4]} ${rid}` : `R${rid}`
+    rid++
+    const req: Requirement = { kind: 'req', id, label: 'r', units: 3, groups: [] }
     const x = r.next()
     if (x < ucOnly && allow.has('uc')) req.noArticulation = { 1: r.pick(UC_REASONS) }
     else if (x >= ucOnly && x < ucOnly + noRecord && allow.has('none')) req.noArticulation = { 1: NO_RECORD, 2: NO_RECORD }
@@ -106,3 +111,14 @@ export function randomAgreement(r: Rng, o: SynthOptions = {}): Agreement {
 
 const kindOf = (x: Requirement) =>
   x.groups.length ? 'cc' : Object.values(x.noArticulation ?? {}).some((w) => w !== NO_RECORD) ? 'uc' : 'none'
+
+/**
+ * The same agreement in another input order: tree children, groups, the courses of each group, catalog keys and
+ * sendingIds shuffled. Nothing the rules read changes, so a planner must return the same plan.
+ */
+export function permuteAgreement(a: Agreement, r: Rng): Agreement {
+  const go = (n: ReqNode | Requirement): ReqNode | Requirement => n.kind === 'req'
+    ? { ...n, groups: r.shuffle(n.groups.map((g) => ({ ...g, courses: r.shuffle(g.courses) }))) }
+    : { ...n, children: r.shuffle(n.children.map(go)) }
+  return { ...a, root: go(a.root) as ReqNode, catalog: Object.fromEntries(r.shuffle(Object.entries(a.catalog))), sendingIds: r.shuffle(a.sendingIds) }
+}

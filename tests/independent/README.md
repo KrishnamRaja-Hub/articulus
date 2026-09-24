@@ -13,7 +13,7 @@ fails and prints the exact transcript to reproduce it. It started from the couns
 | `scenarios.test.ts` | 214 named counselor scenarios, including the three Plan.md rescind stories. Each asserts app == oracle == counselor expectation, then runs the planner and checks its rules and any scenario-specific plan expectations. |
 | `verify-real.test.ts` | `verifySchedule` vs the oracle on all 22 agreements. For every row it tries every subset of the courses its groups list at 1, 2 and 3 colleges (plus honors twins), both alone and with the rest of the major complete. It also runs random sparse, dense, near-complete, honors-flipped and garbage transcripts. |
 | `verify-synth.test.ts` | Synthetic trees (nested AND/OR/N_OF, optional subtrees, UC-only rows, unrecorded rows, honors twins, shared courses, repeated ids) and hand-built edge trees. A self-test runs six plausible regressions (for example "unrecorded row treated as UC-only" or "honors twins dropped") and requires the suite to catch each one. |
-| `planner.test.ts` | `solve` vs the oracle and an independent brute force, on realistic synthetic agreements and on the real grid (homes × {home, home + Foothill, all 15}) plus random transcripts. It also runs the latent-finding repros. |
+| `planner.test.ts` | `solve` vs the oracle and an independent brute force, on realistic synthetic agreements (half of them with rows named by UC subject, so subject chains exist) and on the real grid (homes × {home, home + Foothill, all 15}) plus random transcripts. Every section runs twice: with the product default weights (5, 5), then with pure units. It also runs the latent-finding repros. |
 
 The planner rules checked are:
 
@@ -23,7 +23,7 @@ The planner rules checked are:
 - `unsolvable` is empty exactly when the root can pass at the allowed colleges.
 - When `unsolvable` is empty, the plan is valid per the oracle.
 - `plan.result` agrees with the oracle.
-- The plan is deterministic under input order.
+- The plan is deterministic under input order: every run is solved again with tree children, groups, the courses of each group, catalog keys, `sendingIds`, `allowed` and the transcript shuffled (`synth.ts` `permuteAgreement`), with the same options and weights. Terms, chosen groups, `unsolvable`, total units and `optimal` must match.
 - The plan is minimal against the brute force. A plan marked `optimal: true` that is not minimal is a failure. One marked `optimal: false` is only counted.
 
 Rules implemented by `oracle.ts` (README "Verification", FIXES.md Round 3):
@@ -43,8 +43,8 @@ Rules implemented by `oracle.ts` (README "Verification", FIXES.md Round 3):
 ## Running it
 
 ```
-npx vitest run tests/independent                           # CI budget: about 15 s wall on 4 cores
-INDEPENDENT_BUDGET=full npx vitest run tests/independent   # nightly: about 110 s, 285k real + 160k synthetic cases
+npx vitest run tests/independent                           # CI budget: about 35 s wall on 4 cores (planner: two objectives)
+INDEPENDENT_BUDGET=full npx vitest run tests/independent   # nightly: about 200 s, 285k real + 160k synthetic cases
 INDEPENDENT_SEED=7 npx vitest run tests/independent        # another seed for every generator
 npx tsc -p tests/independent                               # type-check (root tsconfig covers src and scripts only)
 ```
@@ -52,7 +52,7 @@ npx tsc -p tests/independent                               # type-check (root ts
 Other switches:
 
 - `INDEPENDENT_STRICT_LATENT=1` enforces the latent planner findings instead of reporting them.
-- `INDEPENDENT_PLANNER_WEIGHTS=5,5` minimizes the weighted objective (see below).
+- `INDEPENDENT_PLANNER_WEIGHTS=c,h` runs only that objective (for example `0,0` for pure units only, or `2.5,8`). By default both the product default (`5,5`) and pure units run. See below.
 - `INDEPENDENT_METRICS_DIR=…` redirects the metrics output.
 
 ## Metrics
@@ -92,13 +92,24 @@ The fixtures in `data/` predate the normalize fixes F-01 to F-03 (`data/meta.jso
 
 A refresh can legitimately change other scenarios too, since the rows themselves change. A failure after a refresh means a person must read the new rows before editing the expectation. The oracle is not the source of truth for expectations.
 
-## Planner objective (TODO after the penalty merge)
+## Planner objective
 
-`planner-harness.ts` passes weights 0 under `OPTION_NAMES` (placeholders `P_COLLEGE` / `P_CHAIN`), so minimality is checked in pure-units mode. To enforce the weighted objective (units + 5 per extra non-home college + 5 per subject chain across more than one college):
+`planner-harness.ts` `OBJECTIVES` lists the objectives. By default these are the product default, `collegePenalty` 5 and `chainPenalty` 5, and then pure units (weights 0). Both must be green. The same weights go to `solve()` and to the brute force. Weights are quarter units, and for a semester home the harness divides them by 1.5 (`inHomeUnits`), as `solve()` does.
 
-1. Set `OPTION_NAMES` to the real `SolveOptions` field names.
-2. Confirm that `brute.ts` `planCost` counts colleges and chains the way `solve()` does.
-3. Run with `INDEPENDENT_PLANNER_WEIGHTS=5,5`, or make that the default `OBJECTIVE`.
+The brute force (`brute.ts` `planCost`, `subjectChains`) restates the planner's documented cost. It imports no app code.
+
+- **Cost:** units + college × (distinct colleges other than home among the PLANNED courses) + chain × (split subject chains). Taken courses never add a college.
+- **UC subject of a row:** take the tokens of its id, up to the first comma, before the first token that contains a digit (`MATH 51` gives MATH, `COM SCI M51A` gives COM SCI, `CHEM 1A, CHEM 1AL` gives CHEM). An id that starts with a number has no subject. The CC course prefix plays no part.
+- **Subject chain:** a subject with two or more distinct row ids that have CC groups at any college. Rows anywhere in the tree count, optional subtrees included.
+- **Membership:** a course belongs to a chain when it, or its honors twin (one trailing H added or removed), is listed in a group of one of the chain's rows. A course can belong to several chains.
+- **Split:** a chain is split when it has at least one planned course and its planned courses, together with the colleges of the taken courses that belong to it, span two or more colleges. A chain with only taken courses costs 0.
+
+Minimality compares this cost only. The planner's tie-breaks (new splits, units away from home, honors, course count, ids) are checked against the full cost vector by the oracle in `src/engine/solve.test.ts`.
+
+History: the first weighted run (`INDEPENDENT_PLANNER_WEIGHTS=5,5`, before this alignment) reported 6 `OPTIMAL_BUT_NOT_MINIMAL`. All 6 were definition mismatches on the brute-force side, not planner bugs:
+
+- **5 synthetic cases.** The brute force grouped chains by CC course prefix (every synthetic course is `C n`, so every plan at two colleges was "split"). The planner's chains are keyed by UC subject, and synthetic rows `R0`, `R1`, … have none.
+- **Berkeley ME, Santa Monica + Foothill.** The brute force charged 5 per college in a semester home. The planner charges 5 quarter units, which is 3.33 semester units: 42 + 3.33 = 45.33, below the 46 units of the all-Santa Monica plan.
 
 ## Adding a scenario
 

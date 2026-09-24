@@ -54,17 +54,39 @@ What may legitimately cross college lines: each UC requirement row is independen
 
 ### Solver
 
-`solve(taken, agreement, options)` in `src/engine/solve.ts` finds the plan with the fewest units, and proves it:
+`solve(taken, agreement, options)` in `src/engine/solve.ts` finds the cheapest plan under a documented cost, and proves it:
 
 1. List the minimal sets of requirements whose completion passes the tree (one per `OR` / `N_OF` choice). UC-only rows are never planned; they fill an `N_OF` slot only when no CC alternative can.
-2. Split each set into independent parts (shared courses, or a row where a new split could appear) and run a branch-and-bound over each part's groups at the allowed colleges. Shared courses count once (De Anza MATH 1B serves MATH 51 and MATH 52); honors twins are used only where that college allows mixing; courses missing from the catalog are never planned.
-3. Objective, in order: fewest unmet requirements, fewest units, fewest new splits, fewest units away from home, fewer honors courses, fewer courses, then course ids. Deterministic and independent of input order.
-4. If the best plan opens no blocking split it is proven optimal (`optimal: true`). Otherwise the solver forbids new splits in rows the plan still needs and reports what it gave up (`"R2 (only by splitting R1)"`). If a node budget (default 200k) runs out it falls back to a greedy with the same rules (`optimal: false`); the result is never worse than greedy.
+2. Split each set into independent parts (shared courses, one subject chain, or a row where a new split could appear) and run a branch-and-bound over each part's groups. An outer branch-and-bound chooses which colleges other than home to use. Shared courses count once (De Anza MATH 1B serves MATH 51 and MATH 52). Honors twins are used only where that college allows mixing. Courses missing from the catalog are never planned.
+3. The cost is compared in this order:
+   1. fewest unmet requirements;
+   2. then **units + `collegePenalty` × (colleges other than `home` that planned courses use) + `chainPenalty` × (subject chains split across colleges)**;
+   3. then the tie-breaks: fewest new splits, fewest units away from home, fewer honors courses, fewer courses, then course ids.
+
+   Both penalties are in quarter units and default to 5 (about one course). A semester home converts them (5 quarter = 3.33 semester). Setting both weights to 0 gives pure minimum units. Only planned courses count toward the college penalty; taken courses never do.
+
+   A **subject chain** is a set of agreement rows that share a UC subject, when at least two of those rows have CC groups. The subject is the tokens of the row id, up to its first comma, before the first token containing a digit: `MATH 51` gives MATH, `COM SCI M51A` gives COM SCI, `CHEM 1A, CHEM 1AL` gives CHEM. A course belongs to the chain when it, or its honors twin, appears in a group of one of the chain's rows. A chain is split when it has at least one planned course and its planned courses, together with the colleges where the student took courses of it, span two or more colleges. A chain with only taken courses costs nothing.
+
+   The plan is deterministic and independent of input order: the order of tree children, groups, the courses in a group, catalog keys, `sendingIds`, `allowed` and the transcript never changes it.
+4. `optimal: true` means the plan is proven minimal for that cost. When the best plan would open a blocking split, the solver forbids new splits in rows the plan still needs and reports what it gave up (`"R2 (only by splitting R1)"`). That plan is `optimal: false`. If the node budget (default 200k) or the choice enumeration (5,000 ways to pass the tree) runs out, it falls back to a greedy with the same rules (`optimal: false`). The result is never worse than greedy.
 5. `unsolvable` entries are actionable: `"MAT 022A — offered at Berkeley City, De Anza"`, or `"COM SCI 35L — no ASSIST articulation record; confirm with a counselor"`.
 
-Exactness is checked against a brute-force oracle on thousands of random agreements (`ORACLE_CASES=20000 npx vitest run src/engine/solve.test.ts`). Typical solve: 3–4 ms, p95 about 17 ms, worst about 50 ms.
+Exactness is checked in two places. `src/engine/solve.test.ts` compares full cost vectors, tie-breaks included, against a brute-force oracle on thousands of random agreements with default, zero and odd weights (`ORACLE_CASES=20000 ORDER_CASES=20000 npx vitest run src/engine/solve.test.ts`). `tests/independent` compares cost against an independent brute force under the default weights and under pure units. Solve time on the real grid (22 agreements × 15 home colleges × {home, home + Foothill (De Anza for Foothill), all 15}, 990 solves) is p50 about 4 ms, p95 about 55 ms and max about 280 ms with default weights (the slow ones plan across all 15 colleges). With pure units it is p50 about 3 ms, p95 about 6 ms and max about 13 ms.
 
-6. Pack courses into terms. Order is inferred from the letter suffix within one college: each course waits for the nearest lower letter planned in the same series (1A before 1C even if 1B is not needed). Plain numbers are ordered only when their titles differ just by an ordinal (Chemistry I / II); the first course of a numerically higher series (2A) is gated by the C course of the series below it (1C). Respect the per-term unit cap and never silently drop a course past `maxTerms`; the UI flags overflow. A single course larger than the cap gets a term to itself, marked `overCap` and flagged in the UI.
+6. Pack courses into terms, respecting inferred prerequisites (`src/engine/sequence.ts`). ASSIST ships empty requisites, so order is read from course ids and titles. Edges are added strongest rule first, and an edge that would close a cycle is dropped. The rules:
+   - Within one college only, since course numbers mean different things at different colleges:
+     - **letter**: each course waits for the nearest lower letter planned in its series (PHYS 4A < 4B < 4C; 1A before 1C even if 1B is not needed).
+     - **ordinal**: plain numbers whose titles differ only by an ordinal (CHEM 11 "General Chemistry I" < CHEM 12 "... II").
+     - **series**: the first course of a numerically higher series waits for the C (else last) course of the series below it (1C < 2A). This does not apply when its own title reads as a first course ("Introduction to ...", "... I").
+     - **co**: a lab is never earlier than its lecture (PHYC 4AL with 4A). Packing puts the lab in the lecture's term when it fits.
+   - Across colleges too, because a topic is knowledge rather than articulation (Calculus I at De Anza still comes before Calculus II at Foothill):
+     - **title**: identical titles except for one ordinal ("Computer Discrete Mathematics I" < "... II").
+     - **math**: Precalculus < Calculus I < II < III / Multivariable < IV. Linear Algebra and Differential Equations come after Calculus II.
+     - **physics**: Mechanics < Electricity & Magnetism < Optics / Modern. Waves, fluids and thermodynamics come after Mechanics.
+     - **chem**: General Chemistry I < II < III < Organic Chemistry, and Organic I < II < III.
+     - **cs**: Intro Programming < Data Structures, and Intro Programming < Assembly / Architecture.
+
+   Generic titles ("Calculus", "General Chemistry") take their level from the letter (1A = I). Courses at the same level are never ordered, so a lecture and its lab may share a term. Packing respects the per-term unit cap and never silently drops a course past `maxTerms`; the UI flags overflow. A single course larger than the cap gets a term to itself, marked `overCap` and flagged in the UI.
 7. Re-run `verifySchedule` on taken plus planned and return `{ terms, chosen, result, totalUnits, unsolvable, optimal }`.
 
 Units are converted between systems when the plan mixes quarter and semester colleges. Semester units are multiplied by 1.5 to quarter units. Packing and totals use exact converted units; only displayed numbers are rounded to 0.5. The default cap is 16 quarter units or 12 semester units per term, and terms are named for the student's `termSystem` (Fall/Winter/Spring for quarter, Fall/Spring for semester).

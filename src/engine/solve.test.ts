@@ -115,6 +115,45 @@ describe('solve: tie-breaks are strict and order-independent (F-11)', () => {
     expect(p2.terms).toEqual(p1.terms)
     expect(p2.chosen).toEqual(p1.chosen)
   })
+  it('a row listed twice with its groups in another order is one requirement', () => {
+    // Z is also an alternative of the OR: completing Z passes it, so B is not part of the plan's config
+    const cs: [string, number][] = [['1:X 1', 2], ['1:X 2', 3]]
+    const z1 = req('Z', [['1:X 1'], ['1:X 2']]), z2 = req('Z', [['1:X 2'], ['1:X 1']]), b = req('B', [['1:X 1']])
+    for (const w of [UNITS, {}]) for (const second of [z1, z2]) {
+      const p = solve(new Set(), agreement(and(z1, or(b, second)), cs), { allowed: [1], home: 1, ...w })
+      expect(Object.keys(p.chosen)).toEqual(['Z'])
+      expect(plannedOf(p)).toEqual(['1:X 1'])
+    }
+  })
+})
+
+describe('solve: the same plan under every input order, real agreements, all 15 colleges', () => {
+  // The independent suite's permutation: tree children, groups, the courses of each group, catalog keys, sendingIds,
+  // allowed colleges and the transcript are all shuffled.
+  const files = import.meta.glob('../../data/agreements/*.json', { eager: true, import: 'default' }) as Record<string, Agreement>
+  const CCS = (institutions as Institution[]).filter((i) => i.isCC).map((i) => i.id)
+  let s = 7
+  const rnd = () => ((s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 2 ** 32)
+  const shuffle = <T,>(xs: readonly T[]) => { const a = [...xs]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]] } return a }
+  const perm = (n: ReqNode | Requirement): ReqNode | Requirement => n.kind === 'req'
+    ? { ...n, groups: shuffle(n.groups.map((g) => ({ ...g, courses: shuffle(g.courses) }))) }
+    : { ...n, children: shuffle(n.children.map(perm)) }
+  const sig = (p: Plan) => ({
+    terms: p.terms.map((t) => [t.name, [...t.courses].sort(), t.units]), unsolvable: p.unsolvable, total: p.totalUnits, optimal: p.optimal,
+    chosen: Object.keys(p.chosen).sort().map((id) => [id, p.chosen[id].institutionId, [...p.chosen[id].courses].sort()]),
+  })
+  for (const [name, w] of [['pure units', UNITS], ['default weights', {}]] as const) it(`${name}: every agreement, a different home each, with and without a transcript`, () => {
+    Object.values(files).forEach((a, k) => {
+      const home = CCS[k % CCS.length], sys = unitSystems[home] as 'quarter' | 'semester'
+      const taken = Object.keys(a.catalog).filter((c) => a.catalog[c].institutionId === CCS[(k + 3) % CCS.length] || rnd() < 0.05)
+      for (const T of [[], taken]) {
+        const o = { home, termSystem: sys, unitSystems, ...w }
+        const p1 = solve(new Set(T), a, { ...o, allowed: CCS })
+        const p2 = solve(new Set(shuffle(T)), { ...a, root: perm(a.root) as ReqNode, catalog: Object.fromEntries(shuffle(Object.entries(a.catalog))), sendingIds: shuffle(a.sendingIds) }, { ...o, allowed: shuffle(CCS) })
+        expect(sig(p2), `${a.receivingId} ${a.major}, home ${home}`).toEqual(sig(p1))
+      }
+    })
+  }, 120_000)
 })
 
 describe('solve: bounds and bad data (F-13, F-17)', () => {
