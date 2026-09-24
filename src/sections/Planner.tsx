@@ -222,7 +222,7 @@ export default function Planner() {
         {!agreement ? <div className="card mt-8 p-6 opacity-60">Loading agreement…</div> : <div ref={out} className="relative z-0 mt-8">
           <div data-badge className={`card flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between md:p-6 ${ok ? '' : 'border-alert/30'}`}>
             <div className="flex items-center gap-4">
-              <span className={`grid h-11 w-11 place-items-center rounded-full text-white ${ok ? 'bg-accent' : 'bg-alert'}`}>{ok ? <Check /> : <Cross />}</span>
+              <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-full text-white ${ok ? 'bg-accent' : 'bg-alert'}`}>{ok ? <Check /> : <Cross />}</span>
               <div>
                 <div className="text-[17px] font-medium">{status.title}</div>
                 <div className="text-[14px] text-ink-2">{agreement.major} · {ucShort} · {agreement.year} agreement</div>
@@ -394,6 +394,8 @@ export default function Planner() {
                 const lit = hover && g?.courses.includes(hover)
                 const noArt = r.req.groups.length === 0
                 const offered = r.req.groups.some((x) => allowed.includes(x.institutionId))
+                // red only when the plan actually needs it: a "choose N" alternative counts once the solver reports it
+                const needed = !r.optional && (!r.choose || plan.unsolvable.some((u) => u.includes(r.req.id)))
                 return (
                   <li key={r.req.id + i}>
                     {(!prev || prev.section !== r.section) && (
@@ -421,7 +423,7 @@ export default function Planner() {
                         )) : later ? <span className="rounded-full border border-line bg-bg px-2.5 py-0.5 text-[12.5px] font-medium text-ink-2">Take at {ucShort} after transfer</span>
                           : warn ? <span className="text-[13px] text-warn">split, not needed</span>
                           : noArt ? <span className="text-[13px] text-ink-3">{Object.values(r.req.noArticulation ?? {})[0] ?? 'Not articulated'}</span>
-                          : <span className={`text-[13px] ${viol || offered || r.optional ? 'text-ink-3' : 'text-alert'}`}>{viol ? 'split' : offered ? 'not needed for the cheapest path' : 'not articulated at the selected colleges'}</span>}
+                          : <span className={`text-[13px] ${viol || offered || !needed ? 'text-ink-3' : 'text-alert'}`}>{viol ? 'split' : offered ? 'not needed for the cheapest path' : 'not articulated at the selected colleges'}</span>}
                       </div>
                     </div>
                   </li>
