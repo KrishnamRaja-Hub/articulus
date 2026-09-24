@@ -7,24 +7,32 @@ const stripH = (id: CourseId) => id.replace(/H$/, '')
 /**
  * ASSIST marks series where "Regular and honors courses may be combined": the same college lists a regular
  * group and an honors twin (MATH 1B+1C and MATH 1BH+1CH). Detect that shape instead of parsing the note.
+ * Returns the colleges where the row has such a twin; only there are a course and its honors twin interchangeable.
  */
-export const honorsMix = (req: Requirement) => {
+export const honorsColleges = (req: Requirement): ReadonlySet<number> => {
   const keys = req.groups.map((g) => `${g.institutionId}|${g.courses.map(stripH).sort().join('+')}`)
-  return keys.some((k, i) => keys.indexOf(k) !== i)
+  return new Set(req.groups.filter((_, i) => keys.indexOf(keys[i]) !== i).map((g) => g.institutionId))
 }
 
-/** Membership check; with honorsMix, a course and its honors twin at the same college are interchangeable. */
-export const has = (taken: Set<CourseId>, c: CourseId, mix: boolean) =>
-  taken.has(c) || (mix && (taken.has(`${c}H`) || (c.endsWith('H') && taken.has(stripH(c)))))
+/** True if any college in the row has an honors twin. Pass `honorsColleges(req)` to `has` for the per-college rule. */
+export const honorsMix = (req: Requirement) => honorsColleges(req).size > 0
 
-/** The id actually in `taken` that stands for `c` (itself, or its honors twin under honorsMix). */
-const takenAs = (taken: Set<CourseId>, c: CourseId, mix: boolean) =>
-  taken.has(c) ? c : !mix ? undefined : taken.has(`${c}H`) ? `${c}H` : c.endsWith('H') && taken.has(stripH(c)) ? stripH(c) : undefined
+/** `true`: honors swaps at every college; a set: only at those colleges; `false`: none. */
+export type Mix = boolean | ReadonlySet<number>
+const swaps = (c: CourseId, mix: Mix) => typeof mix === 'boolean' ? mix : mix.has(Number(c.slice(0, c.indexOf(':'))))
+
+/** Membership check; under `mix`, a course and its honors twin at the same college are interchangeable. */
+export const has = (taken: Set<CourseId>, c: CourseId, mix: Mix) =>
+  taken.has(c) || (swaps(c, mix) && (taken.has(`${c}H`) || (c.endsWith('H') && taken.has(stripH(c)))))
+
+/** The id actually in `taken` that stands for `c` (itself, or its honors twin under `mix`). */
+const takenAs = (taken: Set<CourseId>, c: CourseId, mix: Mix) =>
+  taken.has(c) ? c : !swaps(c, mix) ? undefined : taken.has(`${c}H`) ? `${c}H` : c.endsWith('H') && taken.has(stripH(c)) ? stripH(c) : undefined
 
 /** How a single requirement stands against the taken set. */
 export function reqStatus(req: Requirement, taken: Set<CourseId>): ReqStatus {
   const best = new Map<number, Partial>() // one partial per college: its regular and honors groups overlap
-  const mix = honorsMix(req)
+  const mix = honorsColleges(req)
   for (const g of req.groups) {
     // Report the courses the student actually took, not the honors twin that matched them.
     const have = [...new Set(g.courses.map((c) => takenAs(taken, c, mix)).filter((c): c is CourseId => !!c))]
@@ -39,8 +47,11 @@ export function reqStatus(req: Requirement, taken: Set<CourseId>): ReqStatus {
   return { partials: [...best.values()] }
 }
 
-/** Split = pieces of the series at two colleges. The same course repeated at two colleges is a duplicate, not a split. */
-const code = (id: CourseId) => id.slice(id.indexOf(':') + 1)
+/**
+ * Split = pieces of the series at two colleges. The same course repeated at two colleges is a duplicate, not a split;
+ * MATH 1BH at one and MATH 1B at another is the same course too.
+ */
+const code = (id: CourseId) => stripH(id.slice(id.indexOf(':') + 1))
 const isSplit = (p: Partial[]) =>
   new Set(p.map((x) => x.institutionId)).size > 1 && new Set(p.flatMap((x) => x.have.map(code))).size > 1
 
@@ -60,21 +71,27 @@ export function verifySchedule(taken: Set<CourseId>, agreement: Agreement): Vali
     return !!st.satisfied
   }
 
-  const node = (n: ReqNode): boolean => {
+  /** Evaluates a subtree; `miss` says what it still needs: failed rows of an AND, one entry per OR / N_OF. */
+  const node = (n: ReqNode): { ok: boolean; miss: string[] } => {
     // Optional (recommended) subtrees are evaluated for reporting but never fail their parent.
-    const results = n.children.map((c) => (c.kind === 'req' ? leaf(c) : node(c) || !c.required))
-    const ok = n.type === 'AND' ? results.every(Boolean)
-      : n.type === 'OR' ? results.some(Boolean)
-      : results.filter(Boolean).length >= (n.n ?? 1)
-    if (!ok && n.required) {
-      if (n.type === 'AND') n.children.forEach((c, i) => { if (!results[i] && c.kind === 'req') out.missing.push(c.id) })
-      else out.missing.push(`${n.type === 'OR' ? 'One' : n.n} of: ${n.children.map((c) => (c.kind === 'req' ? c.id : '(group)')).join(', ')}`)
-    }
-    return ok
+    const rs = n.children.map((c) => {
+      if (c.kind === 'req') return { ok: leaf(c), miss: [c.id] }
+      const r = node(c)
+      return { ok: r.ok || !c.required, miss: r.miss }
+    })
+    const done = rs.filter((r) => r.ok).length
+    const need = n.type === 'AND' ? rs.length : n.type === 'OR' ? 1 : (n.n ?? 1)
+    const ok = done >= need
+    const open = rs.filter((r) => !r.ok)
+    // An alternative is named by what it still lacks, e.g. "(MATH 20B + MATH 20C)".
+    const miss = ok ? [] : n.type === 'AND' ? open.flatMap((r) => r.miss)
+      : [`${n.type === 'OR' ? 'One' : need - done} of: ${open.map((r) => (r.miss.length > 1 ? `(${r.miss.join(' + ')})` : r.miss[0])).join(', ')}`]
+    return { ok, miss }
   }
 
-  const rootOk = node(agreement.root)
+  const root = node(agreement.root)
+  if (!root.ok && agreement.root.required) out.missing = root.miss
   // Split-series is always fatal, even if the tree happens to be satisfiable another way.
-  out.isValid = rootOk && out.splitSeriesViolations.length === 0
+  out.isValid = root.ok && out.splitSeriesViolations.length === 0
   return out
 }
