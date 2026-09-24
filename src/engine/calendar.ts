@@ -5,18 +5,14 @@
  * Fall Y -> [3Y, 3Y] (Aug-Dec, alongside Fall quarter), Spring Y+1 -> [3Y+1, 3Y+2] (Jan-May, alongside Winter
  * and Spring quarter). Summer is not planned. */
 
-export type TermSystem = 'quarter' | 'semester'
-export type Season = 'Fall' | 'Winter' | 'Spring'
-export interface StartTerm { season: Season; year: number }
+import { nextOpenTerm as openTerm, type Season, type StartTerm, type TermSystem } from '../terms.ts'
+export type { Season, StartTerm, TermSystem }
 
 export interface CalendarTerm { system: TermSystem; season: Season; year: number; start: number; end: number }
 
-/** The term open for registration next: Fall (this year) before about April 1, otherwise the next
- *  Winter (quarter) or Spring (semester) term. */
+/** The next term open for registration (src/terms.ts holds the cutoffs); Fall of this year for an invalid date. */
 export function nextOpenTerm(now: Date = new Date(), system: TermSystem = 'quarter'): StartTerm {
-  const y = now.getFullYear()
-  if (now.getMonth() < 3) return { season: 'Fall', year: y }
-  return { season: system === 'semester' ? 'Spring' : 'Winter', year: y + 1 }
+  return openTerm(now, system) ?? { season: 'Fall', year: new Date().getUTCFullYear() }
 }
 
 /** First timeline slot of a start term, read in the home calendar (semester Winter/Spring = the January term). */
