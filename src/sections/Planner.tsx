@@ -8,6 +8,7 @@ import { solve } from '../engine/solve'
 import type { Agreement, CourseGroup, CourseId, Plan, ReqNode, Requirement, ValidationResult } from '../engine/types'
 import Button from '../ui/Button'
 import { Check, Cross } from './Trap'
+import { badgeStatus, deferredOf, isBlocking, optimalNote, splitUnsolvable } from './plannerStatus'
 
 const MAX_TERMS = 6
 const EMPTY_RESULT: ValidationResult = { isValid: false, satisfied: {}, missing: [], incomplete: {}, splitSeriesViolations: [], deferred: [] }
@@ -132,14 +133,13 @@ export default function Planner() {
   }, { scope: map, dependencies: [rows.length, planKey], revertOnUpdate: true })
 
   const violations = current.splitSeriesViolations
-  // icon and title come from the same status, so a red badge never claims integrity
-  const planSplits = plan.result.splitSeriesViolations.map((v) => v.requirementId)
-  const status = violations.length ? `${violations.length} split-series violation${violations.length > 1 ? 's' : ''} in your completed courses`
-    : plan.unsolvable.length ? 'Some requirements cannot be met at the selected colleges'
-    : planSplits.length ? `The planned schedule still splits ${planSplits.join(', ')} across colleges`
-    : !plan.result.isValid ? 'The plan does not complete every requirement'
-    : null
-  const ok = status === null
+  const ucShort = agreement ? byId[agreement.receivingId].short : ''
+  // icon, color and title come from one status, so a red badge never claims coverage
+  const status = badgeStatus(current, plan, ucShort)
+  const ok = status.ok
+  const deferred = deferredOf(current, plan)
+  const reqOf = (id: string) => rows.find((r) => r.req.id === id)?.req
+  const note = optimalNote(plan)
 
   return (
     <section id="plan" ref={ref} className="px-6 py-32 md:py-48">
@@ -222,17 +222,16 @@ export default function Planner() {
         {!agreement ? <div className="card mt-8 p-6 opacity-60">Loading agreement…</div> : <div ref={out} className="relative z-0 mt-8">
           <div data-badge className={`card flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between md:p-6 ${ok ? '' : 'border-alert/30'}`}>
             <div className="flex items-center gap-4">
-              <span className={`grid h-11 w-11 place-items-center rounded-full text-white ${ok ? 'bg-accent' : 'bg-alert'}`}>{ok ? <Check /> : <Cross />}</span>
+              <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-full text-white ${ok ? 'bg-accent' : 'bg-alert'}`}>{ok ? <Check /> : <Cross />}</span>
               <div>
-                <div className="text-[17px] font-medium">
-                  {status ?? '100% articulation integrity'}
-                </div>
-                <div className="text-[14px] text-ink-2">{agreement.major} · {byId[agreement.receivingId].short} · {agreement.year} agreement</div>
+                <div className="text-[17px] font-medium">{status.title}</div>
+                <div className="text-[14px] text-ink-2">{agreement.major} · {ucShort} · {agreement.year} agreement</div>
+                {status.details.length > 0 && <div className="text-[14px] font-medium text-ink-2">{status.details.join(' · ')}</div>}
               </div>
             </div>
             <dl className="grid grid-cols-3 gap-6 text-[14px] text-ink-2 md:text-right">
               <Stat n={plan.terms.length} l={plan.terms.length === 1 ? terms : `${terms}s`} />
-              <Stat n={plan.totalUnits} l="units to go" />
+              <Stat n={plan.totalUnits} l="units to go" note={note} />
               <Stat n={Object.keys(plan.result.satisfied).length} l="requirements" />
             </dl>
           </div>
@@ -242,11 +241,33 @@ export default function Planner() {
               {violations.map((v) => {
                 const fix = plan.chosen[v.requirementId]
                 // honors twins count as the same course where the engine allows mixing (MATH 1BH stands in for MATH 1B)
-                const req = rows.find((r) => r.req.id === v.requirementId)?.req
+                const req = reqOf(v.requirementId)
                 const mix = req ? honorsColleges(req) : false
                 const todo = fix?.courses.filter((c) => !has(taken, c, mix)) ?? []
                 // this violation's own pieces that the repair does not reuse: they earn nothing toward it
                 const wasted = v.partials.flatMap((p) => p.have).filter((c) => !fix || !has(new Set(fix.courses), c, mix))
+                // non-blocking: the pieces earn nothing, but the plan does not depend on this requirement
+                if (!isBlocking(v)) return (
+                  <div key={v.requirementId} data-violation className="card border-warn/30 p-6 md:p-7">
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <h3 className="h3 text-warn">{v.requirementId} is split across {v.partials.length} campuses</h3>
+                      <span className="text-[14px] text-ink-2">Warning. It does not block your plan.</span>
+                    </div>
+                    <p className="mt-3 text-[15px] text-ink-2">
+                      {fix && todo.length ? `These courses earn no credit toward it. Your plan completes it with ${todo.map(code).join(' and ')} at ${byId[fix.institutionId].name}.`
+                        : "These courses earn no credit toward it, but your plan doesn't need it."}
+                    </p>
+                    {wasted.length > 0 && (
+                      <ul className="mt-4 flex flex-wrap gap-2">
+                        {wasted.map((c) => (
+                          <li key={c} className="rounded-full border border-warn/25 bg-warn-soft px-3 py-1 text-[13.5px] text-warn">
+                            <span className="font-medium">{code(c)}</span> at {byId[instOf(c)].short} · no credit
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )
                 return (
                   <div key={v.requirementId} data-violation className="card border-alert/30 p-6 md:p-7">
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -278,8 +299,40 @@ export default function Planner() {
 
           {plan.unsolvable.length > 0 && (
             <div className="card mt-4 border-alert/30 p-6 text-[15px]">
-              <span className="font-medium text-alert">Not coverable at {allowed.map((i) => byId[i].short).join(' + ')}:</span>{' '}
-              <span className="text-ink-2">{plan.unsolvable.join('; ')}</span>
+              <div className="font-medium text-alert">Not coverable at {allowed.map((i) => byId[i].short).join(' + ')}</div>
+              <ul className="mt-3">
+                {plan.unsolvable.map((u) => {
+                  const { what, offeredAt } = splitUnsolvable(u)
+                  return (
+                    <li key={u} className="flex flex-wrap items-baseline gap-x-3 border-t border-line py-2 first:border-t-0">
+                      <span className="font-medium [overflow-wrap:anywhere]">{what}</span>
+                      {offeredAt && <span className="text-[14px] text-ink-2">Offered at {offeredAt}</span>}
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+          )}
+
+          {deferred.length > 0 && (
+            <div className="card mt-4 p-6 text-[15px]">
+              <div className="font-medium">Complete at {ucShort} after transfer</div>
+              <p className="mt-1 text-[14px] text-ink-2">No community college in this agreement offers an equivalent, so these do not count against your plan.</p>
+              <ul className="mt-3">
+                {deferred.map((id) => {
+                  const req = reqOf(id)
+                  const why = Object.values(req?.noArticulation ?? {})[0]
+                  return (
+                    <li key={id} className="border-t border-line py-2">
+                      <div className="flex flex-wrap items-baseline gap-x-3">
+                        <span className="font-medium">{id}</span>
+                        {req && req.label !== id && <span className="text-[14px] text-ink-2">{req.label}</span>}
+                      </div>
+                      {why && <div className="text-[13.5px] text-ink-3">ASSIST: {why}</div>}
+                    </li>
+                  )
+                })}
+              </ul>
             </div>
           )}
 
@@ -335,10 +388,14 @@ export default function Planner() {
                 const prev = rows[i - 1]
                 const g: CourseGroup | undefined = plan.result.satisfied[r.req.id] ?? plan.chosen[r.req.id]
                 const done = !!current.satisfied[r.req.id]
-                const viol = violations.some((v) => v.requirementId === r.req.id)
+                const split = violations.find((v) => v.requirementId === r.req.id)
+                const viol = !!split && isBlocking(split), warn = !!split && !viol
+                const later = deferred.includes(r.req.id)
                 const lit = hover && g?.courses.includes(hover)
                 const noArt = r.req.groups.length === 0
                 const offered = r.req.groups.some((x) => allowed.includes(x.institutionId))
+                // red only when the plan actually needs it: a "choose N" alternative counts once the solver reports it
+                const needed = !r.optional && (!r.choose || plan.unsolvable.some((u) => u.includes(r.req.id)))
                 return (
                   <li key={r.req.id + i}>
                     {(!prev || prev.section !== r.section) && (
@@ -351,8 +408,8 @@ export default function Planner() {
                       <div className="mt-4 mb-2 text-[13px] text-ink-3">Choose {r.choose} of the following</div>
                     )}
                     <div className={`flex items-center gap-4 border-t border-line py-3.5 transition-colors duration-300 ${lit ? 'bg-white' : ''} ${r.optional && !g ? 'opacity-60' : ''}`}>
-                      <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-white ${viol ? 'bg-alert' : done ? 'bg-accent' : g ? 'border-2 border-ink/70 bg-transparent' : 'border border-line bg-transparent'}`}>
-                        {viol ? <Cross /> : done ? <Check /> : null}
+                      <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-white ${viol ? 'bg-alert' : warn ? 'bg-warn' : done ? 'bg-accent' : g ? 'border-2 border-ink/70 bg-transparent' : 'border border-line bg-transparent'}`}>
+                        {viol || warn ? <Cross /> : done ? <Check /> : null}
                       </span>
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-baseline gap-x-3">
@@ -363,8 +420,10 @@ export default function Planner() {
                       <div className="flex max-w-[60%] shrink-0 flex-wrap justify-end gap-1.5">
                         {g ? g.courses.map((c) => (
                           <span key={c} className={`rounded-full border px-2.5 py-0.5 text-[12.5px] font-medium transition-all duration-300 ${chip(g.institutionId)} ${hover === c ? 'ring-2 ring-ink/20' : ''}`}>{code(c)}</span>
-                        )) : noArt ? <span className="text-[13px] text-ink-3">{Object.values(r.req.noArticulation ?? {})[0] ?? 'Not articulated'}</span>
-                          : <span className={`text-[13px] ${viol || offered || r.optional ? 'text-ink-3' : 'text-alert'}`}>{viol ? 'split' : offered ? 'not needed for the cheapest path' : 'not articulated at the selected colleges'}</span>}
+                        )) : later ? <span className="rounded-full border border-line bg-bg px-2.5 py-0.5 text-[12.5px] font-medium text-ink-2">Take at {ucShort} after transfer</span>
+                          : warn ? <span className="text-[13px] text-warn">split, not needed</span>
+                          : noArt ? <span className="text-[13px] text-ink-3">{Object.values(r.req.noArticulation ?? {})[0] ?? 'Not articulated'}</span>
+                          : <span className={`text-[13px] ${viol || offered || !needed ? 'text-ink-3' : 'text-alert'}`}>{viol ? 'split' : offered ? 'not needed for the cheapest path' : 'not articulated at the selected colleges'}</span>}
                       </div>
                     </div>
                   </li>
@@ -399,6 +458,9 @@ function Select<T extends string | number>({ value, onChange, children }: { valu
   )
 }
 
-const Stat = ({ n, l }: { n: number; l: string }) => (
-  <div><dt className="text-[22px] font-medium tracking-tight text-ink">{n}</dt><dd>{l}</dd></div>
+const Stat = ({ n, l, note }: { n: number; l: string; note?: string | null }) => (
+  <div>
+    <dt className="text-[22px] font-medium tracking-tight text-ink">{n}</dt>
+    <dd>{l}{note && <span className="block text-[12.5px] text-ink-3">{note}</span>}</dd>
+  </div>
 )
