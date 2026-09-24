@@ -5,7 +5,12 @@ import berkeleyME from '../data/agreements/79-mechanical-engineering-b-s.json'
 
 export interface IndexEntry { file: string; receivingId: number; major: string }
 
-const files = import.meta.glob<{ default: Agreement }>('../data/agreements/*.json')
+// Berkeley ME is already in the main bundle (imported eagerly below), so keep it out of the lazy glob.
+const TRAP = '../data/agreements/79-mechanical-engineering-b-s.json'
+const files: Record<string, () => Promise<{ default: Agreement }>> = {
+  ...import.meta.glob<{ default: Agreement }>(['../data/agreements/*.json', '!../data/agreements/79-mechanical-engineering-b-s.json']),
+  [TRAP]: async () => ({ default: berkeleyME as unknown as Agreement }),
+}
 
 export const institutions = institutionsJson as Institution[]
 export const byId = Object.fromEntries(institutions.map((i) => [i.id, i])) as Record<number, Institution>

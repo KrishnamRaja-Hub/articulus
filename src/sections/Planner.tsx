@@ -69,12 +69,6 @@ export default function Planner() {
     [taken, agreement, allowed.join(), home])
   const rows = useMemo(() => (agreement ? flatten(agreement.root) : []), [agreement])
 
-  // taken courses that end up in no satisfying group: they earn nothing toward this major
-  const wasted = useMemo(() => {
-    const used = new Set(Object.values(plan.result.satisfied).flatMap((g) => g.courses))
-    return [...taken].filter((c) => !used.has(c))
-  }, [plan, taken])
-
   const results = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q || !agreement) return []
@@ -230,6 +224,8 @@ export default function Planner() {
             <div className="mt-4 grid gap-4">
               {violations.map((v) => {
                 const fix = plan.chosen[v.requirementId]
+                // this violation's own pieces that the repair does not reuse: they earn nothing toward it
+                const wasted = v.partials.flatMap((p) => p.have).filter((c) => !fix?.courses.includes(c))
                 return (
                   <div key={v.requirementId} data-violation className="card border-alert/30 p-6 md:p-7">
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -321,6 +317,7 @@ export default function Planner() {
                 const viol = violations.some((v) => v.requirementId === r.req.id)
                 const lit = hover && g?.courses.includes(hover)
                 const noArt = r.req.groups.length === 0
+                const offered = r.req.groups.some((x) => allowed.includes(x.institutionId))
                 return (
                   <li key={r.req.id + i}>
                     {(!prev || prev.section !== r.section) && (
@@ -346,7 +343,7 @@ export default function Planner() {
                         {g ? g.courses.map((c) => (
                           <span key={c} className={`rounded-full border px-2.5 py-0.5 text-[12.5px] font-medium transition-all duration-300 ${chip(g.institutionId)} ${hover === c ? 'ring-2 ring-ink/20' : ''}`}>{code(c)}</span>
                         )) : noArt ? <span className="text-[13px] text-ink-3">{Object.values(r.req.noArticulation ?? {})[0] ?? 'Not articulated'}</span>
-                          : <span className="text-[13px] text-ink-3">{viol ? 'split' : 'not needed for the cheapest path'}</span>}
+                          : <span className={`text-[13px] ${viol || offered || r.optional ? 'text-ink-3' : 'text-alert'}`}>{viol ? 'split' : offered ? 'not needed for the cheapest path' : 'not articulated at the selected colleges'}</span>}
                       </div>
                     </div>
                   </li>

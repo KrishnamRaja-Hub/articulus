@@ -51,10 +51,28 @@ function sendingGroups(inst: number, sa: RawArticulation['articulation']['sendin
   return out
 }
 
+/** Requirement shape of a payload's template: titles, group conjunctions, N-of advisements and UC cells, in order. */
+const templateShape = (p: RawPayload) => {
+  const assets: (RawGroup | RawTitle)[] = JSON.parse(p.result.templateAssets)
+  return JSON.stringify([...assets].sort((a, b) => a.position - b.position).flatMap<unknown>((a) =>
+    a.type === 'RequirementTitle' ? [a.content]
+    : a.type === 'RequirementGroup' ? [[a.instruction?.conjunction ?? '', a.sections.filter((x) => x.type === 'Section').map((x) =>
+        [x.advisements?.find((v) => v.type === 'NFollowing')?.amount ?? 0, (x.rows ?? []).map((r) => r.cells.map(cellKey))])]]
+    : []))
+}
+
+/** Sending colleges whose template differs from the first payload's (the one the tree is built from). */
+export const templateMismatches = (payloads: RawPayload[]): number[] => {
+  const ref = templateShape(payloads[0])
+  return payloads.slice(1).filter((p) => templateShape(p) !== ref).map(sendingId)
+}
+
 /** Merge one payload per sending college (same UC + major) into a single Agreement. */
 export function normalize(payloads: RawPayload[]): Agreement {
   const first = payloads[0].result
   const sendingIds = payloads.map(sendingId)
+  const drift = templateMismatches(payloads)
+  if (drift.length) console.warn(`normalize: ${first.name}: template differs from college ${sendingIds[0]} at colleges ${drift.join(', ')}; tree uses ${sendingIds[0]}'s`)
   const catalog: Record<CourseId, Course> = {}
   const reqs = new Map<string, Requirement>()
 
@@ -80,7 +98,7 @@ export function normalize(payloads: RawPayload[]): Agreement {
     }
   }
 
-  // Build the tree from the FIRST payload's template (templates are identical across colleges).
+  // Build the tree from the FIRST payload's template (templates are expected identical; templateMismatches warns if not).
   // RequirementTitles and RequirementGroups are parallel sequences: k-th title labels k-th group.
   const assets: (RawGroup | RawTitle)[] = JSON.parse(first.templateAssets)
   const byPos = (a: { position: number }, b: { position: number }) => a.position - b.position

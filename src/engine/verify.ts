@@ -17,16 +17,26 @@ export const honorsMix = (req: Requirement) => {
 export const has = (taken: Set<CourseId>, c: CourseId, mix: boolean) =>
   taken.has(c) || (mix && (taken.has(`${c}H`) || (c.endsWith('H') && taken.has(stripH(c)))))
 
+/** The id actually in `taken` that stands for `c` (itself, or its honors twin under honorsMix). */
+const takenAs = (taken: Set<CourseId>, c: CourseId, mix: boolean) =>
+  taken.has(c) ? c : !mix ? undefined : taken.has(`${c}H`) ? `${c}H` : c.endsWith('H') && taken.has(stripH(c)) ? stripH(c) : undefined
+
 /** How a single requirement stands against the taken set. */
 export function reqStatus(req: Requirement, taken: Set<CourseId>): ReqStatus {
-  const partials: Partial[] = []
+  const best = new Map<number, Partial>() // one partial per college: its regular and honors groups overlap
   const mix = honorsMix(req)
   for (const g of req.groups) {
-    const have = g.courses.filter((c) => has(taken, c, mix))
-    if (have.length === g.courses.length) return { satisfied: g, partials: [] }
-    if (have.length) partials.push({ institutionId: g.institutionId, have, missing: g.courses.filter((c) => !has(taken, c, mix)) })
+    // Report the courses the student actually took, not the honors twin that matched them.
+    const have = [...new Set(g.courses.map((c) => takenAs(taken, c, mix)).filter((c): c is CourseId => !!c))]
+    if (g.courses.every((c) => has(taken, c, mix))) return { satisfied: g, partials: [] }
+    const prev = best.get(g.institutionId)
+    const missing = g.courses.filter((c) => !has(taken, c, mix))
+    const honors = (m: CourseId[]) => m.filter((c) => c.endsWith('H')).length
+    // most progress wins; on a tie, prefer asking for the regular course over its honors twin
+    if (have.length && (!prev || have.length > prev.have.length || (have.length === prev.have.length && honors(missing) < honors(prev.missing))))
+      best.set(g.institutionId, { institutionId: g.institutionId, have, missing })
   }
-  return { partials }
+  return { partials: [...best.values()] }
 }
 
 /** Split = pieces of the series at two colleges. The same course repeated at two colleges is a duplicate, not a split. */

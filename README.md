@@ -149,7 +149,7 @@ Everything runs in the browser. There is no server, no database, and no account.
 - **Tailwind CSS 4** for styling. Colors, spacing, and type are declared once as theme tokens in `src/index.css` and reused as class names.
 - **GSAP 3 with ScrollTrigger** for motion: the hero draw-in, the scroll-scrubbed paragraph, the stacking story cards, the pinned requirement map. Motion is turned off automatically for users who set reduce-motion in their OS.
 - **Geist** variable font, self-hosted through `@fontsource-variable/geist`.
-- **Vitest** for the 11 engine tests and **Playwright** (dev-only, driving your installed Chrome) for screenshots and the smoke script in `scripts/`.
+- **Vitest** for the 13 engine tests and **Playwright** (dev-only, driving your installed Chrome) for screenshots and the smoke script in `scripts/`.
 - **Node 22** runs `scripts/fetch-assist.ts` as TypeScript directly, no build step.
 
 Things we learned that are not written down anywhere else:
@@ -167,7 +167,7 @@ Things we learned that are not written down anywhere else:
 ```
 npm install
 npm run dev      # Vite dev server
-npm test         # vitest: split-series detection, solver ordering, repair
+npm test         # vitest: split-series detection, solver ordering, repair, template drift
 npm run build    # tsc -b && vite build
 npm run fetch    # re-pull ASSIST and rewrite data/
 ```
@@ -208,7 +208,7 @@ This is a build-day prototype, so the numbers below are what the demo can do tod
 - **The trap is verified, not asserted.** UC Berkeley PHYSICS 7B requires PHYS 4B + 4C from one college. Take 4B at De Anza and 4C at Foothill and the app shows zero credit and names the fix. Before this, the only way to learn that was the July transcript audit.
 - **Deterministic.** The same inputs give the same schedule every time, and each verdict points at a specific ASSIST row. There is no language model in the loop to hallucinate an equivalence.
 - **Multi-campus by default.** ASSIST answers "does college A articulate to university U". Articulus answers "does this exact set of courses from colleges A, B, and C articulate to U, and what should I take next term". Nothing public does that today.
-- **Tested end to end.** 11 unit tests and a smoke run of 95 solve-and-verify passes across every agreement, both quarter and semester home colleges, with zero split violations produced by the solver.
+- **Tested end to end.** 13 unit tests and a smoke run of 95 solve-and-verify passes across every agreement, both quarter and semester home colleges, with zero split violations produced by the solver.
 
 ## Future scope
 
@@ -217,7 +217,7 @@ Near term, each is a contained change:
 - **All 116 California community colleges.** The fetch list is one array. The cost is roughly 700 requests and a few megabytes of fixtures, already loaded lazily.
 - **CSU campuses and more majors.** Same script, different IDs and a wider major filter. San Jose State, Cal Poly SLO, and San Diego State are the obvious next three.
 - **General education and IGETC.** ASSIST publishes these under a different `categoryCode`. Modeling them completes the "am I actually done" question.
-- **Surface articulation notes.** Grade minimums, lab requirements, and "must be completed within N years" remarks are already parsed and just need a place in the UI.
+- **Surface articulation notes.** Grade minimums, lab requirements, and "must be completed within N years" remarks are in the raw ASSIST payloads. `normalize.ts` does not read them yet and the fixtures do not store them, so this needs parsing in `normalize.ts`, a re-fetch, and a place in the UI.
 - **Live class availability.** Join the plan to CVC and district schedules so the solver only proposes sections that are open this term.
 
 Longer term:
@@ -232,8 +232,8 @@ Longer term:
 - The solver is greedy. It picks the cheapest marginal group per iteration and is not provably unit-minimal. An exact ILP or SAT pass over the same tree would be the upgrade.
 - Course sequence order is a heuristic. ASSIST ships empty `requisites`, so ordering is inferred from letter suffixes and the 1C -> 2A gate. A course with an unconventional number can land in the wrong term.
 - Only major-preparation agreements are modeled. General education, IGETC, and campus breadth requirements are not.
-- Articulation notes and course attributes (grade minimums, "same as" remarks, lab requirements) are parsed out but not surfaced in the UI or used in verification.
+- Articulation notes and course attributes (grade minimums, "same as" remarks, lab requirements) are not parsed: `normalize.ts` drops them and the fixtures do not contain them, so they are neither shown in the UI nor used in verification.
 - Semester to quarter unit conversion is the flat 1.5 factor. Individual UC departments may count units differently.
 - Coverage is five UCs and three engineering majors across fifteen colleges. Other majors and CSU campuses need only a fetch, but have not been validated.
 - The "Trap" section demo widget is hardcoded to De Anza and Foothill against Berkeley Mechanical Engineering. The Planner section is fully general.
-- Template trees are taken from the first sending college's payload on the assumption that templates are identical across colleges for the same UC and major. This held for every agreement fetched so far but is not enforced.
+- Template trees are taken from the first sending college's payload on the assumption that templates are identical across colleges for the same UC and major. `normalize()` now compares every college's template to the first (`templateMismatches`) and prints a warning during `npm run fetch` when they differ; it still builds from the first college's template. The existing fixtures were fetched before this check existed and have not been re-checked, because the raw payloads are not stored.

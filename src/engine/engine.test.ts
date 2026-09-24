@@ -4,6 +4,7 @@ import institutions from '../../data/institutions.json'
 import type { Agreement, Institution } from './types'
 import { verifySchedule } from './verify'
 import { solve } from './solve'
+import { normalize, templateMismatches, type RawPayload } from './normalize'
 
 const A = me as unknown as Agreement
 const DA = 113, FH = 51, SM = 137
@@ -32,6 +33,13 @@ describe('verifySchedule', () => {
     expect(r.satisfied['PHYSICS 7A']?.institutionId).toBe(FH)
     expect(r.satisfied['PHYSICS 7B']?.institutionId).toBe(DA)
     expect(r.splitSeriesViolations).toHaveLength(0)
+  })
+  it('split partials name only courses actually taken, one partial per college', () => {
+    const r = verifySchedule(new Set([`${DA}:MATH 1B`, `${FH}:MATH 1C`]), A)
+    const v = r.splitSeriesViolations.find((v) => v.requirementId === 'MATH 52')!
+    expect(v.partials.map((p) => p.institutionId).sort()).toEqual([FH, DA].sort())
+    expect(v.partials.flatMap((p) => p.have).sort()).toEqual([`${DA}:MATH 1B`, `${FH}:MATH 1C`].sort())
+    expect(v.partials.find((p) => p.institutionId === DA)!.missing).toEqual([`${DA}:MATH 1C`])
   })
   it('one De Anza course can serve two UC requirements', () => {
     const r = verifySchedule(new Set([`${DA}:MATH 1A`, `${DA}:MATH 1B`, `${DA}:MATH 1C`]), A)
@@ -81,5 +89,22 @@ describe('term systems', () => {
     const [id, c] = Object.entries(A.catalog).find(([, c]) => c.institutionId === SM && c.units === 4)!
     const p = solve(new Set(), { ...A, root: { kind: 'node', type: 'AND', required: true, children: [{ kind: 'req', id: 'X', label: 'X', units: 4, groups: [{ institutionId: c.institutionId, courses: [id] }] }] } }, { allowed: [SM], termSystem: 'quarter', unitSystems })
     expect(p.totalUnits).toBe(6)
+  })
+})
+
+describe('normalize', () => {
+  const cell = (n: string) => ({ type: 'Course', id: n, course: { prefix: 'MATH', courseNumber: n, courseTitle: n, minUnits: 4, maxUnits: 4 } })
+  const payload = (inst: number, rows: string[]): RawPayload => ({ result: {
+    name: 'Test', articulations: '[]', academicYear: '{"code":"2025-2026"}', receivingInstitution: '{"id":79}',
+    sendingInstitution: JSON.stringify({ id: inst }),
+    templateAssets: JSON.stringify([
+      { type: 'RequirementTitle', position: 0, content: 'Required' },
+      { type: 'RequirementGroup', position: 1, sections: [{ type: 'Section', position: 0, rows: rows.map((n) => ({ cells: [cell(n)] })) }] },
+    ]),
+  } })
+  it('flags colleges whose requirement template differs from the first', () => {
+    expect(templateMismatches([payload(DA, ['1A', '1B']), payload(FH, ['1A', '1B'])])).toEqual([])
+    expect(templateMismatches([payload(DA, ['1A', '1B']), payload(FH, ['1A', '1B']), payload(SM, ['1A'])])).toEqual([SM])
+    expect(normalize([payload(DA, ['1A']), payload(FH, ['1A'])]).root.children).toHaveLength(1)
   })
 })
