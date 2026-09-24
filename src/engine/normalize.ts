@@ -22,6 +22,12 @@ export interface RawPayload {
   result: { name: string; templateAssets: string; articulations: string; academicYear: string; sendingInstitution: string; receivingInstitution: string }
 }
 /** Parse one nested JSON field, naming the payload on failure. */
+/**
+ * Bump whenever normalize() output changes meaning. data/meta.json records the version that built data/; the app
+ * trusts verdicts only when the two match (src/data-trust.ts). 1 = fixtures fetched before FIXES rounds 1-3.
+ */
+export const NORMALIZE_VERSION = 2
+
 /** Placeholder for a UC row absent from every payload: not an ASSIST statement, so it never makes a row UC-only. */
 export const NOT_LISTED = 'No articulation listed'
 
