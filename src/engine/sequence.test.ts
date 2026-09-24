@@ -35,8 +35,45 @@ describe('prereqs: topic ladders', () => {
   })
   it('applied, generic and unknown titles get no topic', () => {
     for (const [c, t] of [['1:MATH 16A', 'Calculus for Business and the Life and Social Sciences'], ['33:MATH 100A', 'Short Calculus I'],
-      ['51:PHYS 4A', 'General Physics (Calculus)'], ['137:PHYS 3', 'Human Physiology'], ['1:MATH 4A', 'Intermediate Calculus'],
+      ['51:PHYS 4C', 'General Physics (Calculus)'], ['124:PHYS 4B', 'General Physics'], ['137:PHYS 3', 'Human Physiology'], ['1:MATH 4A', 'Intermediate Calculus'],
       ['1:CS 55', 'JAVA Programming'], ['1:ENGR 16', 'Dynamics'], ['1:MATH 9', 'Calculus']]) expect(topic(c, t), t).toBeUndefined()
+  })
+})
+
+describe('prereqs: calculus before physics (H-2)', () => {
+  const has = (edges: Edge[], a: string, b: string) => edges.some((e) => e.from === a && e.to === b)
+  it('Foothill: MATH 1A < PHYS 4A (Mechanics), MATH 1B < PHYS 4B (E&M), a term apart', () => {
+    const { edges, dropped } = run([['51:MATH 1A', 'Calculus'], ['51:MATH 1B', 'Calculus'], ['51:MATH 1C', 'Calculus'],
+      ['51:PHYS 4A', 'General Physics (Calculus)'], ['51:PHYS 4B', 'General Physics (Calculus)']])
+    expect(dropped).toEqual([])
+    expect(pairs(edges.filter((e) => e.to.includes('PHYS'))))
+      .toEqual(['letter 51:PHYS 4A > 51:PHYS 4B', 'math 51:MATH 1A > 51:PHYS 4A', 'math 51:MATH 1A > 51:PHYS 4B', 'math 51:MATH 1B > 51:PHYS 4B'])
+    expect(has(edges, '51:MATH 1B', '51:PHYS 4A') || has(edges, '51:MATH 1C', '51:PHYS 4B')).toBe(false)
+  })
+  it('across colleges, by title: De Anza Calculus I/II before Pasadena / El Camino physics', () => {
+    const { edges } = run([['113:MATH 1A', 'Calculus I'], ['113:MATH 1B', 'Calculus II'], ['113:MATH 1C', 'Calculus III'],
+      ['113:PHYS 4A', 'Physics for Scientists and Engineers: Mechanics'], ['103:PHYS 1C', 'Electricity and Magnetism'],
+      ['103:PHYS 1B', 'Fluids, Heat and Sound']])
+    expect(has(edges, '113:MATH 1A', '113:PHYS 4A') && has(edges, '113:MATH 1B', '103:PHYS 1C')).toBe(true)
+    expect(has(edges, '113:MATH 1B', '113:PHYS 4A') || has(edges, '113:MATH 1C', '103:PHYS 1C')).toBe(false)
+    expect(edges.some((e) => e.to === '103:PHYS 1B' && e.from.includes('MATH'))).toBe(false)
+  })
+  it('not for algebra-based physics', () => {
+    const { edges } = run([['1:MATH 1A', 'Calculus I'], ['1:PHYS 2A', 'College Physics: Mechanics'], ['1:PHYS 10', 'Algebra-Based Physics: Mechanics']])
+    expect(edges).toEqual([])
+  })
+})
+
+describe('prereqs: Linear Algebra / Differential Equations (L-6)', () => {
+  it('De Anza MATH 2A DiffEq and 2B LinAlg: no letter edge, both after 1B, not after 1C', () => {
+    const { edges } = run([['113:MATH 1A', 'Calculus I'], ['113:MATH 1B', 'Calculus II'], ['113:MATH 1C', 'Calculus III'],
+      ['113:MATH 2A', 'Differential Equations'], ['113:MATH 2BH', 'Linear Algebra - HONORS']])
+    const into = (c: string) => edges.filter((e) => e.to === c).map((e) => `${e.rule} ${e.from}`).sort()
+    expect(into('113:MATH 2A')).toEqual(['math 113:MATH 1A', 'math 113:MATH 1B'])
+    expect(into('113:MATH 2BH')).toEqual(['math 113:MATH 1A', 'math 113:MATH 1B'])
+  })
+  it('the letter rule still orders other series', () => {
+    expect(pairs(run([['51:MATH 2A', 'Differential Equations'], ['51:MATH 2B', 'x']]).edges)).toEqual(['letter 51:MATH 2A > 51:MATH 2B'])
   })
 })
 
@@ -51,7 +88,7 @@ describe('prereqs: labs, colleges, cycles', () => {
   })
   it('the series guess skips a course whose title says it starts something', () => {
     expect(run([['80:CIST 004B', 'Data Structures Using Advanced C++'], ['80:CIST 005A', 'Introduction to Python']]).edges).toEqual([])
-    expect(pairs(run([['113:MATH 1C', 'Calculus III'], ['113:MATH 2A', 'Differential Equations']]).edges)).toEqual(['series 113:MATH 1C > 113:MATH 2A'])
+    expect(pairs(run([['113:MATH 1C', 'Calculus III'], ['113:MATH 2A', 'Differential Equations']]).edges)).toEqual([])
   })
   it('a cycle drops the weakest edge, deterministically', () => {
     // letter says 1A < 1B; the physics ladder says the reverse

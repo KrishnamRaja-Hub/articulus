@@ -11,7 +11,11 @@ import type { CourseId } from './types'
  * at Foothill):
  *   title    identical titles but for one ordinal: "Computer Discrete Mathematics I" < "... II"
  *   math     Precalculus < Calculus I < II < III / Multivariable < IV; Linear Algebra, Differential Equations after II
- *   physics  Mechanics < Electricity & Magnetism < Optics / Modern; Waves / Fluids / Thermo / Heat after Mechanics
+ *   physics  Mechanics < Electricity & Magnetism < Optics / Modern; Waves / Fluids / Thermo / Heat after Mechanics.
+ *            Calculus-based only (not "College Physics", "Algebra-based ..."): Calculus I < Mechanics, Calculus II < E&M.
+ *            A generic PHYS 4A "General Physics [(Calculus)]" is Mechanics; 4B is E&M only when the title says Calculus.
+ *   Linear Algebra and Differential Equations never order each other, by letter (De Anza MATH 2A DiffEq, 2B LinAlg)
+ *   or by the series guess (1C < 2A): the math ladder puts both after Calculus II.
  *   chem     General Chemistry I < II < III < Organic Chemistry (any) ; Organic I < II < III
  *   cs       Intro Programming < Data Structures, Intro Programming < Assembly / Architecture
  * Generic titles ("Calculus", "General Chemistry", "Organic Chemistry") take their level from the letter (1A = I).
@@ -55,7 +59,7 @@ const ordinals = (w: string[]) => {
 const isLab = (t: string) => /\blab(oratory)?\b/i.test(t) && !/\bwith lab/i.test(t)
 
 type Lvl = { lo: number; hi: number }
-type Topic = { ladder: 'math' | 'physics' | 'chem' | 'cs'; kind: string; lvl?: Lvl }
+type Topic = { ladder: 'math' | 'physics' | 'chem' | 'cs'; kind: string; lvl?: Lvl; calc?: boolean }
 
 /** Level from the title's ordinals; for a generic title, from the course letter (MATH 1C "Calculus" -> 3). */
 const level = (id: CourseId, w: string[], generic: boolean): Lvl | undefined => {
@@ -83,9 +87,13 @@ export const topic = (id: CourseId, title: string): Topic | undefined => {
     return lvl && { ladder: 'math', kind: 'calc', lvl }
   }
   if (/^PHY/.test(p) && !/physiolog/.test(t)) {
+    // generic calculus-series title: Foothill PHYS 4A "General Physics (Calculus)", Orange Coast PHYS 4A "General Physics"
+    const k = seqKey(id), four = !!k && /\s4$/.test(k.stem), gen = /^general physics( with)?( calculus)?$/.test(t)
     const kind = /mechanic/.test(t) ? 'M' : /electr|magnet/.test(t) ? 'E' : /\b(optics|modern|atomic|light)\b/.test(t) ? 'O'
-      : /\b(waves?|fluids?|thermodynamics|heat|sound)\b/.test(t) ? 'W' : undefined
-    return kind && { ladder: 'physics', kind }
+      : /\b(waves?|fluids?|thermodynamics|heat|sound)\b/.test(t) ? 'W'
+      : gen && four && k!.seq === 0 ? 'M' : gen && four && k!.seq === 1 && /\bcalculus\b/.test(t) ? 'E' : undefined
+    const calc = !/\b(algebra|trigonometry|non ?calculus|conceptual|college physics)\b/.test(t)
+    return kind && { ladder: 'physics', kind, calc }
   }
   if (/^CH/.test(p) && /\bchemistry\b/.test(t) && !/\b(introduct\w*|preparat\w*|fundamentals?|survey|biochemistry)\b/.test(t)) {
     const org = /\borganic\b/.test(t), gen = /\bgeneral\b/.test(t)
@@ -106,6 +114,9 @@ export const topic = (id: CourseId, title: string): Topic | undefined => {
 const below = (a?: Lvl, b?: Lvl) => !!a && !!b && a.hi < b.lo
 /** true when topic a must come strictly before topic b. */
 const before = (a: Topic, b: Topic): boolean => {
+  // Calculus I (and Precalculus) < calculus-based Mechanics; Calculus II (and below) < calculus-based E&M
+  if (a.ladder === 'math' && b.ladder === 'physics')
+    return a.kind === 'calc' && !!b.calc && (b.kind === 'M' ? a.lvl!.hi <= 1 : b.kind === 'E' && a.lvl!.hi <= 2)
   if (a.ladder !== b.ladder) return false
   switch (a.ladder) {
     case 'math': return a.kind === 'calc' && (b.kind === 'calc' ? below(a.lvl, b.lvl) : a.lvl!.hi <= 2)
@@ -118,6 +129,7 @@ const before = (a: Topic, b: Topic): boolean => {
 /** Every inferred prerequisite edge among `courses`, cycle-free. `dropped` lists edges removed to break a cycle. */
 export function prereqs(courses: CourseId[], titleOf: (c: CourseId) => string = () => ''): { edges: Edge[]; dropped: Edge[] } {
   const keys = new Map(courses.map((c) => [c, seqKey(c)]))
+  const posts = new Set(courses.filter((c) => topic(c, titleOf(c))?.kind === 'post')), post = (c: CourseId) => posts.has(c) // LinAlg / DiffEq
   const all: Edge[] = []
   const add = (from: CourseId | undefined, to: CourseId, rule: Rule) => { if (from && from !== to) all.push({ from, to, rule }) }
   for (const c of courses) {
@@ -129,13 +141,15 @@ export function prereqs(courses: CourseId[], titleOf: (c: CourseId) => string = 
       if (t) add(courses.find((o) => { const ko = keys.get(o), to = ordinalTitle(titleOf(o)); return ko?.stem === k.prev && ko.seq < 0 && to?.base === t.base && to.n === t.n - 1 }), c, 'ordinal')
     } else if (k.seq > 0) {
       // nearest lower letter in the same series (1A -> 1C when 1B is not needed); a lab "37L" is not letter L
+      // Linear Algebra and Differential Equations are siblings: neither waits for the other's letter
       if (!(k.seq === 11 && isLab(titleOf(c))))
-        add(courses.filter((o) => { const ko = keys.get(o); return ko?.stem === k.stem && ko.seq >= 0 && ko.seq < k.seq }).sort((x, y) => keys.get(y)!.seq - keys.get(x)!.seq)[0], c, 'letter')
+        add(courses.filter((o) => { const ko = keys.get(o); return ko?.stem === k.stem && ko.seq >= 0 && ko.seq < k.seq && !(post(c) && post(o)) }).sort((x, y) => keys.get(y)!.seq - keys.get(x)!.seq)[0], c, 'letter')
     } else {
       // ponytail: assume the third course (C) of the lower series is the gate, as with MATH 1C -> 2A; real requisites if ASSIST ever ships them.
       // Not for a course whose title says it starts something ("Introduction to Python", "Calculus for Life Sciences I").
       const w = words(titleOf(c)), n = ordinals(w)
-      if (/^(introduct\w*|beginning)$/.test(w[0] ?? '') || (n.length === 1 && n[0] === 1)) continue
+      // Nor for Linear Algebra / Differential Equations: the math ladder already puts them after Calculus II (not III).
+      if (/^(introduct\w*|beginning)$/.test(w[0] ?? '') || (n.length === 1 && n[0] === 1) || post(c)) continue
       const lower = courses.filter((o) => keys.get(o)?.stem === k.prev)
       add(lower.find((o) => keys.get(o)!.seq === 2) ?? lower.sort((x, y) => keys.get(y)!.seq - keys.get(x)!.seq)[0], c, 'series')
     }
