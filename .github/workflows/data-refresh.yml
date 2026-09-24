@@ -15,9 +15,12 @@
 # 7 days and untrusted after 30). The independent monitor (freshness.yml) alerts when data/meta.json fetchedAt on the
 # default branch is older than 36 h, which also catches stalled PRs, disabled schedules and cancelled runs.
 #
-# Decision interface (scripts/pipeline/diff.ts, wired through validate:data):
-#   npm run validate:data -- --decision-out <file>  writes JSON {"decision": "publish" | "review", "reportPath": "<md>"}
-#   A missing or unreadable decision file is treated as "review" (fail safe: a human looks before data goes live).
+# Decision interface (scripts/pipeline/run.ts + diff.ts): `npm run fetch` makes the release decision itself. It emits
+#   the step output decision=publish|review and writes .pipeline/decision.json ({"decision": ...}),
+#   .pipeline/diff-report.md and the decision section of .pipeline/report.md. With DATA_REFRESH_ON_REVIEW=pr (set
+#   below) a review decision still stages data/ with a new data/baseline-manifest.json so the review PR carries it;
+#   without it a review decision fails the run. A missing or invalid decision is treated as "review" (fail safe).
+#   The first run without data/baseline-manifest.json always goes to review; merging that PR creates the baseline.
 name: Data refresh
 
 on:
@@ -121,24 +124,32 @@ jobs:
       - name: Fetch, validate and stage (data/ changes only if every gate passes)
         id: pipeline
         timeout-minutes: 45
+        env:
+          # A review decision stages data/ (with a new reviewed baseline) for a PR instead of failing the run.
+          DATA_REFRESH_ON_REVIEW: pr
         run: npm run fetch -- ${{ inputs.dry_run && '--dry-run' || '' }}
 
-      - name: Re-check the published data with the strict gate and decide publish or review
+      - name: Re-check the published data with the strict gate and read the release decision
         id: decision
         if: ${{ !inputs.dry_run }}
+        env:
+          PIPELINE_DECISION: ${{ steps.pipeline.outputs.decision }}
         run: |
           set -euo pipefail
-          npm run validate:data -- --report .pipeline/published-report.json --prev-dir .pipeline/prev/data --decision-out .pipeline/decision.json
-          decision=$(jq -r '.decision // empty' .pipeline/decision.json 2>/dev/null || true)
-          report=$(jq -r '.reportPath // empty' .pipeline/decision.json 2>/dev/null || true)
+          npm run validate:data -- --report .pipeline/published-report.json --prev-dir .pipeline/prev/data
+          # The pipeline step output, else .pipeline/decision.json (both written by scripts/pipeline/run.ts).
+          decision=$PIPELINE_DECISION
+          if [ -z "$decision" ]; then decision=$(jq -r '.decision // empty' .pipeline/decision.json 2>/dev/null || true); fi
           case "$decision" in
             publish|review) ;;
-            *) echo "::warning::No valid decision in .pipeline/decision.json; treating as review."; decision=review ;;
+            *) echo "::warning::No valid release decision from the pipeline; treating as review."; decision=review ;;
           esac
+          # The override counts as review inside the pipeline (it publishes with a new baseline); here it still
+          # goes through a review PR, so the data a person merges is the data this run fetched.
           if [ "$DATA_ACCEPT_LARGE_CHANGE" = "1" ]; then decision=review; fi
-          # The PR/commit body: the diff report if the decision named one, else the pipeline report.
-          if [ -n "$report" ] && [ -f "$report" ]; then cp "$report" .pipeline/pr-body.md
-          elif [ -f .pipeline/report.md ]; then cp .pipeline/report.md .pipeline/pr-body.md
+          # The PR/commit body: report.md (validation summary + decision section), else the diff report alone.
+          if [ -f .pipeline/report.md ]; then cp .pipeline/report.md .pipeline/pr-body.md
+          elif [ -f .pipeline/diff-report.md ]; then cp .pipeline/diff-report.md .pipeline/pr-body.md
           else echo "No report was produced; see the run artifacts." > .pipeline/pr-body.md; fi
           echo "decision=$decision" >> "$GITHUB_OUTPUT"
           echo "Decision: **$decision**" >> "$GITHUB_STEP_SUMMARY"
@@ -199,9 +210,12 @@ jobs:
 
       - name: Choose the route
         id: route
+        env:
+          ACCEPTED: ${{ github.event_name == 'workflow_dispatch' && inputs.accept_large_change }}
         run: |
           set -euo pipefail
-          if [ "$DECISION" = "review" ]; then route=review
+          # Anything but an explicit publish (review, empty, unknown) and every override goes to a review PR.
+          if [ "$DECISION" != "publish" ] || [ "$ACCEPTED" = "true" ]; then route=review
           elif [ "$MODE" = "pr" ]; then route=automerge
           else route=push; fi
           if [ "$route" = "automerge" ] && [ "$HAS_TOKEN" != "true" ]; then

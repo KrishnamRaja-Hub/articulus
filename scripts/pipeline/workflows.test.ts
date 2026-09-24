@@ -6,7 +6,7 @@ import { parse } from 'yaml'
 import { REPO } from './test-helpers.ts'
 
 type Step = { name?: string; uses?: string; run?: string; if?: string; id?: string; with?: Record<string, unknown>; env?: Record<string, string> }
-type Job = { 'runs-on': string; 'timeout-minutes'?: number; permissions?: Record<string, string>; steps: Step[]; if?: string; env?: Record<string, string> }
+type Job = { 'runs-on': string; needs?: string | string[]; outputs?: Record<string, string>; 'timeout-minutes'?: number; permissions?: Record<string, string>; steps: Step[]; if?: string; env?: Record<string, string> }
 type Workflow = { name: string; on: Record<string, unknown>; permissions?: Record<string, string>; concurrency?: { group: string; 'cancel-in-progress': unknown }; jobs: Record<string, Job> }
 
 const dir = join(REPO, '.github', 'workflows')
@@ -16,7 +16,7 @@ const scripts = Object.keys(JSON.parse(readFileSync(join(REPO, 'package.json'), 
 describe('workflows', () => {
   const files = readdirSync(dir).filter((f) => /\.ya?ml$/.test(f))
   it('exist and parse as strict YAML', () => {
-    expect(files.sort()).toEqual(['ci.yml', 'data-refresh.yml'])
+    expect(files.sort()).toEqual(['ci.yml', 'data-refresh.yml', 'freshness.yml'])
     for (const f of files) expect(() => load(f)).not.toThrow()
   })
   it.each(files)('%s: every job has a timeout, pinned actions, and only npm scripts that exist', (f) => {
@@ -31,13 +31,14 @@ describe('workflows', () => {
     }
   })
 
-  it('data-refresh: daily cron + manual, serialized, can commit and file issues, publishes only after the gates', () => {
+  it('data-refresh: daily cron + manual, serialized, read-only refresh, publishes only after the gates', () => {
     const w = load('data-refresh.yml')
     expect(w.on.schedule).toEqual([{ cron: '0 9 * * *' }])
     expect(w.on).toHaveProperty('workflow_dispatch')
     expect(w.concurrency).toMatchObject({ group: 'data-refresh', 'cancel-in-progress': false })
     const job = w.jobs.refresh
-    expect(job.permissions).toMatchObject({ contents: 'write', issues: 'write' })
+    // The job that runs npm ci and every third-party tool never holds a write token.
+    for (const v of Object.values(job.permissions ?? {})) expect(v).not.toBe('write')
     const names = job.steps.map((s) => s.name ?? s.uses)
     const at = (re: RegExp) => names.findIndex((n) => re.test(n ?? ''))
     expect(at(/setup-node/)).toBeGreaterThan(-1)
@@ -46,16 +47,50 @@ describe('workflows', () => {
     const fetch = job.steps[at(/^Fetch/)]
     expect(fetch.run).toMatch(/^npm run fetch\b/)
     expect(fetch.run).not.toMatch(/--skip-suites/) // production always runs the app suites against staged data
-    expect(at(/^Commit/)).toBeGreaterThan(at(/^Fetch/))
-    expect(at(/^Commit/)).toBeGreaterThan(at(/strict gate/))
-    // The commit step never runs after a failure (default success() condition), and never in a dry run.
-    expect(job.steps[at(/^Commit/)].if).toMatch(/!inputs\.dry_run/)
-    expect(job.steps[at(/^Commit/)].if).not.toMatch(/always|failure/)
-    const issue = job.steps[at(/failure issue \(last good/)]
-    expect(issue.if).toBe('failure()')
-    expect(issue.run).toMatch(/data-refresh-failure/)
-    expect(job.steps[at(/^Upload/)].if).toBe('always()')
+    // The pipeline makes the release decision; a review decision is staged for a PR instead of failing the run.
+    expect(fetch.env?.DATA_REFRESH_ON_REVIEW).toBe('pr')
+    const decision = job.steps[at(/strict gate/)]
+    expect(at(/strict gate/)).toBeGreaterThan(at(/^Fetch/))
+    expect(decision.id).toBe('decision')
+    expect(decision.env?.PIPELINE_DECISION).toBe(`\${{ steps.${fetch.id}.outputs.decision }}`)
+    expect(decision.run).not.toMatch(/--decision-out/) // no such flag: the decision comes from the pipeline
+    expect(decision.run).toMatch(/decision=review/) // missing/invalid decision fails safe to review
+    expect(job.outputs?.decision).toBe('${{ steps.decision.outputs.decision }}')
+    const upload = job.steps[at(/^Upload data for the publish job/)]
+    expect(at(/^Upload data for the publish job/)).toBeGreaterThan(at(/strict gate/))
+    expect(upload.if).toMatch(/!inputs\.dry_run/)
+    expect(upload.if).not.toMatch(/always|failure/)
+    expect(job.steps[at(/^Upload reports/)].if).toBe('always()')
     expect(job.env?.DATA_ACCEPT_LARGE_CHANGE).toMatch(/inputs\.accept_large_change/)
+
+    // publish: write token, runs only after a successful refresh, never in a dry run, never runs npm.
+    const pub = w.jobs.publish
+    expect(pub.needs).toBe('refresh')
+    expect(pub.if).toMatch(/needs\.refresh\.result == 'success'/)
+    expect(pub.if).toMatch(/!inputs\.dry_run/)
+    expect(pub.permissions).toMatchObject({ contents: 'write', 'pull-requests': 'write' })
+    for (const s of pub.steps) expect(s.run ?? '').not.toMatch(/\bnpm\b/)
+    expect(pub.env?.DECISION).toBe('${{ needs.refresh.outputs.decision }}')
+    const pnames = pub.steps.map((s) => s.name ?? s.uses)
+    const route = pub.steps[pnames.findIndex((n) => /^Choose the route/.test(n ?? ''))]
+    // Anything but an explicit publish, and every override, goes to a review PR.
+    expect(route.run).toMatch(/"\$DECISION" != "publish"/)
+    expect(route.run).toMatch(/ACCEPTED.*route=review/)
+    const commit = pub.steps[pnames.findIndex((n) => /^Commit/.test(n ?? ''))]
+    expect(commit).toBeDefined()
+    expect(commit.if ?? '').not.toMatch(/always|failure/)
+    // Auto-merge only on the automerge route (decision=publish in PR mode), never for review.
+    const merges = [...(commit.run ?? '').matchAll(/^.*gh pr merge.*$/gm)].map((m) => m[0])
+    expect(merges.length).toBeGreaterThan(0)
+    for (const m of merges) expect(m).toMatch(/"\$ROUTE" = "automerge"/)
+
+    // notify: failure issue whenever any job failed or was cancelled.
+    const notify = w.jobs.notify
+    expect(notify.if).toMatch(/always\(\)/)
+    expect(notify.if).toMatch(/needs\.\*\.result/)
+    expect(notify.permissions).toMatchObject({ issues: 'write' })
+    const issue = notify.steps.find((s) => /failure issue \(last good/.test(s.name ?? ''))!
+    expect(issue.run).toMatch(/data-refresh-failure/)
   })
 
   it('ci: push/PR run typecheck, tests, smoke, build and the committed-data gate; nightly runs the oracle stress', () => {

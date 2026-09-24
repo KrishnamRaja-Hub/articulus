@@ -41,7 +41,9 @@ Concurrency: one `data-refresh` run at a time, queued and never cancelled; one f
 
 ### Publish or review
 
-The refresh job runs `npm run validate:data -- --report … --prev-dir .pipeline/prev/data --decision-out .pipeline/decision.json`. That call must write `{"decision": "publish" | "review", "reportPath": "<markdown report>"}` (from `scripts/pipeline/diff.ts`). The baseline in `--prev-dir` is `data/` at the refreshed commit. A missing or invalid decision counts as `review`.
+The pipeline step (`npm run fetch`, `scripts/pipeline/run.ts` with `scripts/pipeline/diff.ts`) makes the release decision after every gate passes. It emits the step output `decision=publish|review`, writes `.pipeline/decision.json` (its `decision` field), `.pipeline/diff-report.md`, and appends the decision to `.pipeline/report.md`, which becomes the PR and commit body. The workflow sets `DATA_REFRESH_ON_REVIEW=pr`, so a `review` decision still stages `data/` together with a new `data/baseline-manifest.json` (the reviewed baseline) for the review PR. Without that variable, as in a local run, a `review` decision fails the run and publishes nothing. The workflow then re-checks `data/` with `npm run validate:data -- --report … --prev-dir .pipeline/prev/data` (the previous data is `data/` at the refreshed commit). A missing or invalid decision counts as `review`.
+
+The first run after this change goes to review, because no `data/baseline-manifest.json` exists yet. A person merging that PR creates the baseline, and later runs judge looser changes against it.
 
 | Decision | `DATA_REFRESH_MODE` | Result |
 |---|---|---|
@@ -53,7 +55,7 @@ The route is always a PR in these cases: a newer refresh PR closes older open `d
 
 ### `accept_large_change`
 
-This is a manual input only; scheduled runs never set it. It needs `accept_reason` (at least 15 characters). The reason and the actor are logged in the run summary, the commit message and the PR body. It downgrades diff-guard errors for that run only (`DATA_ACCEPT_LARGE_CHANGE=1` exists in that run alone). It always forces the review route, so the data a person merges is the data this run fetched.
+This is a manual input only; scheduled runs never set it. It needs `accept_reason` (at least 15 characters). The reason and the actor are logged in the run summary, the commit message and the PR body. It downgrades diff-guard errors for that run only (`DATA_ACCEPT_LARGE_CHANGE=1` exists in that run alone). The pipeline counts the override as human review (it publishes with a new baseline), but the workflow always forces the review route, so the data a person merges is the data this run fetched.
 
 ### Repository settings the owner must configure
 
