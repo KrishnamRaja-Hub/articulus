@@ -26,3 +26,48 @@ Levels are evaluated in order.
 | `trusted` | Otherwise | Normal. |
 
 The academic year in effect runs from July 1 to June 30. For example, from 2026-07-01 the expected code is "2026-2027".
+
+## Operations (workflows in `.github/workflows/`)
+
+### What runs
+
+| Workflow | When | What it does |
+|---|---|---|
+| `data-refresh.yml` | daily 09:00 UTC, manual | `refresh` job (read-only token): fetch, normalize, gate, app suites, strict re-check and the diff decision. `publish` job (write token, no `npm`): commits `data/` or opens a PR. `notify` job: opens or updates the `data-refresh-failure` issue when any job failed, timed out or was cancelled. `keepalive` job (scheduled runs): re-enables both schedules. |
+| `freshness.yml` | every 6 h, manual | Independent monitor. Fails and opens or updates a `data-stale` issue when `fetchedAt` in `data/meta.json` on the default branch (and at `LIVE_META_URL`, if set) is older than `FRESHNESS_MAX_HOURS` (default 36). Closes the issue when data is fresh again. |
+| `ci.yml` | push, PR, nightly, manual | Code and committed-data checks, actionlint (checksum-verified binary), nightly oracle stress. A manual run with `stress=false` skips the stress job; the refresh uses that. |
+
+Concurrency: one `data-refresh` run at a time, queued and never cancelled; one freshness check at a time.
+
+### Publish or review
+
+The refresh job runs `npm run validate:data -- --report … --prev-dir .pipeline/prev/data --decision-out .pipeline/decision.json`. That call must write `{"decision": "publish" | "review", "reportPath": "<markdown report>"}` (from `scripts/pipeline/diff.ts`). The baseline in `--prev-dir` is `data/` at the refreshed commit. A missing or invalid decision counts as `review`.
+
+| Decision | `DATA_REFRESH_MODE` | Result |
+|---|---|---|
+| `publish` | unset | Commit to the default branch, then dispatch `DEPLOY_WORKFLOW`. If there's no `DATA_REFRESH_TOKEN`, it also dispatches CI with `stress=false`, because a `GITHUB_TOKEN` push triggers no workflows. The run also closes the open failure issue. |
+| `publish` | `pr` | Force-push `data-refresh/<YYYY-MM-DD>`, open or update its PR with the report as body, and enable auto-merge (squash). This needs `DATA_REFRESH_TOKEN`; without it the job fails (a PR opened by `GITHUB_TOKEN` gets no CI run, so auto-merge would stall). |
+| `review` (or `accept_large_change`) | any | The same branch and PR, labeled `data-refresh-review`. No auto-merge, and nothing goes live until a person merges. |
+
+The route is always a PR in these cases: a newer refresh PR closes older open `data-refresh/*` PRs as superseded. Only a direct publish to the default branch closes the failure issue. After a merged PR, the freshness monitor confirms the data landed.
+
+### `accept_large_change`
+
+This is a manual input only; scheduled runs never set it. It needs `accept_reason` (at least 15 characters). The reason and the actor are logged in the run summary, the commit message and the PR body. It downgrades diff-guard errors for that run only (`DATA_ACCEPT_LARGE_CHANGE=1` exists in that run alone). It always forces the review route, so the data a person merges is the data this run fetched.
+
+### Repository settings the owner must configure
+
+1. **Settings → Actions → General → Workflow permissions:** "Read repository contents and packages permissions" (read-only default). Each job asks for more in its own `permissions:` block. Also turn on **"Allow GitHub Actions to create and approve pull requests"** (review PRs).
+2. **Settings → General → Pull Requests:** turn on "Allow auto-merge" (only for `DATA_REFRESH_MODE=pr`).
+3. **Secret `DATA_REFRESH_TOKEN`** (recommended; required for `DATA_REFRESH_MODE=pr`, and when the default branch blocks direct pushes). Use a fine-grained PAT or a GitHub App token for this repository only, with Contents: read and write and Pull requests: read and write. Pushes and PRs made with it trigger CI and push-based deploys. It is exposed only to the `publish` job's commit step, never to `npm ci` or the test suites.
+4. **Variables** (Settings → Secrets and variables → Actions → Variables):
+   - `DEPLOY_WORKFLOW`: the file name of the deploy workflow (it must have `workflow_dispatch`). Leave it unset if the host deploys on push (Netlify, Vercel, Pages git integration) and `DATA_REFRESH_TOKEN` is set.
+   - `DATA_REFRESH_MODE`: `pr` to always go through auto-merging PRs. Leave it unset to push directly.
+   - `LIVE_META_URL`: optional URL of the deployed `meta.json`. It lets the monitor catch a stalled deploy, not just a stalled commit.
+   - `FRESHNESS_MAX_HOURS`: optional, default `36`.
+5. **Branch ruleset on the default branch:** require the `CI / test` status check and pull requests for humans. Allow the `DATA_REFRESH_TOKEN` identity (or the GitHub App) to bypass for direct data pushes, or use `DATA_REFRESH_MODE=pr`. Add a CODEOWNERS entry or path rule so that only the data bot changes `data/**`.
+6. **Notifications:** watch the repository for issues labeled `data-refresh-failure` and `data-stale`.
+
+### Inactivity disablement (public repositories)
+
+GitHub disables scheduled workflows after 60 days without repository activity. Both scheduled workflows call the documented REST endpoint `PUT /repos/{owner}/{repo}/actions/workflows/{file}/enable` for `data-refresh.yml` and `freshness.yml`. This makes no commits and needs `actions: write`. The monitor also warns if a workflow was not `active`. This is best-effort: if GitHub disables both at once, neither runs. For a fully independent check, also point an external uptime monitor at `LIVE_META_URL`.
