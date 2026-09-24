@@ -89,3 +89,58 @@ These are documented design limits, not bugs:
 - Semester units convert to quarter units at a flat 1.5.
 
 Fixing any of them is new feature work, listed under Future scope in the README.
+
+---
+
+# Round 2: fixes for the tester's findings (`TEST_REPORT.md`)
+
+Five agents each fixed one area in an isolated copy of the repo, and their work was merged here. Each new test was shown to fail on the old code and pass on the fix.
+
+Checks on the merged result:
+
+- `npx tsc -b` passes.
+- `npm test` passes 60 of 60 (was 13).
+- `node scripts/smoke.mjs` passes 95 of 95.
+- `npm run build` has no warnings.
+- The page checks pass at 1440px and 390px with no console errors.
+
+| ID | Area | What was wrong | What changed |
+|---|---|---|---|
+| F-01 | normalize | Courses from colleges whose ASSIST layout differs from the first college's were dropped (e.g. Foothill CHEM for Berkeley ME). | A college's articulations are attached by the UC courses they fully cover. Requirements that only other layouts list are added as optional. **Needs `npm run fetch`.** |
+| F-02 | normalize | A group whose only section is "choose N" became "take all". | That group now keeps its "choose N" rule. **Needs `npm run fetch`.** |
+| F-03 | normalize | Titles were paired with groups by count, so "recommended" labels shifted (e.g. UCLA ME calculus). | Each group takes the nearest title before it by `position`. **Needs `npm run fetch`.** |
+| F-19 | normalize | Empty input crashed. A repeated college was duplicated. | Clear errors, de-duplication, and corrected units for "or" series. |
+| F-04 | verify | Honors swaps applied at colleges with no honors twin. | New `honorsColleges(req)`: swaps apply per college. The checker, planner and repair text all use it. |
+| F-09 | verify | MATH 1BH at one college plus MATH 1B at another was called a split. | Honors-stripped codes are compared, so it is a duplicate. |
+| F-12 | verify | `missing` listed every "either/or" alternative as required and showed "(group)". | Built bottom-up: "One of: CSE 15L, CSE 29", "(B + C)". |
+| F-05 | pack | A later course could be scheduled before an earlier one when a middle course was skipped. | Each course waits for the nearest lower letter. Out-of-order pairs went from 316 to 0 in 1,650 plans. |
+| F-18 | pack | Course order mixed colleges. Plain numbers were never ordered. | Order is decided within one college. Plain numbers are ordered only when titles show an ordinal (I/II). |
+| F-14 | pack | An invalid cap put everything in one term. Oversized courses passed silently. | An invalid cap falls back to the default. Oversized courses get `Term.overCap`, which the UI shows. |
+| F-15 | pack | A semester plan starting in Winter was named "Fall". | It now starts at the next valid term (Spring). |
+| F-16 | units | Per-course rounding added up in totals. | Exact units are used. Rounding happens only for display. |
+| F-06 | solve | The solver could create a new split series. | Groups that would open a split are used only as a last resort and are reported in `unsolvable`. Solver-made splits in the fuzz run went from 14 to 5, all reported. |
+| F-10 | solve | Courses made redundant by later picks stayed in the plan. | Pruned after solving. Plans with wasted courses went from 64/660 to 0. |
+| F-11 | solve | Ties depended on input order. | Strict tie-break key. Shuffled inputs that changed the plan went from 233/264 to 0. |
+| F-13 | solve | The 200-step limit dropped requirements silently. | The limit comes from the tree size, and leftovers are reported. |
+| F-17 | solve | A course missing from the catalog cost 0 units. | Such groups are never planned. |
+| F-07 | UI | Red ✗ next to "100% articulation integrity". | The icon and title come from one status value. |
+| F-08 | UI | The repair text ignored honors ("retake MATH 1B" when MATH 1BH was taken). | Uses the engine's per-college honors rule. |
+| F-20 | UI | At 390px, term cards were 724px wide and cut off. | Fits in 342px, with no horizontal scroll on any major. |
+| F-21 | UI | 8 of 15 colleges were grey. | 15 distinct colors. |
+| F-22 | UI | Multi-word search ("calculus iii") found nothing. | Every word must match the start of a title word. |
+| F-23 | UI | The Trap section showed quarter units for Berkeley. | Converted to semester units, with the system named. |
+
+## Integration done during the merge
+
+- `solve.ts`: kept both the pruning block from the solver fix and the new `pack(...)` call from the scheduling fix.
+- The planner now uses `honorsColleges`, so the planner and checker agree. Foothill MATH 1B + 1CH now plans MATH 1C instead of stalling.
+- The page shows the new `overCap` flag on term cards.
+
+## Still open after the tester's full suite on the merged code
+
+- **Design decision (yours):** a split in a recommended course or an unused alternative is still fatal. These tester checks fail by design: V12–V15, S38, fuzz F2 (5 last-resort splits, all reported) and F4 (25 splits that can't be repaired).
+- **Needs `npm run fetch`:** 8 data files still have orphaned courses. The fixed normalize code only takes effect once the data is regenerated.
+- **Known limitation:** the greedy solver is not always unit-minimal (S01). Exact optimization is future scope.
+- **Outdated tester checks:** 679 matrix "units sum" failures and the S07 cap check assume the old per-course rounding and the old silent over-cap behavior. F-07's browser setup now produces a valid plan, so it shows green "100%", which is correct.
+- **Cost:** the solver is about 3× slower (about 18 ms per solve), because pruning and split checks re-verify the plan.
+- **5 of 1,320 plans** use 2–3 more units than before (a different tie-break path in UCI CS and UC Davis CSE/ME). Overall total units went down: 68,090.5 → 66,849.

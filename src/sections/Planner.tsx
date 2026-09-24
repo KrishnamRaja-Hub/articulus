@@ -297,7 +297,7 @@ export default function Planner() {
                   <div key={t.name} data-term className={`card card-hover min-w-0 p-5 ${i >= MAX_TERMS ? 'border-alert/30' : ''}`}>
                     <div className="flex items-baseline justify-between gap-3">
                       <div className="font-medium">{t.name}</div>
-                      <div className="shrink-0 text-[13px] text-ink-3">{t.units} units</div>
+                      <div className={`shrink-0 text-[13px] ${t.overCap ? 'text-alert' : 'text-ink-3'}`}>{t.units} units{t.overCap && ` · over the ${UNIT_CAP}-unit cap`}</div>
                     </div>
                     <ul className="mt-4 space-y-2">
                       {t.courses.map((c) => {

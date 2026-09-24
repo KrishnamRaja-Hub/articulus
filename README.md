@@ -24,7 +24,7 @@ The two colleges divide the physics topics differently, so the university only a
 
 ### Requirement tree
 
-`src/engine/normalize.ts` turns raw ASSIST payloads into an `Agreement`. The ASSIST `templateAssets` array holds `RequirementTitle` and `RequirementGroup` entries in parallel; the k-th title labels the k-th group. Each group becomes a `ReqNode` of type `AND`, `OR`, or `N_OF` (from the `NFollowing` advisement). Rows with several cells become `OR` nodes. Titles containing "RECOMMEND" mark the subtree as optional.
+`src/engine/normalize.ts` turns raw ASSIST payloads into an `Agreement`. The ASSIST `templateAssets` array holds `RequirementTitle` and `RequirementGroup` entries ordered by `position`; each group takes the nearest title before it. Each group becomes a `ReqNode` of type `AND`, `OR`, or `N_OF` (from the `NFollowing` advisement; a group whose only section is "N of" stays `N_OF`). Rows with several cells become `OR` nodes. Titles containing "RECOMMEND" mark the subtree as optional.
 
 Each leaf is a `Requirement`: one UC course or series (`PHYSICS 7B`, `MATH 51`) with a list of `CourseGroup`s. A group is a set of course ids tagged with a sending college (`{ institutionId: 113, courses: ["113:PHYS 4B", "113:PHYS 4C"] }`). ASSIST "Or" sending groups fan out into one group per course. Payloads from every sending college are merged into the same requirement, so one leaf lists the groups from all fifteen colleges.
 
@@ -47,19 +47,19 @@ Output fields:
 | `incomplete` | requirement id -> best single-college partial progress |
 | `splitSeriesViolations` | list of `{ requirementId, label, partials[] }` |
 
-What may legitimately cross college lines: each UC requirement row is independent, so PHYSICS 7A from Foothill next to PHYSICS 7B from De Anza is valid and the requirement map shows each row's college. Within one row, ASSIST never publishes a course group that spans two colleges (0 of 5,611 groups in the fixtures), so a group is always single-college. The one sanctioned mix inside a row is ASSIST's own note "Regular and honors courses may be combined to complete this series": the engine detects a regular group with an honors twin at the same college and treats MATH 1B + MATH 1CH as complete.
+What may legitimately cross college lines: each UC requirement row is independent, so PHYSICS 7A from Foothill next to PHYSICS 7B from De Anza is valid and the requirement map shows each row's college. Within one row, ASSIST never publishes a course group that spans two colleges (0 of 5,611 groups in the fixtures), so a group is always single-college. The one sanctioned mix inside a row is ASSIST's own note "Regular and honors courses may be combined to complete this series": the engine detects a regular group with an honors twin at the same college and treats MATH 1B + MATH 1CH as complete. The swap applies only at colleges that list such a twin (`honorsColleges`), and a course taken as regular at one college and honors at another is a duplicate, not a split.
 
 ### Solver
 
 `solve(taken, agreement, options)` in `src/engine/solve.ts` is a greedy set cover over the tree:
 
 1. Walk the tree collecting requirements that still need a group. At `OR` and `N_OF` nodes, pick the cheapest children by estimated marginal units.
-2. For each such requirement, find the cheapest group at an allowed college. Cost is the units not already taken or planned. Ties prefer the home college, then fewer honors courses, then fewer courses.
-3. Pick the single globally cheapest group, add its courses to the plan, and repeat. One group per iteration means a course that serves two UC requirements (De Anza MATH 1B covers both MATH 51 and MATH 52) is counted once.
-4. Pack courses into terms. Order is inferred from the letter suffix (4A before 4B before 4C) within one college; the first course of a numerically higher series (2A) is gated by the C course of the series below it (1C). Respect the per-term unit cap and never silently drop a course past `maxTerms`; the UI flags overflow.
+2. For each such requirement, find the cheapest group at an allowed college. Cost is the units not already taken or planned. Ties prefer the home college, then fewer honors courses, then fewer courses, then (so input order never matters) groups whose courses serve more requirements, the lower college id, and the sorted course ids. A group that would open a new split series in any requirement is used only as a last resort, and then reported in `unsolvable`.
+3. Pick the single globally cheapest group, add its courses to the plan, and repeat. One group per iteration means a course that serves two UC requirements (De Anza MATH 1B covers both MATH 51 and MATH 52) is counted once. The loop is bounded by the size of the tree; anything left over is reported. After the loop, planned courses made redundant by later picks are pruned, as long as every satisfied requirement stays satisfied and no new split opens.
+4. Pack courses into terms. Order is inferred from the letter suffix within one college: each course waits for the nearest lower letter planned in the same series (1A before 1C even if 1B is not needed). Plain numbers are ordered only when their titles differ just by an ordinal (Chemistry I / II); the first course of a numerically higher series (2A) is gated by the C course of the series below it (1C). Respect the per-term unit cap and never silently drop a course past `maxTerms`; the UI flags overflow. A single course larger than the cap gets a term to itself, marked `overCap` and flagged in the UI.
 5. Re-run `verifySchedule` on taken plus planned and return `{ terms, chosen, result, totalUnits, unsolvable }`.
 
-Units are converted between systems when the plan mixes quarter and semester colleges. Semester units are multiplied by 1.5 to quarter units. The default cap is 16 quarter units or 12 semester units per term, and terms are named for the student's `termSystem` (Fall/Winter/Spring for quarter, Fall/Spring for semester).
+Units are converted between systems when the plan mixes quarter and semester colleges. Semester units are multiplied by 1.5 to quarter units. Packing and totals use exact converted units; only displayed numbers are rounded to 0.5. The default cap is 16 quarter units or 12 semester units per term, and terms are named for the student's `termSystem` (Fall/Winter/Spring for quarter, Fall/Spring for semester).
 
 Everything is deterministic. There is no language model anywhere in the path. Same inputs, same plan.
 
@@ -149,7 +149,7 @@ Everything runs in the browser. There is no server, no database, and no account.
 - **Tailwind CSS 4** for styling. Colors, spacing, and type are declared once as theme tokens in `src/index.css` and reused as class names.
 - **GSAP 3 with ScrollTrigger** for motion: the hero draw-in, the scroll-scrubbed paragraph, the stacking story cards, the pinned requirement map. Motion is turned off automatically for users who set reduce-motion in their OS.
 - **Geist** variable font, self-hosted through `@fontsource-variable/geist`.
-- **Vitest** for the 13 engine tests and **Playwright** (dev-only, driving your installed Chrome) for screenshots and the smoke script in `scripts/`.
+- **Vitest** for the 60 engine tests and **Playwright** (dev-only, driving your installed Chrome) for screenshots and the smoke script in `scripts/`.
 - **Node 22** runs `scripts/fetch-assist.ts` as TypeScript directly, no build step.
 
 Things we learned that are not written down anywhere else:
@@ -159,7 +159,7 @@ Things we learned that are not written down anywhere else:
 - Several fields that look like objects in the response (`templateAssets`, `articulations`, `receivingInstitution`, `academicYear`) are JSON strings inside JSON and need a second `JSON.parse`.
 - The institution IDs shown in the ASSIST web UI are not the API IDs. Berkeley is 79, UCLA 117, De Anza 113, Foothill 51.
 - A UC course with no articulation at a college is simply absent from the payload rather than marked "none", so the tree builder has to fill those rows in.
-- Requirement titles and requirement groups are two parallel lists ordered by `position`; the k-th title labels the k-th group.
+- Requirement titles and requirement groups share one `position` order; a title labels the groups that follow it until the next title (pairing them by rank shifts titles, e.g. UCLA ME calculus would read as "recommended").
 - Every course group ASSIST publishes belongs to exactly one college. Across 5,611 groups in our fixtures, none spans two. That single fact is what makes split-series detection exact instead of heuristic.
 
 ## Run it
@@ -208,7 +208,7 @@ This is a build-day prototype, so the numbers below are what the demo can do tod
 - **The trap is verified, not asserted.** UC Berkeley PHYSICS 7B requires PHYS 4B + 4C from one college. Take 4B at De Anza and 4C at Foothill and the app shows zero credit and names the fix. Before this, the only way to learn that was the July transcript audit.
 - **Deterministic.** The same inputs give the same schedule every time, and each verdict points at a specific ASSIST row. There is no language model in the loop to hallucinate an equivalence.
 - **Multi-campus by default.** ASSIST answers "does college A articulate to university U". Articulus answers "does this exact set of courses from colleges A, B, and C articulate to U, and what should I take next term". Nothing public does that today.
-- **Tested end to end.** 13 unit tests and a smoke run of 95 solve-and-verify passes across every agreement, both quarter and semester home colleges, with zero split violations produced by the solver.
+- **Tested end to end.** 60 unit tests and a smoke run of 95 solve-and-verify passes across every agreement, both quarter and semester home colleges, with zero split violations produced by the solver.
 
 ## Future scope
 
@@ -234,6 +234,7 @@ Longer term:
 - Only major-preparation agreements are modeled. General education, IGETC, and campus breadth requirements are not.
 - Articulation notes and course attributes (grade minimums, "same as" remarks, lab requirements) are not parsed: `normalize.ts` drops them and the fixtures do not contain them, so they are neither shown in the UI nor used in verification.
 - Semester to quarter unit conversion is the flat 1.5 factor. Individual UC departments may count units differently.
+- A split series is fatal even in a recommended course or an unused alternative, so the solver cannot repair such a plan and reports it instead. Whether that is too strict is an open design question.
 - Coverage is five UCs and three engineering majors across fifteen colleges. Other majors and CSU campuses need only a fetch, but have not been validated.
 - The "Trap" section demo widget is hardcoded to De Anza and Foothill against Berkeley Mechanical Engineering. The Planner section is fully general.
-- Template trees are taken from the first sending college's payload on the assumption that templates are identical across colleges for the same UC and major. `normalize()` now compares every college's template to the first (`templateMismatches`) and prints a warning during `npm run fetch` when they differ; it still builds from the first college's template. The existing fixtures were fetched before this check existed and have not been re-checked, because the raw payloads are not stored.
+- Template trees are taken from the first sending college's payload. `normalize()` warns when another college's template differs (`templateMismatches`), attaches that college's articulations to the tree by the UC courses they cover, and adds requirements only other templates list as optional. **The fixtures in `data/` predate these normalize fixes (title pairing, N-of groups, cross-template matching); run `npm run fetch` to regenerate them.** Until then, e.g. Foothill CHEM 1A/1B/1C does not count for Berkeley ME chemistry and UCLA ME calculus shows as recommended.

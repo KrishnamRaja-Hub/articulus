@@ -1,5 +1,5 @@
 import type { Agreement, CourseGroup, CourseId, Plan, ReqNode, Requirement, Term } from './types'
-import { has, honorsMix, reqStatus, verifySchedule } from './verify.ts'
+import { has, honorsColleges, reqStatus, verifySchedule, type Mix } from './verify.ts'
 
 export type TermSystem = 'quarter' | 'semester'
 
@@ -32,24 +32,45 @@ export function solve(taken: Set<CourseId>, a: Agreement, opts: SolveOptions): P
     return k ? convert(k.units, unitSystems[k.institutionId] ?? termSystem, termSystem, exact) : 0
   }
   /** Marginal home-system units to complete a group given what is already taken or planned. */
-  const groupCost = (g: CourseGroup, h: Set<CourseId>, mix = false) => g.courses.reduce((s, c) => s + (has(h, c, mix) ? 0 : unitsOf(c)), 0)
+  const groupCost = (g: CourseGroup, h: Set<CourseId>, mix: Mix = false) => g.courses.reduce((s, c) => s + (has(h, c, mix) ? 0 : unitsOf(c)), 0)
   const planned = new Set<CourseId>()
   const have = () => new Set([...taken, ...planned])
   const chosen: Record<string, CourseGroup> = {}
   const unsolvable = new Set<string>()
+  const splitting = new Set<CourseGroup>() // groups that would open a new split series: last resort only
+  const SPLIT = 1e6                         // their cost penalty, so any non-splitting route wins
+  const forced = new Map<string, string[]>() // requirement id -> splits its last-resort group opened
 
-  const bestGroup = (req: Requirement, h: Set<CourseId>): { g: CourseGroup; cost: number } | null => {
-    let best: { g: CourseGroup; cost: number } | null = null
-    const mix = honorsMix(req)
+  const leaves: Requirement[] = []
+  const walk = (n: ReqNode | Requirement): void => { if (n.kind === 'req') leaves.push(n); else n.children.forEach(walk) }
+  walk(a.root)
+  const uses = new Map<CourseId, Set<string>>() // course -> requirement ids it appears in
+  leaves.forEach((r) => r.groups.forEach((g) => g.courses.forEach((c) => uses.set(c, (uses.get(c) ?? new Set()).add(r.id)))))
+  const reach = (g: CourseGroup) => new Set(g.courses.flatMap((c) => [...uses.get(c)!])).size
+
+  /**
+   * README tie-break as a strict lexicographic key: cost, home college, fewer honors, fewer courses; then, so the
+   * result never depends on input order, courses that serve more requirements, college id and course ids.
+   */
+  type Cand = { g: CourseGroup; cost: number }
+  const rank = ({ g, cost }: Cand): (number | string)[] =>
+    [cost, g.institutionId === home ? 0 : 1, g.courses.filter((c) => /H$/.test(c)).length, g.courses.length, -reach(g), g.institutionId, [...g.courses].sort().join('+')]
+  const cmp = (x: (number | string)[], y: (number | string)[]) => {
+    for (let i = 0; i < x.length; i++) if (x[i] !== y[i]) return x[i] < y[i] ? -1 : 1
+    return 0
+  }
+
+  const bestGroup = (req: Requirement, h: Set<CourseId>): Cand | null => {
+    let best: Cand | null = null
+    const mix = honorsColleges(req)
     for (const g of req.groups) {
+      const need = g.courses.filter((c) => !has(h, c, mix))
       // Only complete groups at colleges the student can attend, unless it is already complete.
-      if (!allowed.includes(g.institutionId) && g.courses.some((c) => !has(h, c, mix))) continue
-      const cost = groupCost(g, h, mix)
-      const honors = (x: CourseGroup) => x.courses.filter((c) => /H$/.test(c)).length
-      const better = !best || cost < best.cost
-        || (cost === best.cost && g.institutionId === home && best.g.institutionId !== home)
-        || (cost === best.cost && g.institutionId === best.g.institutionId && (honors(g) < honors(best.g) || g.courses.length < best.g.courses.length))
-      if (better) best = { g, cost }
+      if (need.length && !allowed.includes(g.institutionId)) continue
+      // A course missing from the catalog has unknown units: not plannable.
+      if (need.some((c) => !a.catalog[c])) continue
+      const cand = { g, cost: groupCost(g, h, mix) + (splitting.has(g) ? SPLIT : 0) }
+      if (!best || cmp(rank(cand), rank(best)) < 0) best = cand
     }
     return best
   }
@@ -63,35 +84,79 @@ export function solve(taken: Set<CourseId>, a: Agreement, opts: SolveOptions): P
     return n.type === 'OR' ? sorted[0] : sorted.slice(0, n.n ?? 1).reduce((s, c) => s + c, 0)
   }
 
-  /** Collect the requirements that still need a group, choosing cheapest branches at OR / N_OF. */
-  const needed = (n: ReqNode | Requirement, h: Set<CourseId>, acc: Requirement[]): void => {
-    if (n.kind === 'req') { if (!reqStatus(n, h).satisfied) acc.push(n); return }
+  /** Order-independent name of a subtree, to break cost ties among OR / N_OF children. */
+  const keyOf = (n: ReqNode | Requirement): string => (n.kind === 'req' ? n.id : `(${n.children.map(keyOf).sort().join(',')})`)
+
+  /**
+   * Collect the requirements that still need a group, choosing cheapest branches at OR / N_OF. `alt` gets those
+   * reached through such a choice, which may still change as courses are planned.
+   */
+  const needed = (n: ReqNode | Requirement, h: Set<CourseId>, acc: Requirement[], alt: Set<Requirement>, inAlt = false): void => {
+    if (n.kind === 'req') { if (!reqStatus(n, h).satisfied) { acc.push(n); if (inAlt) alt.add(n) } return }
     if (!n.required) return
-    if (n.type === 'AND') { n.children.forEach((c) => needed(c, h, acc)); return }
+    if (n.type === 'AND') { n.children.forEach((c) => needed(c, h, acc, alt, inAlt)); return }
     const want = n.type === 'OR' ? 1 : (n.n ?? 1)
     const ranked = n.children
-      .map((c) => ({ c, done: c.kind === 'req' ? !!reqStatus(c, h).satisfied : estimate(c, h) === 0, cost: estimate(c, h) }))
-      .sort((x, y) => x.cost - y.cost)
+      .map((c) => ({ c, done: c.kind === 'req' ? !!reqStatus(c, h).satisfied : estimate(c, h) === 0, cost: estimate(c, h), key: keyOf(c) }))
+      .sort((x, y) => x.cost - y.cost || cmp([x.key], [y.key]))
     const done = ranked.filter((r) => r.done).length
-    ranked.filter((r) => !r.done && r.cost < INF).slice(0, Math.max(0, want - done)).forEach((r) => needed(r.c, h, acc))
+    ranked.filter((r) => !r.done && r.cost < INF).slice(0, Math.max(0, want - done)).forEach((r) => needed(r.c, h, acc, alt, true))
     if (ranked.filter((r) => r.cost < INF).length < want) unsolvable.add(`${want} of: ${n.children.map((c) => (c.kind === 'req' ? c.id : 'group')).join(', ')}`)
   }
 
+  const splitIds = (h: Set<CourseId>) => new Set(verifySchedule(h, a).splitSeriesViolations.map((v) => v.requirementId))
+
   // One group per iteration so shared courses (De Anza MATH 1B serves MATH 51 and 52) get counted once.
-  for (let guard = 0; guard < 200; guard++) {
+  // Each round satisfies a leaf or penalizes a group, so this bound (from the tree size) is never hit on a sane tree.
+  let rounds = leaves.reduce((s, r) => s + 1 + r.groups.length, 1)
+  let before = splitIds(have())
+  const pickedFor = new Map<string, Requirement>()
+  for (;;) {
     const h = have()
-    const todo: Requirement[] = []
-    needed(a.root, h, todo)
+    const todo: Requirement[] = [], alt = new Set<Requirement>()
+    needed(a.root, h, todo, alt)
+    if (!rounds--) { todo.forEach((r) => unsolvable.add(r.id)); break }
     let pick: { req: Requirement; g: CourseGroup; cost: number } | null = null
     for (const req of todo) {
       const b = bestGroup(req, h)
       if (!b) { unsolvable.add(req.id); continue }
-      if (!pick || b.cost < pick.cost) pick = { req, ...b }
+      // Equal cost: commit forced requirements before OR / N_OF alternatives, whose ranking they can change.
+      const key = (r: Requirement, c: Cand) => [c.cost, alt.has(r) ? 1 : 0, ...rank(c).slice(1), r.id]
+      if (!pick || cmp(key(req, b), key(pick.req, pick)) < 0) pick = { req, ...b }
     }
     if (!pick) break
-    chosen[pick.req.id] = pick.g
-    pick.g.courses.forEach((c) => { if (!has(have(), c, honorsMix(pick!.req))) planned.add(c) })
+    const mix = honorsColleges(pick.req)
+    const next = new Set(h)
+    pick.g.courses.forEach((c) => { if (!has(h, c, mix)) next.add(c) })
+    // Never open a new split series elsewhere (e.g. an unused N_OF alternative) while another route exists.
+    const after = splitIds(next), opened = [...after].filter((id) => !before.has(id)).sort()
+    if (opened.length && !splitting.has(pick.g)) { splitting.add(pick.g); continue }
+    if (opened.length) forced.set(pick.req.id, opened)
+    before = after
+    chosen[pick.req.id] = pick.g; pickedFor.set(pick.req.id, pick.req)
+    next.forEach((c) => { if (!taken.has(c)) planned.add(c) })
   }
+
+  // Drop planned courses a later pick made redundant: every satisfied requirement stays satisfied, no new split.
+  const final = verifySchedule(have(), a)
+  const splits = new Set(final.splitSeriesViolations.map((v) => v.requirementId))
+  for (const c of [...planned].sort((x, y) => unitsOf(y) - unitsOf(x) || cmp([x], [y]))) {
+    planned.delete(c)
+    const r = verifySchedule(have(), a)
+    if (Object.keys(final.satisfied).some((id) => !r.satisfied[id]) || r.splitSeriesViolations.some((v) => !splits.has(v.requirementId))) planned.add(c)
+  }
+  const hp = have()
+  for (const id of Object.keys(chosen)) {
+    // A pruned group is reported as the best group the kept courses still complete.
+    const req = pickedFor.get(id)!, mix = honorsColleges(req), full = (g: CourseGroup) => g.courses.every((c) => has(hp, c, mix))
+    if (full(chosen[id])) continue
+    const done = req.groups.filter(full).map((g) => ({ g, cost: 0 }))
+    if (done.length) chosen[id] = done.sort((x, y) => cmp(rank(x), rank(y)))[0].g; else delete chosen[id]
+  }
+  // A last-resort pick whose split is still open is reported, so the plan never claims to be clean.
+  const open = new Set(verifySchedule(hp, a).splitSeriesViolations.map((v) => v.requirementId))
+  forced.forEach((ids, id) => { if (ids.some((x) => open.has(x))) unsolvable.add(`${id} (only by splitting ${ids.filter((x) => open.has(x)).join(', ')})`) })
+  const order = [...planned].sort(); planned.clear(); order.forEach((c) => planned.add(c)) // input order no longer leaks into pack
 
   const terms = pack([...planned], (c) => unitsOf(c, true), unitCap, maxTerms, startTerm, termSystem, (c) => a.catalog[c]?.title ?? '')
   const result = verifySchedule(have(), a)
