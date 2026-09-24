@@ -1,4 +1,4 @@
-import type { Agreement, CourseGroup, CourseId, Partial, ReqNode, Requirement, ValidationResult } from './types'
+import type { Agreement, CourseGroup, CourseId, Partial, ReqNode, Requirement, ValidationResult, Violation } from './types'
 
 export interface ReqStatus { satisfied?: CourseGroup; partials: Partial[] }
 
@@ -55,43 +55,105 @@ const code = (id: CourseId) => stripH(id.slice(id.indexOf(':') + 1))
 const isSplit = (p: Partial[]) =>
   new Set(p.map((x) => x.institutionId)).size > 1 && new Set(p.flatMap((x) => x.have.map(code))).size > 1
 
-/** Evaluate every requirement, then fold the boolean tree. */
+/**
+ * Leaf and node states. `sat`: done with CC courses (possibly with some rows left for the university). `def`: passes
+ * only because no sending college articulates what is left (ASSIST "no course articulated": taken at the UC after
+ * transfer). `open`: the student still needs CC courses.
+ */
+type St = 'sat' | 'def' | 'open'
+/** art: some CC route exists (!isDeferrable). miss: what it still needs. def: UC-only rows it relies on. */
+interface Res { st: St; art: boolean; miss: string[]; def: string[]; kids: Res[]; node: ReqNode | Requirement }
+
+const passes = (r: Res) => r.st !== 'open'
+/** Required children only: optional (recommended) subtrees never fail, satisfy, or defer anything for their parent. */
+const counted = (r: Res) => r.node.kind === 'req' || r.node.required
+const uniq = (ids: string[]) => [...new Set(ids)]
+// "(B + C)" names an alternative by what it still lacks; a UC-only one (listed only when a node cannot be met) by its rows
+const alt = (rs: Res[]) => rs.map((r) => {
+  const m = r.miss.length ? r.miss : r.def
+  return m.length > 1 ? `(${m.join(' + ')})` : m[0]
+}).join(', ')
+
+/**
+ * Fold one subtree; `leafSt` decides each row. Children are all evaluated, so optional rows are still reported.
+ * `bare`: nothing is taken (the isDeferrable pass), so a node is articulable iff it fails.
+ */
+function fold(n: ReqNode | Requirement, leafSt: (r: Requirement) => St, bare = false): Res {
+  if (n.kind === 'req') {
+    const st = leafSt(n)
+    return { st, art: n.groups.length > 0, miss: st === 'open' ? [n.id] : [], def: st === 'def' ? [n.id] : [], kids: [], node: n }
+  }
+  const kids = n.children.map((c) => fold(c, leafSt, bare))
+  const req = kids.filter(counted)
+  const sat = req.filter((r) => r.st === 'sat')
+  // among satisfied alternatives, rely on the ones that leave the least for the university (stable)
+  const fewest = (k: number) => new Set([...sat].sort((x, y) => x.def.length - y.def.length).slice(0, k))
+  const inOrder = (s: Set<Res>) => req.filter((r) => s.has(r)).flatMap((r) => r.def)
+  const res = (st: St, miss: string[], def: string[]): Res =>
+    ({ st, art: bare ? st === 'open' : !isDeferrable(n), miss, def, kids, node: n })
+
+  if (n.type === 'AND') {
+    const open = req.filter((r) => !passes(r))
+    const def = req.flatMap((r) => r.def) // an open child still commits its own deferrals
+    return res(open.length ? 'open' : sat.length || !req.length ? 'sat' : 'def', open.flatMap((r) => r.miss), def)
+  }
+  const need = n.type === 'OR' ? 1 : (n.n ?? 1)
+  const a = req.filter((r) => r.st !== 'sat' && r.art), d = req.filter((r) => r.st !== 'sat' && !r.art)
+  if (sat.length >= need) return res('sat', [], inOrder(fewest(need)))
+  const left = need - sat.length
+  const pick = (rs: Res[]) => (left === rs.length ? rs.flatMap((r) => r.miss) : [`${n.type === 'OR' ? 'One' : left} of: ${alt(rs)}`])
+  // Enough CC routes remain: a UC-only alternative never stands in for one.
+  if (sat.length + a.length >= need) return res('open', pick(a), inOrder(new Set(sat)))
+  if (sat.length + a.length + d.length >= need) return res('def', [], inOrder(new Set([...sat, ...d])))
+  return res('open', pick([...a, ...d]), inOrder(new Set(sat))) // more required than listed: cannot be met
+}
+
+const deferrable = new WeakMap<ReqNode | Requirement, boolean>()
+/**
+ * True iff no CC route exists for this subtree: it passes with nothing taken, so every row it still needs is one
+ * no sending college articulates. Optional children are ignored; the node's own `required` flag is not consulted.
+ */
+export function isDeferrable(n: ReqNode | Requirement): boolean {
+  if (n.kind === 'req') return n.groups.length === 0
+  let v = deferrable.get(n)
+  if (v === undefined) deferrable.set(n, (v = passes(fold(n, (r) => (r.groups.length ? 'open' : 'def'), true))))
+  return v
+}
+
+/** Splits the plan depends on; the others are warnings (those courses earn no credit toward that row). */
+export function blockingSplits(r: ValidationResult): Violation[] {
+  return r.splitSeriesViolations.filter((v) => v.blocking)
+}
+
+/** Evaluate every requirement, then fold the tree. */
 export function verifySchedule(taken: Set<CourseId>, agreement: Agreement): ValidationResult {
   const out: ValidationResult = { isValid: true, satisfied: {}, missing: [], incomplete: {}, splitSeriesViolations: [], deferred: [] }
   const seen = new Set<string>()
 
-  const leaf = (req: Requirement): boolean => {
+  const leafSt = (req: Requirement): St => {
     const st = reqStatus(req, taken)
     if (!seen.has(req.id)) {
       seen.add(req.id)
       if (st.satisfied) out.satisfied[req.id] = st.satisfied
-      else if (isSplit(st.partials)) out.splitSeriesViolations.push({ requirementId: req.id, label: req.label, partials: st.partials, blocking: true })
+      else if (isSplit(st.partials)) out.splitSeriesViolations.push({ requirementId: req.id, label: req.label, partials: st.partials, blocking: false })
       else if (st.partials.length) out.incomplete[req.id] = st.partials.sort((a, b) => b.have.length - a.have.length)[0]
     }
-    return !!st.satisfied
+    return st.satisfied ? 'sat' : req.groups.length ? 'open' : 'def'
   }
+  const root = fold(agreement.root, leafSt)
 
-  /** Evaluates a subtree; `miss` says what it still needs: failed rows of an AND, one entry per OR / N_OF. */
-  const node = (n: ReqNode): { ok: boolean; miss: string[] } => {
-    // Optional (recommended) subtrees are evaluated for reporting but never fail their parent.
-    const rs = n.children.map((c) => {
-      if (c.kind === 'req') return { ok: leaf(c), miss: [c.id] }
-      const r = node(c)
-      return { ok: r.ok || !c.required, miss: r.miss }
-    })
-    const done = rs.filter((r) => r.ok).length
-    const need = n.type === 'AND' ? rs.length : n.type === 'OR' ? 1 : (n.n ?? 1)
-    const ok = done >= need
-    const open = rs.filter((r) => !r.ok)
-    // An alternative is named by what it still lacks, e.g. "(MATH 20B + MATH 20C)".
-    const miss = ok ? [] : n.type === 'AND' ? open.flatMap((r) => r.miss)
-      : [`${n.type === 'OR' ? 'One' : need - done} of: ${open.map((r) => (r.miss.length > 1 ? `(${r.miss.join(' + ')})` : r.miss[0])).join(', ')}`]
-    return { ok, miss }
+  // Needed rows, top down from a failing root: AND needs every failing child, OR / N_OF every failing CC alternative.
+  const needed = new Set<string>()
+  const mark = (r: Res) => {
+    if (r.node.kind === 'req') return void needed.add(r.node.id)
+    const and = r.node.type === 'AND'
+    for (const k of r.kids) if (counted(k) && !passes(k) && (and || k.art)) mark(k)
   }
+  if (!passes(root)) mark(root)
+  for (const v of out.splitSeriesViolations) v.blocking = needed.has(v.requirementId)
 
-  const root = node(agreement.root)
-  if (!root.ok && agreement.root.required) out.missing = root.miss
-  // Split-series is always fatal, even if the tree happens to be satisfiable another way.
-  out.isValid = root.ok && out.splitSeriesViolations.length === 0
+  if (!passes(root) && agreement.root.required) out.missing = root.miss
+  out.deferred = uniq(root.def)
+  out.isValid = passes(root) && !out.splitSeriesViolations.some((v) => v.blocking)
   return out
 }
