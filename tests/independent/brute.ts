@@ -7,11 +7,11 @@
  * in only at colleges that list a twin). This is complete: any passing plan satisfies some needed row by one of its
  * groups, and that group's missing courses are one of the moves.
  *
- * Objective:
+ * Objective (weights in the home system's units; the harness converts the quarter-unit weights):
  *  - units mode (weights 0): converted units, exactly the pure-units objective.
- *  - weighted mode: units + college * (distinct non-home colleges planned) + chain * (subjects whose planned courses
- *    sit at more than one college). Penalties only grow as courses are added, so the unit lower bound stays
- *    admissible. See planner.test.ts for the switch and the definition to align with src/engine/solve.ts.
+ *  - weighted mode: units + college * (distinct non-home colleges of PLANNED courses) + chain * (split subject
+ *    chains, see `subjectChains`). Both penalties only grow as courses are added, so the unit lower bound stays
+ *    admissible.
  */
 import type { Agreement, CourseId, ReqNode, Requirement } from '../../src/engine/types'
 import { instOf, isUcOnly, leaves, oracle, twinColleges } from './oracle.ts'
@@ -29,22 +29,54 @@ export interface BruteOptions {
 export type BruteResult = { cost: number; units: number; set: CourseId[] } | null | 'budget'
 
 const EPS = 1e-9
-const subject = (c: CourseId) => c.slice(c.indexOf(':') + 1).replace(/\s*\S+$/, '')
 
-/** The weighted objective of a plan (a set of planned courses). */
-export function planCost(set: Iterable<CourseId>, unitsOf: (c: CourseId) => number, w: Weights, home?: number): { cost: number; units: number } {
+/**
+ * The planner's documented subject chains (the product spec, README "Solver"), written out again here:
+ *  - a row's UC subject is the tokens of its id (up to the first comma) before the first token holding a digit:
+ *    "MATH 51" -> MATH, "COM SCI M51A" -> COM SCI, "CHEM 1A, CHEM 1AL" -> CHEM; an empty subject is none;
+ *  - a chain is a subject with two or more distinct row ids that have CC groups (any college, allowed or not; rows
+ *    anywhere in the tree, optional subtrees included);
+ *  - a course belongs to the chain when it, or its honors twin (one trailing H added or removed), is listed in a
+ *    group of one of those rows; a course can belong to several chains;
+ *  - `took`: the colleges of the taken courses that belong to it.
+ */
+export interface Chain { subject: string; members: Set<CourseId>; took: Set<number> }
+export function subjectChains(a: Agreement, taken: Iterable<CourseId>): Chain[] {
+  const subjectOf = (id: string) => {
+    const words = id.split(',')[0].trim().split(/\s+/), out: string[] = []
+    for (const w of words) { if (/[0-9]/.test(w)) break; out.push(w) }
+    return out.join(' ')
+  }
+  const rows = new Map<string, { ids: Set<string>; members: Set<CourseId> }>()
+  for (const r of leaves(a.root)) {
+    const sub = subjectOf(r.id)
+    if (!sub || !r.groups.length) continue
+    if (!rows.has(sub)) rows.set(sub, { ids: new Set(), members: new Set() })
+    const e = rows.get(sub)!
+    e.ids.add(r.id)
+    for (const g of r.groups) for (const c of g.courses) {
+      e.members.add(c).add(`${c}H`)
+      if (c.endsWith('H')) e.members.add(c.slice(0, -1))
+    }
+  }
+  const T = [...taken]
+  return [...rows].filter(([, e]) => e.ids.size >= 2)
+    .map(([subject, { members }]) => ({ subject, members, took: new Set(T.filter((c) => members.has(c)).map(instOf)) }))
+}
+
+/** The weighted objective of a plan (a set of planned courses). A chain is split when it has a planned course and
+ *  its planned courses plus the colleges where it was taken span two or more colleges; taken-only chains cost 0. */
+export function planCost(set: Iterable<CourseId>, unitsOf: (c: CourseId) => number, w: Weights, home?: number, chains: Chain[] = []): { cost: number; units: number } {
   const cs = [...set]
   const units = cs.reduce((s, c) => s + unitsOf(c), 0)
   if (!w.college && !w.chain) return { cost: units, units }
   const away = new Set(cs.map(instOf).filter((i) => i !== home)).size
-  const bySubject = new Map<string, Set<number>>()
-  for (const c of cs) {
-    const k = subject(c)
-    if (!bySubject.has(k)) bySubject.set(k, new Set())
-    bySubject.get(k)!.add(instOf(c))
+  let split = 0
+  for (const ch of chains) {
+    const mine = cs.filter((c) => ch.members.has(c))
+    if (mine.length && new Set([...ch.took, ...mine.map(instOf)]).size >= 2) split++
   }
-  const chains = [...bySubject.values()].filter((s) => s.size > 1).length
-  return { cost: units + w.college * away + w.chain * chains, units }
+  return { cost: units + w.college * away + w.chain * split, units }
 }
 
 export function bruteMin(a: Agreement, taken: ReadonlySet<CourseId>, o: BruteOptions): BruteResult {
@@ -71,6 +103,7 @@ export function bruteMin(a: Agreement, taken: ReadonlySet<CourseId>, o: BruteOpt
     options.set(r.id, [...out.values()])
   }
   const units = (cs: Iterable<CourseId>) => [...cs].reduce((s, c) => s + unitsOf(c), 0)
+  const chains = weights.chain ? subjectChains(a, taken) : []
   let best: { cost: number; units: number; set: CourseId[] } | null = null
   let nodes = 0, blown = false
   const seen = new Set<string>()
@@ -81,7 +114,7 @@ export function bruteMin(a: Agreement, taken: ReadonlySet<CourseId>, o: BruteOpt
     seen.add(key)
     const have = new Set([...taken, ...add])
     const res = oracle(a, have)
-    const here = planCost(add, unitsOf, weights, home)
+    const here = planCost(add, unitsOf, weights, home, chains)
     if (res.rootPass) {
       if (!best || here.cost < best.cost - EPS) best = { ...here, set: [...add].sort() }
       return

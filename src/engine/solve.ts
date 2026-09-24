@@ -122,12 +122,13 @@ export function solve(taken: Set<CourseId>, a: Agreement, opts: SolveOptions): P
 
   /* ---- the tree under the transfer rules ---- */
 
-  // Unique requirements (Berkeley ME lists its chemistry row twice; it is one requirement).
-  const L: Requirement[] = [], ix = new Map<Requirement, number>(), seen = new Map<string, number>()
+  // Unique requirements (Berkeley ME lists its chemistry row twice; it is one requirement). The key ignores the order
+  // of groups and of their courses: two listings that differ only in order are the same requirement.
+  const L: Requirement[] = [], keyOfL: string[] = [], ix = new Map<Requirement, number>(), seen = new Map<string, number>()
   const walk = (n: ReqNode | Requirement): void => {
     if (n.kind === 'node') return n.children.forEach(walk)
-    const k = `${n.id}\u0000${JSON.stringify(n.groups)}`
-    if (!seen.has(k)) seen.set(k, L.push(n) - 1)
+    const k = `${n.id}\u0000${n.groups.map((g) => `${g.institutionId}:${[...g.courses].sort().join('+')}`).sort().join('|')}`
+    if (!seen.has(k)) { seen.set(k, L.push(n) - 1); keyOfL.push(k) }
     ix.set(n, seen.get(k)!)
   }
   walk(a.root)
@@ -241,16 +242,24 @@ export function solve(taken: Set<CourseId>, a: Agreement, opts: SolveOptions): P
 
   const pseudo: string[] = [] // an OR / N_OF with fewer completable alternatives than it needs: id L.length + k
   let overflow = false
+  /** Minimal sets only. Shortest first, a set is kept unless a kept one is inside it, so `out` only grows and is the
+   *  answer so far: past CONFIGS it overflows whatever the order (and stops early). */
   const norm = (cs: number[][]) => {
     const out: number[][] = []
     for (const c of [...new Map(cs.map((c) => [c.join(), c])).values()].sort((x, y) => x.length - y.length)) {
       const s = new Set(c)
       if (!out.some((o) => o.every((i) => s.has(i)))) out.push(c) // a superset config can never be cheaper
+      if (out.length > CONFIGS) { overflow = true; break }
     }
-    if (out.length > CONFIGS) overflow = true
     return overflow ? out.slice(0, 1) : out
   }
-  const cross = (ls: number[][][]) => ls.reduce<number[][]>((acc, l) => norm(acc.flatMap((x) => l.map((y) => [...new Set([...x, ...y])].sort((p, q) => p - q)))), [[]])
+  /** A name for a family that does not depend on input order (indices follow tree order; requirement keys do not). */
+  const famKey = (f: number[][]) => f.map((c) => c.map((i) => (i < L.length ? keyOfL[i] : `\u0001${pseudo[i - L.length]}`)).sort().join('\u0002')).sort().join('\u0003')
+  /** Every union of one set per family, minimal sets only. The families are crossed in an order fixed by their size and
+   *  content, not by the tree's order, so the work done, and whether it overflows on the way, is the same for any
+   *  input order. */
+  const cross = (ls: number[][][]) => ls.map((l) => ({ l, k: famKey(l) })).sort((x, y) => x.l.length - y.l.length || (x.k < y.k ? -1 : x.k > y.k ? 1 : 0))
+    .reduce<number[][]>((acc, { l }) => norm(acc.flatMap((x) => l.map((y) => [...new Set([...x, ...y])].sort((p, q) => p - q)))), [[]])
   type Fam = number[][]
   /** Minimal requirement sets that make the subtree `sat` (S) or pass (P). A row with no way at `allowed` is given up. */
   const fams = (n: ReqNode | Requirement): { S: Fam; P: Fam } => {
@@ -623,8 +632,9 @@ export function solve(taken: Set<CourseId>, a: Agreement, opts: SolveOptions): P
       node([...I, x], rest)
     }
     if (pCollege) {
-      // Incumbent first, from small college sets (cheap to solve): home alone, then greedily add the college that helps most.
-      const at = (S: number[]) => { const W = restrict(S); for (const pCh of [0, pChain]) { const r = solveAt(S, W, pCh); if (r) offer(r) } }
+      // Incumbent first, from small college sets (cheap to solve): home alone, then greedily add the college that helps
+      // most (unit-only plans, scored with their real penalties), then the chain-aware plan at the colleges it uses.
+      const at = (S: number[], pCh = 0) => { const r = solveAt(S, restrict(S), pCh); if (r) offer(r) }
       let S: number[] = [], cur: Sol | null = null
       at(S)
       for (;;) {
@@ -638,6 +648,7 @@ export function solve(taken: Set<CourseId>, a: Agreement, opts: SolveOptions): P
         if (pick === undefined || best === cur || nodes > budget) break
         S = [...S, pick].sort((p, q) => p - q)
       }
+      if (pChain && best) at([...new Set((best as Sol).cs.map(instOf))].filter((k) => k !== home).sort((p, q) => p - q), pChain)
       node([], reachable)
     }
     else { const e = solveAt(reachable, ways, pChain); if (e) offer(e) } // no college penalty: every college at once
@@ -846,13 +857,14 @@ export function solve(taken: Set<CourseId>, a: Agreement, opts: SolveOptions): P
       if (!ways[i].length) return offered(L[i])
       // Given up only because every group would open a split the agreement still needs.
       const w = ways[i].map((x) => x.filter((c) => !h.has(c))).sort((x, y) => lex([...sumV(x), ...x], [...sumV(y), ...y]))[0]
-      const ids = blocking(new Set([...h, ...w])).map((j) => L[j].id)
+      const ids = blocking(new Set([...h, ...w])).map((j) => L[j].id).sort()
       return `${L[i].id} (only by splitting ${ids.length ? ids.join(', ') : 'a series'})`
     })
   } else ({ planned, chosen, unsolvable } = g!)
   const terms = pack([...planned], (c) => unitsOf(c, true), unitCap, maxTerms, startTerm, termSystem, (c) => a.catalog[c]?.title ?? '')
   const result = verifySchedule(withTaken(planned), a)
-  return { terms, chosen, result, totalUnits: half(planned.reduce((s, c) => s + unitsOf(c, true), 0)), unsolvable, optimal }
+  // unsolvable in a fixed order (tree order would follow the input)
+  return { terms, chosen, result, totalUnits: half(planned.reduce((s, c) => s + unitsOf(c, true), 0)), unsolvable: [...unsolvable].sort(), optimal }
 }
 
 /* ---- term packing ---- */

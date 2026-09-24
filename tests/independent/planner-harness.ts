@@ -6,32 +6,29 @@
  *  - creates no blocking split;
  *  - `unsolvable` is empty iff the root can pass at the allowed colleges (oracle, every offered course taken);
  *  - when it is empty, the planned transcript is valid per the oracle, and plan.result agrees with the oracle;
- *  - minimality: the plan's objective equals the brute-force minimum (units mode by default; see OBJECTIVE).
+ *  - minimality: the plan's objective equals the brute-force minimum (the stats' weights; see OBJECTIVES).
  */
 import type { Agreement, CourseId, Plan } from '../../src/engine/types'
 import { solve, type SolveOptions } from '../../src/engine/solve.ts'
-import { bruteMin, feasible, planCost, PURE_UNITS, type Weights } from './brute.ts'
+import { bruteMin, feasible, planCost, PURE_UNITS, subjectChains, type Weights } from './brute.ts'
 import { instOf, isUcOnly, oracle, uniqueRows } from './oracle.ts'
 
 /**
- * Planner objective under test.
+ * Planner objectives under test, in quarter units as solve() takes them (`collegePenalty`, `chainPenalty`).
  *
- * TODO(after the planner-penalty merge): the parallel change adds college / chain penalties to solve() (units + 5 per
- * extra non-home college + 5 per subject chain across more than one college). To enforce that objective:
- *  1. set OPTION_NAMES to the SolveOptions field names it lands with (P_COLLEGE / P_CHAIN are placeholders);
- *  2. check that brute.ts `planCost` counts "extra college" and "subject chain" exactly as solve() does;
- *  3. run with INDEPENDENT_PLANNER_WEIGHTS=5,5 (or make it the default below) — the brute force then minimises the
- *     weighted objective and the app is passed the same weights.
- * Until then, pure-units mode passes weights 0 under those names, so the check stays valid after the merge as long
- * as the names match (if they do not, the units check fails loudly on multi-college plans).
+ * Default: the product default, units + 5 per non-home college + 5 per split subject chain (brute.ts `planCost` and
+ * `subjectChains` restate the planner's definitions), then a pure-units pass (weights 0). Both must be green.
+ * INDEPENDENT_PLANNER_WEIGHTS=c,h runs that one objective only (e.g. 0,0 for pure units, 2.5,8 for odd weights).
  */
 export const OPTION_NAMES = { college: 'collegePenalty', chain: 'chainPenalty' } as const
-export const OBJECTIVE: Weights = (() => {
+export const PRODUCT_DEFAULT: Weights = { college: 5, chain: 5 }
+export const OBJECTIVES: Weights[] = (() => {
   const w = process.env.INDEPENDENT_PLANNER_WEIGHTS
-  if (!w) return PURE_UNITS
+  if (!w) return [PRODUCT_DEFAULT, PURE_UNITS]
   const [college, chain] = w.split(',').map(Number)
-  return { college: college || 0, chain: chain || 0 }
+  return [{ college: college || 0, chain: chain || 0 }]
 })()
+export const describeWeights = (w: Weights) => (!w.college && !w.chain ? 'pure units' : `weights ${w.college},${w.chain}`)
 
 export type Systems = Record<number, 'quarter' | 'semester'>
 
@@ -46,7 +43,8 @@ export class PlannerStats {
   examples: { kind: string; run: Omit<PlanRun, 'a' | 'systems'>; detail: unknown }[] = []
   times: number[] = []
   readonly name: string
-  constructor(name: string) { this.name = name }
+  readonly weights: Weights
+  constructor(name: string, weights: Weights = OBJECTIVES[0]) { this.name = name; this.weights = weights }
   violate(kind: string, run: PlanRun, detail: unknown) {
     this.violations[kind] = (this.violations[kind] ?? 0) + 1
     if (this.examples.length < 20) this.examples.push({ kind, run: { file: run.file, taken: [...run.taken].sort(), allowed: run.allowed, home: run.home }, detail })
@@ -56,11 +54,15 @@ export class PlannerStats {
     const q = (p: number) => { const s = [...this.times].sort((x, y) => x - y); return s.length ? Number(s[Math.min(s.length - 1, Math.floor(p * s.length))].toFixed(2)) : null }
     return {
       name: this.name, runs: this.runs, solvable: this.solvable, validWhenSolvable: this.validWhenSolvable,
-      objective: OBJECTIVE, minimality: this.minimality, ruleViolations: this.violations,
+      objective: this.weights, minimality: this.minimality, ruleViolations: this.violations,
       solveMs: { p50: q(0.5), p95: q(0.95), max: q(1) },
     }
   }
 }
+
+/** The weights are quarter units (5 = about one course), as solve() takes them: in a semester home's units, 2/3. */
+export const inHomeUnits = (w: Weights, termSystem: 'quarter' | 'semester'): Weights =>
+  termSystem === 'semester' ? { college: w.college / 1.5, chain: w.chain / 1.5 } : w
 
 /** Unit conversion to the home system, exact (the planner's totals use exact converted units). */
 export const unitsFn = (a: Agreement, home: number, systems: Systems = {}) => (c: CourseId) => {
@@ -70,14 +72,21 @@ export const unitsFn = (a: Agreement, home: number, systems: Systems = {}) => (c
   return from === to ? k.units : from === 'semester' ? k.units * 1.5 : k.units / 1.5
 }
 
+/** The options solve() gets for a run: the harness's own call and the determinism re-runs share them. */
+export function solveOptions(run: Pick<PlanRun, 'allowed' | 'home' | 'systems'>, weights: Weights): SolveOptions {
+  const { allowed, home, systems = {} } = run
+  const termSystem = systems[home] ?? 'quarter'
+  return {
+    allowed, home, termSystem, unitSystems: systems, unitCap: termSystem === 'semester' ? 12 : 16, maxTerms: 6,
+    [OPTION_NAMES.college]: weights.college, [OPTION_NAMES.chain]: weights.chain,
+  }
+}
+
 export function runPlanner(S: PlannerStats, run: PlanRun): Plan | undefined {
   const { a, taken, allowed, home, systems = {} } = run
   S.runs++
   const termSystem = systems[home] ?? 'quarter'
-  const opts: SolveOptions & Record<string, unknown> = {
-    allowed, home, termSystem, unitSystems: systems, unitCap: termSystem === 'semester' ? 12 : 16, maxTerms: 6,
-    [OPTION_NAMES.college]: OBJECTIVE.college, [OPTION_NAMES.chain]: OBJECTIVE.chain,
-  }
+  const opts = solveOptions(run, S.weights)
   const T = new Set(taken)
   let p: Plan
   const t0 = performance.now()
@@ -107,13 +116,13 @@ export function runPlanner(S: PlannerStats, run: PlanRun): Plan | undefined {
   }
 
   if (run.brute && canPass && after.isValid) {
-    const unitsOf = unitsFn(a, home, systems)
-    const b = bruteMin(a, T, { allowed, home, unitsOf, weights: OBJECTIVE, budget: run.bruteBudget })
+    const unitsOf = unitsFn(a, home, systems), weights = inHomeUnits(S.weights, termSystem)
+    const b = bruteMin(a, T, { allowed, home, unitsOf, weights, budget: run.bruteBudget })
     if (b === 'budget') S.minimality.budget++
     else if (!b) S.violate('BRUTE_FOUND_NO_PLAN', run, { planned })
     else {
       S.minimality.checked++
-      const mine = planCost(planned, unitsOf, OBJECTIVE, home)
+      const mine = planCost(planned, unitsOf, weights, home, subjectChains(a, T))
       if (Math.abs(mine.cost - b.cost) < 1e-6) S.minimality.agree++
       else if (mine.cost < b.cost) S.violate('BEATS_BRUTE_FORCE', run, { app: mine, brute: b, planned })
       else if (p.optimal !== false) S.violate('OPTIMAL_BUT_NOT_MINIMAL', run, { app: mine, brute: b, planned: [...planned].sort(), optimal: p.optimal })
