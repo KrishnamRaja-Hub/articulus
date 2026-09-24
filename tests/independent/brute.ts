@@ -9,8 +9,8 @@
  *
  * Objective (weights in the home system's units; the harness converts the quarter-unit weights):
  *  - units mode (weights 0): converted units, exactly the pure-units objective.
- *  - weighted mode: units + college * (distinct non-home colleges of PLANNED courses) + chain * (split subject
- *    chains, see `subjectChains`). Both penalties only grow as courses are added, so the unit lower bound stays
+ *  - weighted mode: units + college * (distinct non-home colleges of PLANNED courses) + chain * (k - 1) per subject
+ *    chain with a planned course, k its colleges (planned and taken), see `subjectChains`. Both penalties only grow as courses are added, so the unit lower bound stays
  *    admissible.
  */
 import type { Agreement, CourseId, ReqNode, Requirement } from '../../src/engine/types'
@@ -64,8 +64,8 @@ export function subjectChains(a: Agreement, taken: Iterable<CourseId>): Chain[] 
     .map(([subject, { members }]) => ({ subject, members, took: new Set(T.filter((c) => members.has(c)).map(instOf)) }))
 }
 
-/** The weighted objective of a plan (a set of planned courses). A chain is split when it has a planned course and
- *  its planned courses plus the colleges where it was taken span two or more colleges; taken-only chains cost 0. */
+/** The weighted objective of a plan (a set of planned courses). A chain with a planned course whose planned courses
+ *  plus the colleges where it was taken span k colleges costs chain * (k - 1); taken-only chains cost 0. */
 export function planCost(set: Iterable<CourseId>, unitsOf: (c: CourseId) => number, w: Weights, home?: number, chains: Chain[] = []): { cost: number; units: number } {
   const cs = [...set]
   const units = cs.reduce((s, c) => s + unitsOf(c), 0)
@@ -74,7 +74,7 @@ export function planCost(set: Iterable<CourseId>, unitsOf: (c: CourseId) => numb
   let split = 0
   for (const ch of chains) {
     const mine = cs.filter((c) => ch.members.has(c))
-    if (mine.length && new Set([...ch.took, ...mine.map(instOf)]).size >= 2) split++
+    if (mine.length) split += new Set([...ch.took, ...mine.map(instOf)]).size - 1
   }
   return { cost: units + w.college * away + w.chain * split, units }
 }

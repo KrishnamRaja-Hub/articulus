@@ -60,7 +60,7 @@ What may legitimately cross college lines: each UC requirement row is independen
 2. Split each set into independent parts (shared courses, one subject chain, or a row where a new split could appear) and run a branch-and-bound over each part's groups. An outer branch-and-bound chooses which colleges other than home to use. Shared courses count once (De Anza MATH 1B serves MATH 51 and MATH 52). Honors twins are used only where that college allows mixing. Courses missing from the catalog are never planned.
 3. The cost is compared in this order:
    1. fewest unmet requirements;
-   2. then **units + `collegePenalty` × (colleges other than `home` that planned courses use) + `chainPenalty` × (subject chains split across colleges)**;
+   2. then **units + `collegePenalty` × (colleges other than `home` that planned courses use) + `chainPenalty` × (k − 1) for each subject chain, where k is the number of colleges its courses are taken at (planned, plus where the student took courses of it; a chain across 3 colleges costs twice one across 2)**;
    3. then the tie-breaks: fewest new splits, fewest units away from home, fewer honors courses, fewer courses, then course ids.
 
    Both penalties are in quarter units and default to 5 (about one course). A semester home converts them (5 quarter = 3.33 semester). Setting both weights to 0 gives pure minimum units. Only planned courses count toward the college penalty; taken courses never do.

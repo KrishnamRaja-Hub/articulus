@@ -98,11 +98,11 @@ A refresh can legitimately change other scenarios too, since the rows themselves
 
 The brute force (`brute.ts` `planCost`, `subjectChains`) restates the planner's documented cost. It imports no app code.
 
-- **Cost:** units + college × (distinct colleges other than home among the PLANNED courses) + chain × (split subject chains). Taken courses never add a college.
+- **Cost:** units + college × (distinct colleges other than home among the PLANNED courses) + chain × (k − 1) for each subject chain with a planned course, k the colleges its planned and taken courses span. Taken courses never add a college.
 - **UC subject of a row:** take the tokens of its id, up to the first comma, before the first token that contains a digit (`MATH 51` gives MATH, `COM SCI M51A` gives COM SCI, `CHEM 1A, CHEM 1AL` gives CHEM). An id that starts with a number has no subject. The CC course prefix plays no part.
 - **Subject chain:** a subject with two or more distinct row ids that have CC groups at any college. Rows anywhere in the tree count, optional subtrees included.
 - **Membership:** a course belongs to a chain when it, or its honors twin (one trailing H added or removed), is listed in a group of one of the chain's rows. A course can belong to several chains.
-- **Split:** a chain is split when it has at least one planned course and its planned courses, together with the colleges of the taken courses that belong to it, span two or more colleges. A chain with only taken courses costs 0.
+- **Split:** a chain is split when it has at least one planned course and its planned courses, together with the colleges of the taken courses that belong to it, span k ≥ 2 colleges; it costs chain × (k − 1), so a chain across 3 colleges costs twice one across 2. A chain with only taken courses costs 0.
 
 Minimality compares this cost only. The planner's tie-breaks (new splits, units away from home, honors, course count, ids) are checked against the full cost vector by the oracle in `src/engine/solve.test.ts`.
 
