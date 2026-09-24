@@ -3,7 +3,7 @@ import { gsap } from 'gsap'
 import { useGSAP } from '@gsap/react'
 import { useReveal } from '../motion/useReveal'
 import { byId, colleges, loadAgreement, majorsFor, unitSystems, universities } from '../data'
-import { has, honorsMix, verifySchedule } from '../engine/verify'
+import { has, honorsColleges, verifySchedule } from '../engine/verify'
 import { solve } from '../engine/solve'
 import type { Agreement, CourseGroup, CourseId, Plan, ReqNode, Requirement, ValidationResult } from '../engine/types'
 import Button from '../ui/Button'
@@ -243,7 +243,7 @@ export default function Planner() {
                 const fix = plan.chosen[v.requirementId]
                 // honors twins count as the same course where the engine allows mixing (MATH 1BH stands in for MATH 1B)
                 const req = rows.find((r) => r.req.id === v.requirementId)?.req
-                const mix = !!req && honorsMix(req)
+                const mix = req ? honorsColleges(req) : false
                 const todo = fix?.courses.filter((c) => !has(taken, c, mix)) ?? []
                 // this violation's own pieces that the repair does not reuse: they earn nothing toward it
                 const wasted = v.partials.flatMap((p) => p.have).filter((c) => !fix || !has(new Set(fix.courses), c, mix))
