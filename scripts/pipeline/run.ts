@@ -1,17 +1,19 @@
 /*
  * The data pipeline shared by `npm run fetch` and `npm run renormalize`:
- *   raw (ASSIST or data/raw) -> normalize -> staging -> validate (+ diff guard, canaries) -> app suites -> publish
- * Nothing under data/ changes unless every gate passes.
+ *   lock + crash recovery -> raw (ASSIST or data/raw) -> normalize -> staging -> validate (+ diff guard, canaries)
+ *   -> app suites -> publish
+ * Nothing under data/ changes unless every gate passes. Two runs never overlap (lock files on the data dir and the
+ * work dir), each run stages in its own directory, and a crash mid-publish is repaired by the next run.
  */
-import { appendFileSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { appendFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { NORMALIZE_VERSION } from '../../src/engine/normalize.ts'
 import { assistClient } from './assist-client.ts'
 import { PIPELINE, httpConfig, type PipelineConfig } from './config.ts'
 import { fetchRaw, type RawBundle } from './fetch.ts'
-import { swapIn } from './publish.ts'
+import { LockError, acquireLock, dataLockPath, recoverPublish, swapIn, treeHash, type Lock, type SwapHook } from './publish.ts'
 import { summaryMarkdown, summaryText } from './report.ts'
-import { build, readRaw, writeBuilt, writeRaw, type RawManifest } from './store.ts'
+import { build, hasRaw, readRaw, writeBuilt, writeRaw, type RawManifest } from './store.ts'
 import { addSuites, runSuites, type Suite } from './suites.ts'
 import { validateData, type Meta, type Report } from './validate.ts'
 
@@ -32,6 +34,20 @@ export interface RunOptions {
   /** Validate but do not publish. */
   dryRun?: boolean
   log?: (m: string) => void
+  /**
+   * Allow publishing when there is no previous data to diff against. Without it, a run with no data/index.json
+   * refuses to publish: a crash or a deleted data/ must never switch the diff guard off.
+   */
+  firstPublish?: boolean
+  /**
+   * On a fetch run whose published data was built by another NORMALIZE_VERSION, first rebuild it offline from the
+   * raw store and publish that (default true), so a version bump never waits on ASSIST for trusted data.
+   */
+  autoRenormalize?: boolean
+  /** Break locks older than this (default 6 h). A lock whose process is gone is broken at once. */
+  lockMaxAgeMs?: number
+  /** Test seams: a throw simulates a crash at that point. */
+  hooks?: { swap?: SwapHook; beforePublish?: () => void }
 }
 export interface RunResult {
   ok: boolean
@@ -41,28 +57,114 @@ export interface RunResult {
   rawChanged: boolean
   report?: Report
   error?: string
-  stage: 'fetch' | 'build' | 'validate' | 'suites' | 'publish' | 'done'
+  stage: 'lock' | 'preflight' | 'fetch' | 'build' | 'validate' | 'suites' | 'publish' | 'done'
+  /** An automatic offline renormalize (NORMALIZE_VERSION changed) was published before this run's fetch. */
+  renormalized?: boolean
 }
 
 const writeJson = (p: string, v: unknown, indent = 2) => writeFileSync(p, JSON.stringify(v, null, indent) + '\n')
 
+const SECRET_NAME = /TOKEN|SECRET|PASSW|KEY|AUTH|COOKIE|CREDENTIAL|PRIVATE|SESSION/i
+
+/**
+ * Remove credentials from text bound for logs, failure.md, report.md and RunResult.error (which the workflow posts
+ * to issues): values of secret-looking env vars, GitHub tokens, bearer/basic auth, cookies and antiforgery tokens,
+ * and URL userinfo.
+ */
+export function redact(text: string, env: NodeJS.ProcessEnv = process.env): string {
+  let out = text
+  const values = Object.entries(env).filter(([k, v]) => SECRET_NAME.test(k) && v && v.length >= 6).map(([, v]) => v!).sort((a, b) => b.length - a.length)
+  for (const v of values) out = out.split(v).join('***')
+  return out
+    .replace(/\b(gh[pousr]_[A-Za-z0-9]{16,}|github_pat_[A-Za-z0-9_]{16,})/g, '***')
+    .replace(/\b(Bearer|Basic|token)\s+[A-Za-z0-9._~+/=-]{8,}/gi, '$1 ***')
+    .replace(/((?:Set-)?Cookie|Authorization|X-XSRF-TOKEN|XSRF-TOKEN|\.AspNetCore\.[\w.-]+)(\s*[:=]\s*)[^\s;,'"]+/gi, '$1$2***')
+    .replace(/(\w+:\/\/)[^/\s:@]+:[^/\s@]+@/g, '$1***@')
+}
+
+/** A Markdown code fence longer than any backtick run in the content, so the content cannot close it (L-7). */
+export const fenced = (s: string) => {
+  const f = '`'.repeat(Math.max(3, ...[...s.matchAll(/`+/g)].map((m) => m[0].length + 1)))
+  return `${f}\n${s}\n${f}`
+}
+
+/**
+ * Lock, recover from any crashed publish, renormalize stale data offline if needed, then run the pipeline.
+ * A second run on the same data dir or work dir fails fast at stage `lock` and touches nothing.
+ */
 export async function runPipeline(o: RunOptions): Promise<RunResult> {
-  const cfg = o.cfg ?? PIPELINE, env = o.env ?? process.env, log = o.log ?? console.log
+  const env = o.env ?? process.env, rawLog = o.log ?? console.log, cfg = o.cfg ?? PIPELINE
+  const log = (m: string) => rawLog(redact(m, env))
+  const dataDir = resolve(o.dataDir), workDir = resolve(o.workDir)
+  const locks: Lock[] = []
+  try {
+    try {
+      mkdirSync(workDir, { recursive: true })
+      mkdirSync(resolve(dataDir, '..'), { recursive: true })
+      locks.push(acquireLock(dataLockPath(dataDir), `${o.source} run`, o.lockMaxAgeMs))
+      locks.push(acquireLock(join(workDir, '.lock'), `${o.source} run`, o.lockMaxAgeMs))
+    } catch (e) {
+      const error = redact(e instanceof LockError ? e.message : String((e as Error).stack ?? e), env)
+      log(`FAILED at lock: ${error}`)
+      return { ok: false, published: false, contentChanged: false, rawChanged: false, error, stage: 'lock' }
+    }
+    for (const m of recoverPublish(dataDir)) log(`recovery: ${m}`)
+    // Staging dirs of crashed runs: ours are unique per run, and the lock means no live run owns one.
+    for (const f of readdirSync(workDir)) if (f.startsWith('staging')) rmSync(join(workDir, f), { recursive: true, force: true })
+
+    let renormalized = false
+    const stale = o.source === 'assist' && o.autoRenormalize !== false && !o.dryRun ? staleVersion(dataDir, cfg) : null
+    if (stale !== null) {
+      log(`published data was built by normalize v${stale} (code is v${NORMALIZE_VERSION}): renormalizing from the raw store before fetching`)
+      const r = await runLocked({ ...o, source: 'raw' }, dataDir, workDir, env, log)
+      renormalized = r.published
+      log(r.published ? 'renormalize published; continuing with the fetch' : `renormalize did not publish (failed at ${r.stage}); continuing with the fetch`)
+    }
+    const r = await runLocked(o, dataDir, workDir, env, log)
+    return stale !== null ? { ...r, renormalized } : r
+  } finally {
+    for (const l of locks.reverse()) l.release()
+  }
+}
+
+/** The published data's normalize version, when it differs from the code's and a raw store can rebuild it. */
+export function staleVersion(dataDir: string, cfg: PipelineConfig = PIPELINE): number | null {
+  if (!hasRaw(dataDir, cfg)) return null
+  try {
+    const v = (JSON.parse(readFileSync(join(dataDir, 'meta.json'), 'utf8')) as Meta).normalizeVersion
+    return typeof v === 'number' && v !== NORMALIZE_VERSION ? v : null
+  } catch { return null }
+}
+
+/** Files rewritten at publish time (the validation stamp), so excluded from the validated-tree hash. */
+const STAMPED = ['meta.json', 'validation-report.json']
+
+async function runLocked(o: RunOptions, dataDir: string, workDir: string, env: NodeJS.ProcessEnv, log: (m: string) => void): Promise<RunResult> {
+  const cfg = o.cfg ?? PIPELINE
   const now = o.now ?? new Date()
-  const dataDir = resolve(o.dataDir), workDir = resolve(o.workDir), staging = join(workDir, 'staging', 'data')
-  rmSync(join(workDir, 'staging'), { recursive: true, force: true })
   for (const f of ['validation-report.json', 'report.md', 'failure.md']) rmSync(join(workDir, f), { force: true })
+  // Unique per run (H-2): nothing another process does to the work dir can change what this run validated.
+  const stagingRoot = mkdtempSync(join(workDir, 'staging-')), staging = join(stagingRoot, 'data')
   mkdirSync(staging, { recursive: true })
-  let stage: RunResult['stage'] = 'fetch'
-  const fail = (error: string, report?: Report): RunResult => {
-    writeFileSync(join(workDir, 'failure.md'), `### Data refresh failed at stage \`${stage}\`\n\n\`\`\`\n${error.slice(0, 6000)}\n\`\`\`\n${report ? '\n' + summaryMarkdown(report) + '\n' : ''}`)
+  let stage: RunResult['stage'] = 'preflight'
+  const fail = (err: string, report?: Report): RunResult => {
+    const error = redact(err, env)
+    writeFileSync(join(workDir, 'failure.md'), `### Data refresh failed at stage \`${stage}\`\n\n${fenced(error.slice(0, 6000))}\n${report ? '\n' + redact(summaryMarkdown(report), env) + '\n' : ''}`)
     log(`FAILED at ${stage}: ${error.split('\n')[0]}`)
     log(`published data untouched: ${dataDir}`)
     return { ok: false, published: false, contentChanged: false, rawChanged: false, report, error, stage }
   }
 
   try {
+    // 0. Never publish without a baseline unless asked (H-3): a missing data/ must not switch the diff guard off.
+    const hasPrev = existsSync(join(dataDir, 'index.json'))
+    if (!hasPrev && !o.firstPublish && !o.dryRun) {
+      return fail(`no published data at ${dataDir} (index.json missing), so the diff guard has nothing to compare against. ` +
+        'Restore it (git checkout -- data) and rerun; pass --first-publish only if this really is the first publish.')
+    }
+
     // 1. raw payloads
+    stage = 'fetch'
     let bundle: RawBundle
     if (o.source === 'assist') {
       const http = httpConfig(env)
@@ -87,32 +189,37 @@ export async function runPipeline(o: RunOptions): Promise<RunResult> {
     // 3. validate staged data against the contract, invariants, canaries, and the published data (diff guard)
     stage = 'validate'
     const acceptDiff = o.acceptDiff || /^(1|true|yes)$/i.test(env[cfg.diff.overrideEnv] ?? '')
-    const report = validateData(staging, { cfg, mode: 'publish', now, staged: true, prevDir: existsSync(join(dataDir, 'index.json')) ? dataDir : undefined, acceptDiff, notes: built.notes, templateMismatches: built.templateMismatches })
+    const report = validateData(staging, { cfg, mode: 'publish', now, staged: true, prevDir: hasPrev ? dataDir : undefined, acceptDiff, notes: built.notes, templateMismatches: built.templateMismatches })
 
     // 4. the app's own suites against the staged data
     if (report.passed && !o.skipSuites) {
       stage = 'suites'
       addSuites(report, runSuites(o.repoRoot, staging, o.suites, log))
     }
+    const validated = treeHash(staging, STAMPED)
     const rawChanged = rawDiffers(dataDir, staging, cfg)
     writeJson(join(workDir, 'validation-report.json'), report)
-    writeFileSync(join(workDir, 'report.md'), summaryMarkdown(report) + '\n')
+    writeFileSync(join(workDir, 'report.md'), redact(summaryMarkdown(report), env) + '\n')
     log(summaryText(report))
     if (!report.passed) return fail(`${report.counts.error} validation error(s); see ${join(workDir, 'validation-report.json')}`, report)
     if (o.dryRun) { log('dry run: not publishing'); return { ok: true, published: false, contentChanged: !!report.diff?.contentChanged, rawChanged, report, stage: 'done' } }
 
-    // 5. publish: meta.json records the passed validation (DATA_CONTRACT.md), then swap the directory in
+    // 5. publish: meta.json records the passed validation (DATA_CONTRACT.md), then swap the directory in.
+    //    What gets published must be byte-for-byte what was validated.
     stage = 'publish'
+    if (treeHash(staging, STAMPED) !== validated) return fail('staged data changed after validation; refusing to publish', report)
+    o.hooks?.beforePublish?.()
     const published: Report = { ...report, dataDir: 'data' }
     writeJson(join(staging, 'validation-report.json'), published, 1)
     writeJson(join(staging, 'meta.json'), { ...meta, validation: { passed: true, at: now.toISOString(), checks: report.checks, report: 'data/validation-report.json' } })
-    swapIn(staging, dataDir)
-    rmSync(join(workDir, 'staging'), { recursive: true, force: true })
+    swapIn(staging, dataDir, o.hooks?.swap)
     const contentChanged = report.diff?.contentChanged ?? true
     log(`published ${built.index.length} agreements to ${dataDir} (${contentChanged ? 'content changed' : 'content unchanged; meta refreshed'})`)
     return { ok: true, published: true, contentChanged, rawChanged, report, stage: 'done' }
   } catch (e) {
     return fail((e as Error).stack ?? String(e))
+  } finally {
+    rmSync(stagingRoot, { recursive: true, force: true })
   }
 }
 
@@ -130,6 +237,6 @@ export function githubOutputs(r: RunResult, env = process.env) {
   if (!env.GITHUB_OUTPUT) return
   appendFileSync(env.GITHUB_OUTPUT, [
     `ok=${r.ok}`, `published=${r.published}`, `content_changed=${r.contentChanged}`, `raw_changed=${r.rawChanged}`, `stage=${r.stage}`,
-    `errors=${r.report?.counts.error ?? ''}`, `changed_agreements=${r.report?.diff?.changed.length ?? ''}`,
+    `errors=${r.report?.counts.error ?? ''}`, `changed_agreements=${r.report?.diff?.changed.length ?? ''}`, `renormalized=${!!r.renormalized}`,
   ].join('\n') + '\n')
 }

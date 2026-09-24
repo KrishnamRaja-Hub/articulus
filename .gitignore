@@ -5,3 +5,7 @@ tsconfig.tsbuildinfo
 *.log
 # data pipeline scratch space (staging, reports)
 .pipeline
+# pipeline lock files and crashed-publish leftovers (removed by the next run)
+.data.lock
+.data-next-*
+.data-prev-*
