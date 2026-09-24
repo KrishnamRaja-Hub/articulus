@@ -65,14 +65,18 @@ export default function Planner() {
   const trust = useTrust()
 
   const [agreement, setAgreement] = useState<Agreement | null>(null)
+  const [loadError, setLoadError] = useState<unknown>(null)
   const majors = majorsFor(uc)
   const entry = majors.find((m) => m.major === majorName) ?? majors[0]
   const load = useRef(0)
   useEffect(() => {
     const id = ++load.current
     setAgreement(null)
-    loadAgreement(entry.file).then((a) => { if (load.current === id) setAgreement(a) })
+    loadAgreement(entry.file).then((a) => { if (load.current === id) setAgreement(a) },
+      (e) => { if (load.current === id) setLoadError(e ?? new Error('Agreement failed to load')) })
   }, [entry.file])
+  // a missing or unreadable agreement goes to the section's error boundary (TESTER2_REPORT M-8)
+  if (loadError) throw loadError
   const terms = byId[home].terms, UNIT_CAP = capFor(home)
   // first term: the next one the student can still register for at the home college, unless they pick another
   const startOptions = termsFrom(nextOpenTerm(today, terms) ?? { season: 'Fall', year: today.getUTCFullYear() || 2026 }, terms, START_OPTIONS)
