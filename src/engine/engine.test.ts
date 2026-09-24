@@ -72,7 +72,7 @@ describe('solve', () => {
 
 describe('term systems', () => {
   it('semester home: cap 12, Fall/Spring alternating', () => {
-    const p = solve(new Set(), A, { allowed: [SM], home: SM, termSystem: 'semester', unitSystems })
+    const p = solve(new Set(), A, { allowed: [SM], home: SM, termSystem: 'semester', unitSystems, startTerm: { season: 'Fall', year: 2026 } })
     expect(p.terms.length).toBeGreaterThan(1)
     p.terms.forEach((t, i) => {
       expect(t.units).toBeLessThanOrEqual(12)

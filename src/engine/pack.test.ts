@@ -5,6 +5,7 @@ import institutions from '../../data/institutions.json'
 import type { Agreement, Course, Institution, Plan, Requirement } from './types'
 import { solve, type SolveOptions } from './solve'
 import { prereqs } from './sequence'
+import { nextOpenTerm } from './calendar'
 
 const EC = 103
 const unitSystems = Object.fromEntries((institutions as Institution[]).map((i) => [i.id, i.terms]))
@@ -171,5 +172,71 @@ describe('units (F-16)', () => {
   it('three 1-unit quarter courses are 2 semester units, not 1.5', () => {
     const p = run(agreement([['1:A 1', '1:B 1', '1:C 1']], [['1:A 1', 1], ['1:B 1', 1], ['1:C 1', 1]]), opts)
     expect(p.totalUnits).toBe(2)
+  })
+})
+
+describe('pack: real calendars (H-3)', () => {
+  const sys = { 1: 'quarter' as const, 2: 'semester' as const }
+  const fall = { season: 'Fall' as const, year: 2026 }
+  it('De Anza + Orange Coast: every course sits in a term of its own college calendar', () => {
+    const p = solve(new Set(), bme as unknown as Agreement, { allowed: [113, 74], home: 113, termSystem: 'quarter', unitSystems, startTerm: fall })
+    expect(p.terms.some((t) => t.system === 'semester')).toBe(true)
+    for (const t of p.terms) for (const c of t.courses) expect(t.system, `${c} in ${t.name}`).toBe(unitSystems[+c.split(':')[0]])
+    for (const t of p.terms.filter((x) => x.system === 'semester')) expect(['Fall', 'Spring']).toContain(t.season)
+  })
+  it('mixed plan: quarter and semester terms aligned on one timeline, named by calendar', () => {
+    const a = agreement([['1:A 1A', '1:A 1B', '1:A 1C'], ['2:S 1A', '2:S 1B']],
+      [['1:A 1A', 4], ['1:A 1B', 4], ['1:A 1C', 4], ['2:S 1A', 3], ['2:S 1B', 3]])
+    const p = run(a, { unitSystems: sys, termSystem: 'quarter', startTerm: fall, unitCap: 30 })
+    expect(p.terms.map((t) => [t.name, t.courses])).toEqual([
+      ['Fall 2026 (quarter)', ['1:A 1A']], ['Fall 2026 (semester)', ['2:S 1A']],
+      ['Winter 2027 (quarter)', ['1:A 1B']], ['Spring 2027 (semester)', ['2:S 1B']], ['Spring 2027 (quarter)', ['1:A 1C']],
+    ])
+    const spring = p.terms.find((t) => t.name === 'Spring 2027 (semester)')!
+    expect(spring.span).toEqual([3 * 2026 + 1, 3 * 2026 + 2])
+    expect(spring.concurrent).toEqual(['Winter 2027 (quarter)', 'Spring 2027 (quarter)'])
+    expect(p.terms[0].concurrent).toEqual(['Fall 2026 (semester)'])
+  })
+  it('a semester prerequisite holds a quarter course until the semester ends', () => {
+    const a = agreement([['2:MATH 1'], ['1:MATH 2']], [['2:MATH 1', 4, 'Calculus I'], ['1:MATH 2', 5, 'Calculus II']])
+    const p = run(a, { unitSystems: sys, termSystem: 'quarter', startTerm: { season: 'Winter', year: 2027 } })
+    expect(p.terms.map((t) => t.name)).toEqual(['Spring 2027 (semester)', 'Fall 2027 (quarter)'])
+  })
+  it('the cap applies to the combined load of overlapping terms', () => {
+    // quarter home, cap 16: a Spring semester course (4s = 6q) runs alongside both Winter and Spring quarter
+    const a = agreement([['1:A 1'], ['1:B 1'], ['1:C 1'], ['2:S 1']], [['1:A 1', 5], ['1:B 1', 5], ['1:C 1', 5], ['2:S 1', 4]])
+    const p = run(a, { unitSystems: sys, termSystem: 'quarter', startTerm: { season: 'Winter', year: 2027 }, unitCap: 16 })
+    expect(p.terms.map((t) => [t.name, t.units, t.load])).toEqual([
+      ['Winter 2027 (quarter)', 10, 16], ['Spring 2027 (semester)', 6, 16], ['Spring 2027 (quarter)', 5, 11],
+    ])
+    expect(p.terms.some((t) => t.overCap)).toBe(false)
+  })
+  it('overCap: a course over the cap alone runs with nothing alongside and is flagged', () => {
+    const a = agreement([['1:BIG 1'], ['2:S 1']], [['1:BIG 1', 20], ['2:S 1', 4]])
+    const p = run(a, { unitSystems: sys, termSystem: 'quarter', startTerm: fall, unitCap: 16 })
+    const big = p.terms.find((t) => t.courses.includes('1:BIG 1'))!
+    expect(big.overCap).toBe(true)
+    expect(big.concurrent).toEqual([])
+    expect(p.terms.filter((t) => t.overCap)).toHaveLength(1)
+  })
+})
+
+describe('start term', () => {
+  const a = agreement([['1:A 1A', '1:A 1B']], [['1:A 1A', 4], ['1:A 1B', 4]])
+  it('nextOpenTerm: Fall before April 1, otherwise the next Winter (quarter) / Spring (semester)', () => {
+    expect(nextOpenTerm(new Date(2026, 2, 31))).toEqual({ season: 'Fall', year: 2026 })
+    expect(nextOpenTerm(new Date(2026, 3, 1))).toEqual({ season: 'Winter', year: 2027 })
+    expect(nextOpenTerm(new Date(2026, 8, 24), 'semester')).toEqual({ season: 'Spring', year: 2027 })
+    expect(nextOpenTerm(new Date(2026, 11, 20))).toEqual({ season: 'Winter', year: 2027 })
+  })
+  it('default start is nextOpenTerm(today) in the home calendar', () => {
+    const q = nextOpenTerm(new Date(), 'quarter'), s = nextOpenTerm(new Date(), 'semester')
+    expect(run(a).terms[0].name).toBe(`${q.season} ${q.year}`)
+    expect(run(a, { termSystem: 'semester', unitSystems: { 1: 'semester' } }).terms[0].name).toBe(`${s.season} ${s.year}`)
+  })
+  it('explicit start is honored; a quarter Spring start skips the Spring semester already under way', () => {
+    expect(run(a, { startTerm: { season: 'Spring', year: 2028 } }).terms.map((t) => t.name)).toEqual(['Spring 2028', 'Fall 2028'])
+    const p = run(agreement([['2:S 1']], [['2:S 1', 3]]), { unitSystems: { 2: 'semester' }, startTerm: { season: 'Spring', year: 2027 } })
+    expect(p.terms.map((t) => t.name)).toEqual(['Fall 2027'])
   })
 })
