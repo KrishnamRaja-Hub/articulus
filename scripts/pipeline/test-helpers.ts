@@ -32,7 +32,8 @@ export function snapshot(dir: string): Record<string, string> {
 
 export const run = (base: string, dataDir: string, extra: Partial<RunOptions> & { envExtra?: Record<string, string> } = {}) => {
   const { envExtra, ...rest } = extra
-  return runPipeline({ source: 'assist', repoRoot: REPO, dataDir, workDir: join(dataDir, '..', 'work'), now: NOW, env: fastEnv(base, envExtra), skipSuites: true, log: () => {}, ...rest })
+  // firstPublish only where there is nothing yet (tests of the no-baseline refusal pass firstPublish: false).
+  return runPipeline({ source: 'assist', repoRoot: REPO, dataDir, workDir: join(dataDir, '..', 'work'), now: NOW, env: fastEnv(base, envExtra), skipSuites: true, log: () => {}, firstPublish: !existsSync(join(dataDir, 'index.json')), ...rest })
 }
 
 export const readJson = (p: string) => JSON.parse(readFileSync(p, 'utf8'))

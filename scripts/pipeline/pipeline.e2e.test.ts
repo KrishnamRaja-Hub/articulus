@@ -35,7 +35,7 @@ describe('pipeline end to end (mock ASSIST)', () => {
   it('happy path via the CLI: writes agreements, index, institutions, raw, meta.json and the report', async () => {
     const m = await serve()
     const dir = tmp('cli'), data = join(dir, 'data')
-    const { code, out } = await node(['scripts/fetch-assist.ts', '--skip-suites', '--data-dir', data, '--work-dir', join(dir, 'work')], fastEnv(m.url))
+    const { code, out } = await node(['scripts/fetch-assist.ts', '--skip-suites', '--first-publish', '--data-dir', data, '--work-dir', join(dir, 'work')], fastEnv(m.url))
     expect(code, out).toBe(0)
     const meta = readJson(join(data, 'meta.json'))
     expect(meta).toMatchObject({ schema: 1, normalizeVersion: NORMALIZE_VERSION, academicYear: { id: 77, code: '2026-2027' }, validation: { passed: true, report: 'data/validation-report.json' } })
@@ -100,7 +100,7 @@ describe('pipeline end to end (mock ASSIST)', () => {
   it('the CLI exits 2 on a fetch failure and writes nothing', async () => {
     const m = await serve({ faults: [{ match: '/api/institutions', status: 500 }] })
     const dir = tmp('cli-fail'), data = join(dir, 'data')
-    const { code } = await node(['scripts/fetch-assist.ts', '--skip-suites', '--data-dir', data, '--work-dir', join(dir, 'work')], fastEnv(m.url))
+    const { code } = await node(['scripts/fetch-assist.ts', '--skip-suites', '--first-publish', '--data-dir', data, '--work-dir', join(dir, 'work')], fastEnv(m.url))
     expect(code).toBe(2)
     expect(existsSync(data)).toBe(false)
   })

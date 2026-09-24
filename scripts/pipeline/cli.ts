@@ -10,7 +10,7 @@ export function cliArgs(argv: string[]) {
     if (i < 0) return undefined
     return argv[i].includes('=') ? argv[i].slice(f.length + 1) : argv[i + 1]
   }
-  const known = ['--dry-run', '--skip-suites', '--accept-large-change', '--data-dir', '--work-dir']
+  const known = ['--dry-run', '--skip-suites', '--accept-large-change', '--first-publish', '--no-auto-renormalize', '--data-dir', '--work-dir']
   const unknown = argv.filter((a) => a.startsWith('--') && !known.some((k) => a === k || a.startsWith(k + '=')))
   if (unknown.length) { console.error(`unknown flag(s): ${unknown.join(' ')}; known: ${known.join(' ')}`); process.exit(2) }
   return {
@@ -19,5 +19,9 @@ export function cliArgs(argv: string[]) {
     dryRun: flag('--dry-run'),
     skipSuites: flag('--skip-suites'),
     acceptDiff: flag('--accept-large-change'),
+    /** Allow a publish with no previous data (no diff guard baseline). Never needed once data/ exists. */
+    firstPublish: flag('--first-publish'),
+    /** Do not rebuild stale-NORMALIZE_VERSION data from the raw store before a fetch. */
+    autoRenormalize: !flag('--no-auto-renormalize'),
   }
 }
