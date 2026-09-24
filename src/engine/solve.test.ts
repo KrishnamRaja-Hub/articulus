@@ -14,7 +14,8 @@ const unitSystems = Object.fromEntries((institutions as Institution[]).map((i) =
 /** Synthetic agreement: `courses` as [id, units], each requirement as a list of groups. */
 const catalog = (courses: [string, number][]) => Object.fromEntries(courses.map(([id, units]): [string, Course] => {
   const [inst, rest] = id.split(':'); const [prefix, number] = rest.split(' ')
-  return [id, { id, institutionId: +inst, prefix, number, title: id, units }]
+  // A title with no ordinal: these cases test cost, so no enrollment prerequisite may be inferred (prereq.ts).
+  return [id, { id, institutionId: +inst, prefix, number, title: `Course ${prefix}${number}`, units }]
 }))
 // A row with no groups carries an explicit ASSIST reason, as real UC-only rows do (see verify.ucOnly).
 const req = (id: string, groups: string[][]): Requirement =>
@@ -520,7 +521,8 @@ function randomCase(seed: number, hard = false) {
   const cols = seed % 5 === 4 ? [1, 2, 3, 4, 5] : [1, 2, 3]
   for (const c of cols) {
     at[c] = []
-    for (const k of ['M 1A', 'M 1B', 'P 1', 'Q 2'].filter(() => rnd() < (cols.length > 3 ? 0.4 : 0.55))) {
+    // 'M 1', 'M 5' rather than a letter series: 1A < 1B would be an inferred prerequisite, which the oracle does not model
+    for (const k of ['M 1', 'M 5', 'P 1', 'Q 2'].filter(() => rnd() < (cols.length > 3 ? 0.4 : 0.55))) {
       const id = `${c}:${k}`, u = 1 + int(5)
       if (rnd() < (hard ? 0.3 : 0.08)) ghosts.push(id); else courses.push([id, u])
       at[c].push(id)

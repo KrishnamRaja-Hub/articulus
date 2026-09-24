@@ -86,6 +86,9 @@ export interface Plan {
   totalUnits: number
   unsolvable: string[]                     // required reqs with no group at allowed colleges
   optimal?: boolean                        // true: planned set proven minimal-cost (solve: units + penalties); false: not proven
-  prereqOnly?: string[]                    // course ids planned only to meet enrollment prerequisites (not UC requirements)
-  prereqWarnings?: string[]                // prerequisite problems the planner could not resolve, student-facing
+  /** Planned courses that no chosen group needs: enrollment prerequisites of other planned courses, at the same college
+   *  (inferred, sequence.ts). They are in `terms` and `totalUnits`. Absent when there are none. */
+  prereqOnly?: string[]
+  /** Human-readable prerequisite notes, e.g. an inferred prerequisite the agreement lists only at another college. */
+  prereqWarnings?: string[]
 }

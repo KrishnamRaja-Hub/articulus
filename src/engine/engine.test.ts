@@ -86,8 +86,10 @@ describe('term systems', () => {
     for (const t of p.terms) expect(t.units).toBeLessThanOrEqual(12)
   })
   it('a 4-unit semester course counts 6 units in a quarter plan', () => {
-    const [id, c] = Object.entries(A.catalog).find(([, c]) => c.institutionId === SM && c.units === 4)!
-    const p = solve(new Set(), { ...A, root: { kind: 'node', type: 'AND', required: true, children: [{ kind: 'req', id: 'X', label: 'X', units: 4, groups: [{ institutionId: c.institutionId, courses: [id] }] }] } }, { allowed: [SM], termSystem: 'quarter', unitSystems })
+    // One with no inferred enrollment prerequisite at SMC (those are planned and counted too, prereq.ts).
+    const p = Object.entries(A.catalog).filter(([, c]) => c.institutionId === SM && c.units === 4)
+      .map(([id, c]) => solve(new Set(), { ...A, root: { kind: 'node', type: 'AND', required: true, children: [{ kind: 'req', id: 'X', label: 'X', units: 4, groups: [{ institutionId: c.institutionId, courses: [id] }] }] } }, { allowed: [SM], termSystem: 'quarter', unitSystems }))
+      .find((q) => !q.prereqOnly)!
     expect(p.totalUnits).toBe(6)
   })
 })
