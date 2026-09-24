@@ -144,3 +144,54 @@ Checks on the merged result:
 - **Outdated tester checks:** 679 matrix "units sum" failures and the S07 cap check assume the old per-course rounding and the old silent over-cap behavior. F-07's browser setup now produces a valid plan, so it shows green "100%", which is correct.
 - **Cost:** the solver is about 3× slower (about 18 ms per solve), because pruning and split checks re-verify the plan.
 - **5 of 1,320 plans** use 2–3 more units than before (a different tie-break path in UCI CS and UC Davis CSE/ME). Overall total units went down: 68,090.5 → 66,849.
+
+---
+
+# Round 3: business rules and the exact solver
+
+## Business decisions
+
+A wrong "you're fine" (false positive) can cost a student their admission. A wrong "you're failing" (false negative) costs them retakes, time and money. Both count, and the first counts more.
+
+1. **Splits that don't matter are warnings, not failures.** A split only costs the plan when the plan still needs that requirement. A split in a recommended course, or in an alternative the plan doesn't use, is shown in amber: "these courses earn no credit toward it, but your plan doesn't need it."
+2. **"Complete at the UC after transfer" needs proof.** A requirement is UC-only when no college in the agreement offers it and ASSIST says so explicitly for at least one college. A row that ASSIST never mentions stays missing and shows "No ASSIST record · confirm with a counselor".
+3. **The community-college route is always owed first.** In "choose N", UC-only rows fill only the slots a community-college course cannot fill.
+
+## What was built
+
+- **Checker (`verify.ts`):**
+  - Blocking and warning splits.
+  - Requirements deferred to the UC.
+  - New helpers `ucOnly`, `canRoute`, `isDeferrable` and `blockingSplits`.
+- **Planner (`solve.ts`):** an exact minimum-units search that replaces the greedy one. `Plan.optimal` is set to true only when minimality is proven.
+  - It matches a brute-force oracle on 20,000 random cases.
+  - Total units across 990 real solves went from 49,363 to 47,470. For example, UCSD MAE at Saddleback went from 57 to 52 units, because honors MATH A182H covers two requirements.
+  - Typical time is 3–4 ms; the worst case is about 50 ms.
+- **Page:**
+  - The badge reads "Every requirement covered" and shows details for deferred items and warnings.
+  - Amber cards for warning splits.
+  - A "Complete at <UC> after transfer" section.
+  - Cannot-be-met items are listed with the colleges that offer them.
+  - A "minimum units" / "near-minimum" note.
+  - A new warning color.
+
+## Issues found and fixed during the merge
+
+- **UC-only rows based on a placeholder:** 30 of 42 deferrals rested only on a placeholder that our own import code writes. Fixed by the proof rule (decision 2 above).
+- **"Choose N" with a UC-only row:** "choose 2 of: a community-college course, a UC-only row" was called complete with nothing taken. The brute-force oracle caught this. Fixed so the community-college course is owed first.
+- **Rows with no ASSIST record counted as routes:** an unrecorded row was treated as a route the student could take. It now counts as neither a route nor UC-only (`canRoute`).
+- **Duplicate UC-only rule in the planner:** the planner kept its own copy of the UC-only rule. It now uses the checker's `ucOnly`.
+- **Smoke script:** it now counts only blocking splits.
+
+## Checks
+
+- `npx tsc -b` passes.
+- `npm test` passes 129 of 129.
+- The oracle stress run matches on all 20,000 cases.
+- `scripts/smoke.mjs` passes 95 of 95.
+- The build has no warnings.
+- In the browser (1440px and 390px), UCLA CS shows the counselor row and Scenario 2 is still red, with no overflow and no console errors.
+
+## Still open
+
+- **Old data files.** With the current fixtures, 14 of 22 majors can't turn green, because they depend on rows with no ASSIST record. `npm run fetch` with the fixed import code should resolve most of these.

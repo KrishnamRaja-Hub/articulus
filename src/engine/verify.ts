@@ -101,12 +101,13 @@ function fold(n: ReqNode | Requirement, leafSt: (r: Requirement) => St): Res {
   // a: still open but reachable with CC courses; d: passes only as UC-only. A row ASSIST never mentions is neither.
   const a = req.filter((r) => r.st === 'open' && r.art), d = req.filter((r) => r.st === 'def')
   if (sat.length >= need) return res('sat', [], inOrder(fewest(need)))
-  const left = need - sat.length
-  const pick = (rs: Res[]) => (left === rs.length ? rs.flatMap((r) => r.miss) : [`${n.type === 'OR' ? 'One' : left} of: ${alt(rs)}`])
-  // Enough CC routes remain: a UC-only alternative never stands in for one.
-  if (sat.length + a.length >= need) return res('open', pick(a), inOrder(new Set(sat)))
-  if (sat.length + a.length + d.length >= need) return res('def', [], inOrder(new Set([...sat, ...d])))
-  return res('open', pick(req.filter((r) => r.st !== 'sat')), inOrder(new Set(sat))) // cannot be met: name every option
+  const pick = (rs: Res[], left: number) => (left === rs.length ? rs.flatMap((r) => r.miss) : [`${n.type === 'OR' ? 'One' : left} of: ${alt(rs)}`])
+  // UC-only rows fill only the slots CC routes cannot: while any CC alternative is open, it is owed first.
+  const rest = req.filter((r) => r.st !== 'sat')
+  if (sat.length + a.length + d.length < need) return res('open', pick(rest, need - sat.length), inOrder(new Set(sat))) // cannot be met
+  const slots = Math.min(d.length, Math.max(0, need - sat.length - a.length))
+  if (a.length) return res('open', pick(a, need - sat.length - slots), inOrder(new Set(sat)))
+  return res('def', [], inOrder(new Set([...sat, ...d])))
 }
 
 /**

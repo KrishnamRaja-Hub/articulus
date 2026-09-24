@@ -171,10 +171,12 @@ describe('N_OF: s satisfied, a open articulable, d UC-only', () => {
     expect(v(three, 'A', 'B', 'C')).toMatchObject({ isValid: true, deferred: [] })
     expect(v(ag(NOF(2, C('A'), C('B'), C('C'))), 'A').missing).toEqual(['1 of: B, C'])
   })
-  it('s + a < n <= s + a + d: passes as deferred (the remainder is taken at the UC)', () => {
-    // Rule as decided: only two of the three picks exist at any CC; the rest is completed at the UC.
+  it('s + a < n <= s + a + d: the CC picks are owed first; UC-only rows fill only the slots left', () => {
+    // Counselor: only two of the three picks exist at any CC, so A and B must be taken before transfer; the third is
+    // completed at the UC. Nothing taken is not "done" (the brute-force planner oracle agrees).
     const a = ag(NOF(3, C('A'), C('B'), UC('U1'), UC('U2')))
-    expect(v(a)).toMatchObject({ isValid: true, missing: [], deferred: ['U1', 'U2'] })
+    expect(v(a)).toMatchObject({ isValid: false, missing: ['A', 'B'], deferred: [] })
+    expect(v(a, 'A')).toMatchObject({ isValid: false, missing: ['B'] })
     expect(v(a, 'A', 'B')).toMatchObject({ isValid: true, deferred: ['U1', 'U2'] })
     expect(v(ag(NOF(3, C('A'), UC('U1'), UC('U2'))), 'A')).toMatchObject({ isValid: true, deferred: ['U1', 'U2'] })
   })
@@ -248,11 +250,11 @@ describe('split series: blocking iff the plan still needs that requirement', () 
     expect(splits(v(a, 'B', SPLIT()))).toEqual([['S', true]])
     expect(v(a, 'B', SPLIT()).missing).toEqual(['1 of: S, C'])
   })
-  it('N_OF resolved as deferred makes a split in its only CC alternative a warning', () => {
-    // n = 2 with one CC alternative (S) and two UC-only ones: per the rule it passes as deferred, so S is not needed.
+  it('an N_OF whose only CC alternative is split still needs it: the split blocks', () => {
+    // n = 2 with one CC alternative (S) and two UC-only ones: S must be taken at a CC, so its split costs the plan.
     const r = v(ag(NOF(2, SER(), UC('U1'), UC('U2'))), SPLIT())
-    expect(r).toMatchObject({ isValid: true, deferred: ['U1', 'U2'] })
-    expect(splits(r)).toEqual([['S', false]])
+    expect(r).toMatchObject({ isValid: false, missing: ['S'], deferred: [] })
+    expect(splits(r)).toEqual([['S', true]])
   })
   it('the root may pass through deferral with a split elsewhere', () => {
     const r = v(ag(OR(UC('U1'), UC('U2')), C('A'), opt(AND(SER()))), 'A', SPLIT())
@@ -301,7 +303,8 @@ describe('isDeferrable: no CC route exists, whatever is taken', () => {
     expect(isDeferrable(OR(UC('U'), C('A')))).toBe(false)
     expect(isDeferrable(OR(AND(UC('U'), C('A')), UC('V')))).toBe(false)
     expect(isDeferrable(NOF(1, UC('U'), C('A')))).toBe(false)
-    expect(isDeferrable(NOF(2, UC('U1'), UC('U2'), C('A')))).toBe(true) // a = 1 < 2 <= a + d = 3
+    expect(isDeferrable(NOF(2, UC('U1'), UC('U2'), C('A')))).toBe(false) // A exists at a CC, so it is owed
+    expect(isDeferrable(NOF(2, UC('U1'), UC('U2')))).toBe(true)
     expect(isDeferrable(NOF(3, UC('U'), C('A')))).toBe(false) // cannot be met at all
     expect(isDeferrable(opt(AND(UC('U'))))).toBe(true) // the node's own flag is not consulted
   })

@@ -3,7 +3,7 @@ import { gsap } from 'gsap'
 import { useGSAP } from '@gsap/react'
 import { useReveal } from '../motion/useReveal'
 import { byId, colleges, loadAgreement, majorsFor, unitSystems, universities } from '../data'
-import { has, honorsColleges, verifySchedule } from '../engine/verify'
+import { has, honorsColleges, ucOnly, verifySchedule } from '../engine/verify'
 import { solve } from '../engine/solve'
 import type { Agreement, CourseGroup, CourseId, Plan, ReqNode, Requirement, ValidationResult } from '../engine/types'
 import Button from '../ui/Button'
@@ -422,7 +422,8 @@ export default function Planner() {
                           <span key={c} className={`rounded-full border px-2.5 py-0.5 text-[12.5px] font-medium transition-all duration-300 ${chip(g.institutionId)} ${hover === c ? 'ring-2 ring-ink/20' : ''}`}>{code(c)}</span>
                         )) : later ? <span className="rounded-full border border-line bg-bg px-2.5 py-0.5 text-[12.5px] font-medium text-ink-2">Take at {ucShort} after transfer</span>
                           : warn ? <span className="text-[13px] text-warn">split, not needed</span>
-                          : noArt ? <span className="text-[13px] text-ink-3">{Object.values(r.req.noArticulation ?? {})[0] ?? 'Not articulated'}</span>
+                          : noArt ? (ucOnly(r.req) ? <span className="text-[13px] text-ink-3">{Object.values(r.req.noArticulation ?? {})[0]}</span>
+                            : <span className={`text-[13px] ${r.optional ? 'text-ink-3' : 'text-alert'}`}>No ASSIST record · confirm with a counselor</span>)
                           : <span className={`text-[13px] ${viol || offered || !needed ? 'text-ink-3' : 'text-alert'}`}>{viol ? 'split' : offered ? 'not needed for the cheapest path' : 'not articulated at the selected colleges'}</span>}
                       </div>
                     </div>

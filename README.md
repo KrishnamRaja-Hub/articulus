@@ -35,13 +35,16 @@ Each leaf is a `Requirement`: one UC course or series (`PHYSICS 7B`, `MATH 51`) 
 - A requirement is satisfied only by one complete group from one college.
 - A split series is partial progress at two or more colleges where the pieces are different courses. The same course duplicated at two colleges (PHYS 4B at both) is a duplicate, not a split.
 - Optional (recommended) subtrees are evaluated for reporting but never fail their parent.
-- Split-series violations are always fatal, even if the tree is satisfiable another way.
+- A split series is **blocking** only when the plan still needs that requirement. A split in a recommended course or in an alternative the plan does not need is a warning: those courses earn no credit toward it, and the student is told so.
+- A requirement is **completed at the UC after transfer** (`deferred`) only when no college in the agreement articulates it and ASSIST says so explicitly for at least one college (`ucOnly`). Inside an `OR` / `N_OF`, UC-only rows fill only the slots CC alternatives cannot; a CC route is always owed first.
+- A row with no articulation and no ASSIST reason (absent from every payload) is neither: it stays missing and the UI says "No ASSIST record · confirm with a counselor". Better a counselor visit than a wrong "take it at the UC".
 
 Output fields:
 
 | Field | Meaning |
 |---|---|
-| `isValid` | root satisfied and no split-series violations |
+| `isValid` | root passes (satisfied, or satisfied with UC-only rows deferred) and no blocking split |
+| `deferred` | required rows completed at the UC after transfer |
 | `satisfied` | requirement id -> the group that satisfied it |
 | `missing` | required requirement ids (or "One of: ..." / "N of: ...") not satisfied |
 | `incomplete` | requirement id -> best single-college partial progress |
@@ -51,13 +54,18 @@ What may legitimately cross college lines: each UC requirement row is independen
 
 ### Solver
 
-`solve(taken, agreement, options)` in `src/engine/solve.ts` is a greedy set cover over the tree:
+`solve(taken, agreement, options)` in `src/engine/solve.ts` finds the plan with the fewest units, and proves it:
 
-1. Walk the tree collecting requirements that still need a group. At `OR` and `N_OF` nodes, pick the cheapest children by estimated marginal units.
-2. For each such requirement, find the cheapest group at an allowed college. Cost is the units not already taken or planned. Ties prefer the home college, then fewer honors courses, then fewer courses, then (so input order never matters) groups whose courses serve more requirements, the lower college id, and the sorted course ids. A group that would open a new split series in any requirement is used only as a last resort, and then reported in `unsolvable`.
-3. Pick the single globally cheapest group, add its courses to the plan, and repeat. One group per iteration means a course that serves two UC requirements (De Anza MATH 1B covers both MATH 51 and MATH 52) is counted once. The loop is bounded by the size of the tree; anything left over is reported. After the loop, planned courses made redundant by later picks are pruned, as long as every satisfied requirement stays satisfied and no new split opens.
-4. Pack courses into terms. Order is inferred from the letter suffix within one college: each course waits for the nearest lower letter planned in the same series (1A before 1C even if 1B is not needed). Plain numbers are ordered only when their titles differ just by an ordinal (Chemistry I / II); the first course of a numerically higher series (2A) is gated by the C course of the series below it (1C). Respect the per-term unit cap and never silently drop a course past `maxTerms`; the UI flags overflow. A single course larger than the cap gets a term to itself, marked `overCap` and flagged in the UI.
-5. Re-run `verifySchedule` on taken plus planned and return `{ terms, chosen, result, totalUnits, unsolvable }`.
+1. List the minimal sets of requirements whose completion passes the tree (one per `OR` / `N_OF` choice). UC-only rows are never planned; they fill an `N_OF` slot only when no CC alternative can.
+2. Split each set into independent parts (shared courses, or a row where a new split could appear) and run a branch-and-bound over each part's groups at the allowed colleges. Shared courses count once (De Anza MATH 1B serves MATH 51 and MATH 52); honors twins are used only where that college allows mixing; courses missing from the catalog are never planned.
+3. Objective, in order: fewest unmet requirements, fewest units, fewest new splits, fewest units away from home, fewer honors courses, fewer courses, then course ids. Deterministic and independent of input order.
+4. If the best plan opens no blocking split it is proven optimal (`optimal: true`). Otherwise the solver forbids new splits in rows the plan still needs and reports what it gave up (`"R2 (only by splitting R1)"`). If a node budget (default 200k) runs out it falls back to a greedy with the same rules (`optimal: false`); the result is never worse than greedy.
+5. `unsolvable` entries are actionable: `"MAT 022A — offered at Berkeley City, De Anza"`, or `"COM SCI 35L — no ASSIST articulation record; confirm with a counselor"`.
+
+Exactness is checked against a brute-force oracle on thousands of random agreements (`ORACLE_CASES=20000 npx vitest run src/engine/solve.test.ts`). Typical solve: 3–4 ms, p95 about 17 ms, worst about 50 ms.
+
+6. Pack courses into terms. Order is inferred from the letter suffix within one college: each course waits for the nearest lower letter planned in the same series (1A before 1C even if 1B is not needed). Plain numbers are ordered only when their titles differ just by an ordinal (Chemistry I / II); the first course of a numerically higher series (2A) is gated by the C course of the series below it (1C). Respect the per-term unit cap and never silently drop a course past `maxTerms`; the UI flags overflow. A single course larger than the cap gets a term to itself, marked `overCap` and flagged in the UI.
+7. Re-run `verifySchedule` on taken plus planned and return `{ terms, chosen, result, totalUnits, unsolvable, optimal }`.
 
 Units are converted between systems when the plan mixes quarter and semester colleges. Semester units are multiplied by 1.5 to quarter units. Packing and totals use exact converted units; only displayed numbers are rounded to 0.5. The default cap is 16 quarter units or 12 semester units per term, and terms are named for the student's `termSystem` (Fall/Winter/Spring for quarter, Fall/Spring for semester).
 
@@ -149,7 +157,7 @@ Everything runs in the browser. There is no server, no database, and no account.
 - **Tailwind CSS 4** for styling. Colors, spacing, and type are declared once as theme tokens in `src/index.css` and reused as class names.
 - **GSAP 3 with ScrollTrigger** for motion: the hero draw-in, the scroll-scrubbed paragraph, the stacking story cards, the pinned requirement map. Motion is turned off automatically for users who set reduce-motion in their OS.
 - **Geist** variable font, self-hosted through `@fontsource-variable/geist`.
-- **Vitest** for the 60 engine tests and **Playwright** (dev-only, driving your installed Chrome) for screenshots and the smoke script in `scripts/`.
+- **Vitest** for the engine and UI-logic tests and **Playwright** (dev-only, driving your installed Chrome) for screenshots and the smoke script in `scripts/`.
 - **Node 22** runs `scripts/fetch-assist.ts` as TypeScript directly, no build step.
 
 Things we learned that are not written down anywhere else:
@@ -185,7 +193,7 @@ src/data.ts                  loads data/ fixtures, exposes institutions, univers
 src/engine/types.ts          Course, CourseGroup, Requirement, ReqNode, Agreement, ValidationResult, Plan
 src/engine/normalize.ts      raw ASSIST payloads -> Agreement (tree + catalog)
 src/engine/verify.ts         verifySchedule: tree fold, split-series detection
-src/engine/solve.ts          greedy set cover + term packing
+src/engine/solve.ts          exact minimum-unit search + term packing
 src/engine/engine.test.ts    vitest cases against the real Berkeley ME agreement
 src/sections/Hero.tsx        landing
 src/sections/Trap.tsx        the PHYSICS 7B example, running the live engine
@@ -208,7 +216,7 @@ This is a build-day prototype, so the numbers below are what the demo can do tod
 - **The trap is verified, not asserted.** UC Berkeley PHYSICS 7B requires PHYS 4B + 4C from one college. Take 4B at De Anza and 4C at Foothill and the app shows zero credit and names the fix. Before this, the only way to learn that was the July transcript audit.
 - **Deterministic.** The same inputs give the same schedule every time, and each verdict points at a specific ASSIST row. There is no language model in the loop to hallucinate an equivalence.
 - **Multi-campus by default.** ASSIST answers "does college A articulate to university U". Articulus answers "does this exact set of courses from colleges A, B, and C articulate to U, and what should I take next term". Nothing public does that today.
-- **Tested end to end.** 60 unit tests and a smoke run of 95 solve-and-verify passes across every agreement, both quarter and semester home colleges, with zero split violations produced by the solver.
+- **Tested end to end.** 129 unit tests (including a brute-force optimality oracle) and a smoke run of 95 solve-and-verify passes across every agreement, both quarter and semester home colleges, with zero split violations produced by the solver.
 
 ## Future scope
 
@@ -222,19 +230,17 @@ Near term, each is a contained change:
 
 Longer term:
 
-- **Exact optimization.** Replace the greedy set cover with a small ILP or SAT pass over the same tree to guarantee minimum units.
 - **Real prerequisites.** Pull college catalogs so sequence order comes from data instead of a letter-suffix heuristic.
 - **Counselor mode.** Export the verified plan as a signed PDF a counselor can approve, and re-verify automatically when ASSIST publishes a new academic year.
 - **Alerts.** Watch a student's plan and notify them if an agreement changes underneath it before they enroll.
 
 ## Limitations and next steps
 
-- The solver is greedy. It picks the cheapest marginal group per iteration and is not provably unit-minimal. An exact ILP or SAT pass over the same tree would be the upgrade.
 - Course sequence order is a heuristic. ASSIST ships empty `requisites`, so ordering is inferred from letter suffixes and the 1C -> 2A gate. A course with an unconventional number can land in the wrong term.
 - Only major-preparation agreements are modeled. General education, IGETC, and campus breadth requirements are not.
 - Articulation notes and course attributes (grade minimums, "same as" remarks, lab requirements) are not parsed: `normalize.ts` drops them and the fixtures do not contain them, so they are neither shown in the UI nor used in verification.
 - Semester to quarter unit conversion is the flat 1.5 factor. Individual UC departments may count units differently.
-- A split series is fatal even in a recommended course or an unused alternative, so the solver cannot repair such a plan and reports it instead. Whether that is too strict is an open design question.
+- With the current fixtures, 14 of 22 majors cannot show a green verdict even with every CC course taken, because they depend on rows with no ASSIST record (e.g. UCLA COM SCI 35L, UCSD CSE 29). Re-fetching with the fixed normalize should resolve most of these.
 - Coverage is five UCs and three engineering majors across fifteen colleges. Other majors and CSU campuses need only a fetch, but have not been validated.
 - The "Trap" section demo widget is hardcoded to De Anza and Foothill against Berkeley Mechanical Engineering. The Planner section is fully general.
 - Template trees are taken from the first sending college's payload. `normalize()` warns when another college's template differs (`templateMismatches`), attaches that college's articulations to the tree by the UC courses they cover, and adds requirements only other templates list as optional. **The fixtures in `data/` predate these normalize fixes (title pairing, N-of groups, cross-template matching); run `npm run fetch` to regenerate them.** Until then, e.g. Foothill CHEM 1A/1B/1C does not count for Berkeley ME chemistry and UCLA ME calculus shows as recommended.

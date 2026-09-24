@@ -31,7 +31,8 @@ for (const entry of index) {
           if (Number.isNaN(t.units)) problems.push(`${t.name} units NaN`)
           else if (t.units > cap) problems.push(`${t.name} ${t.units}u > cap ${cap - 0.01}`)
         }
-        if (plan.result.splitSeriesViolations.length) problems.push(`${plan.result.splitSeriesViolations.length} split violations`)
+        const blocking = plan.result.splitSeriesViolations.filter((x) => x.blocking !== false) // non-blocking splits are warnings
+        if (blocking.length) problems.push(`${blocking.length} blocking split violations`)
         record(name, problems.length === 0, problems.join('; '))
       } catch (e) {
         record(name, false, `threw ${e?.message ?? e}`)
