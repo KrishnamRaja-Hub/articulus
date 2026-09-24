@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { academicYearOn, dataTrust, formatDataDate, heroDataNote, demoTone, sameTrust, trustBanner, trustChip } from './data-trust'
+import { academicYearOn, agreementYearLabel, dataTrust, formatDataDate, heroDataNote, demoTone, sameTrust, trustBanner, trustChip } from './data-trust'
 import { NORMALIZE_VERSION } from './engine/normalize'
 
 // data/meta.json as committed before the normalize fixes were re-fetched (DATA_CONTRACT.md "legacy file")
@@ -40,7 +40,7 @@ describe('dataTrust: the legacy data file', () => {
 
 describe('dataTrust: levels', () => {
   it('trusts a fresh, validated file built by the current importer', () => {
-    expect(dataTrust(good(), NOW)).toEqual({ level: 'trusted', reasons: [], fetchedAt: new Date('2026-09-24T08:00:00Z'), academicYear: '2026-2027' })
+    expect(dataTrust(good(), NOW)).toEqual({ level: 'trusted', reasons: [], fetchedAt: new Date('2026-09-24T08:00:00Z'), academicYear: '2026-2027', yearNote: null })
   })
 
   it('is trusted at exactly 7 days and aging 1 ms later', () => {
@@ -195,10 +195,21 @@ describe('dataTrust: academic year', () => {
     expect(academicYearOn(new Date('2026-06-30T16:59:59-07:00'))).toBe('2025-2026')
   })
 
-  it('is untrusted the moment the new year starts, even for data fetched the day before', () => {
+  it('rolls over on July 1 UTC: data fetched the day before is aging with a year caveat, for a short grace period (M-6)', () => {
     const meta = good({ fetchedAt: '2026-06-30T12:00:00Z', academicYear: { id: 76, code: '2025-2026' } })
-    expect(dataTrust(meta, new Date('2026-06-30T23:59:59Z')).level).toBe('trusted')
-    expect(dataTrust(meta, new Date('2026-07-01T00:00:00Z')))
+    expect(dataTrust(meta, new Date('2026-06-30T23:59:59Z'))).toMatchObject({ level: 'trusted', yearNote: null })
+    expect(dataTrust(meta, new Date('2026-07-01T00:00:00Z'))).toMatchObject({
+      level: 'aging', yearNote: '2026-27 agreements are now in effect but not downloaded yet',
+      reasons: ['2026-27 agreements are now in effect but not downloaded yet; showing 2025-26. Articulation can change between years'],
+    })
+    // the pipeline has had a week to refresh or carry over explicitly; an unmarked prior year is now the wrong year
+    expect(dataTrust(meta, new Date('2026-07-08T00:00:00Z')).level).toBe('aging')
+    expect(dataTrust(meta, new Date('2026-07-08T00:00:00.001Z')))
+      .toMatchObject({ level: 'untrusted', reasons: ['Data is for 2025-2026 but 2026-2027 agreements are in effect'], yearNote: null })
+  })
+
+  it('an unmarked prior year fetched after July 1 is the wrong year', () => {
+    expect(dataTrust(good({ fetchedAt: '2026-07-02T00:00:00Z', academicYear: { id: 76, code: '2025-2026' } }), new Date('2026-07-03T00:00:00Z')))
       .toMatchObject({ level: 'untrusted', reasons: ['Data is for 2025-2026 but 2026-2027 agreements are in effect'] })
   })
 
@@ -206,7 +217,52 @@ describe('dataTrust: academic year', () => {
     expect(dataTrust(good({ academicYear: { id: 78, code: '2027-2028' } }), NOW).reasons)
       .toEqual(['Data is for 2027-2028 but 2026-2027 agreements are in effect'])
   })
+})
 
+describe('dataTrust: carried-over prior year (M-6)', () => {
+  const carried = (over: Record<string, unknown> = {}) =>
+    good({ academicYear: { id: 76, code: '2025-2026' }, yearInEffect: '2026-2027', carriedOver: true, ...over })
+
+  it('is aging, not untrusted, with a plain caveat naming both years', () => {
+    const t = dataTrust(carried(), NOW)
+    expect(t).toMatchObject({
+      level: 'aging', academicYear: '2025-2026', yearNote: "2026-27 agreements aren't published on ASSIST yet",
+      reasons: ["2026-27 agreements aren't published on ASSIST yet; showing 2025-26. Articulation can change between years"],
+    })
+    expect(trustBanner(t)).toMatchObject({ tone: 'warn', headline: 'ASSIST data from Sep 24, 2026 (2025-2026 agreements).' })
+    expect(trustChip(t)).toBe('Using 2025-26 agreements')
+    expect(agreementYearLabel('2025-2026', t)).toBe("2025-26 agreement (2026-27 agreements aren't published on ASSIST yet)")
+  })
+
+  it('stays aging for as long as the pipeline keeps re-checking, from July 1 UTC on', () => {
+    expect(dataTrust(carried({ fetchedAt: '2026-07-01T00:00:00Z' }), new Date('2026-07-01T00:00:00Z')).level).toBe('aging')
+    expect(dataTrust(carried({ fetchedAt: '2026-11-20T00:00:00Z' }), new Date('2026-11-21T00:00:00Z')).level).toBe('aging')
+  })
+
+  it('adds the age caveat when the carried-over data is also more than 7 days old, and is untrusted past 30', () => {
+    expect(dataTrust(carried({ fetchedAt: '2026-09-12T08:00:00Z' }), NOW).reasons).toEqual([
+      "2026-27 agreements aren't published on ASSIST yet; showing 2025-26. Articulation can change between years", 'Data is 12 days old'])
+    expect(dataTrust(carried({ fetchedAt: '2026-08-01T08:00:00Z' }), NOW).level).toBe('untrusted')
+  })
+
+  it('keeps data two or more years back untrusted, carried over or not', () => {
+    for (const over of [{}, { carriedOver: false }]) {
+      const t = dataTrust(carried({ academicYear: { id: 75, code: '2024-2025' }, ...over }), NOW)
+      expect(t).toMatchObject({ level: 'untrusted', reasons: ['Data is for 2024-2025 but 2026-2027 agreements are in effect'], yearNote: null })
+      expect(agreementYearLabel('2024-2025', t)).toBe('2024-25 agreement')
+    }
+    // a carry-over mark from last year does not stretch into the next rollover
+    expect(dataTrust(carried({ fetchedAt: '2027-06-30T00:00:00Z' }), new Date('2027-06-30T23:59:59Z')).level).toBe('aging')
+    expect(dataTrust(carried({ fetchedAt: '2027-06-30T00:00:00Z' }), new Date('2027-07-01T00:00:00Z')))
+      .toMatchObject({ level: 'untrusted', reasons: ['Data is for 2025-2026 but 2027-2028 agreements are in effect'] })
+  })
+
+  it('the plan label shows the year used, with no note when the data is current', () => {
+    expect(agreementYearLabel('2026-2027', dataTrust(good(), NOW))).toBe('2026-27 agreement')
+  })
+})
+
+describe('dataTrust: academic year (malformed)', () => {
   it('rejects a missing or malformed academic year', () => {
     for (const academicYear of [null, undefined, '2026-2027', { id: 77 }, { code: 2026 }, { code: '2026-27' }, { code: '2026-2028' }, { code: ' 2026-2027' }]) {
       const t = dataTrust(good({ academicYear }), NOW)

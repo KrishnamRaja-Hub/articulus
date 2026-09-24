@@ -77,7 +77,8 @@ describe('pipeline end to end (mock ASSIST)', () => {
     ['timeouts', { faults: [{ match: '/api/institutions', hangMs: 5_000 }] }, /timeout/],
     ['404 on a payload', { faults: [{ match: payloadOf('Computer Science, B.S.'), status: 404 }] }, /HTTP 404/],
     ['AcademicYears shape change', { dataset: { ...defaultDataset(), academicYears: { years: [] } } }, /AcademicYears/],
-    ['in-effect academic year not listed', { dataset: { ...defaultDataset(), academicYears: [{ Id: 76, FallYear: 2025 }] } }, /does not list 2026-2027/],
+    ['only a year two back is listed (M-6: no carry-over past one year)', { dataset: { ...defaultDataset(), academicYears: [{ Id: 75, FallYear: 2024 }] } }, /neither 2026-2027 .* nor the carry-over year 2025-2026/],
+    ['neither the year in effect nor the prior year has published agreements', { publishedYearIds: [75] }, /no agreements matched the major filter/],
   ] as [string, MockOptions, RegExp][])('partial fetch (%s) fails and leaves published data untouched', async (_, opts, err) => {
     const { m, data } = await published()
     await m.close(); mock = undefined
@@ -89,6 +90,57 @@ describe('pipeline end to end (mock ASSIST)', () => {
     expect(r.error).toMatch(err)
     expect(snapshot(data)).toEqual(before)
     expect(readFileSync(join(data, '..', 'work', 'failure.md'), 'utf8')).toMatch(/failed at stage `fetch`/)
+  })
+
+  describe('July 1 rollover: ASSIST has not published the new year yet (M-6)', () => {
+    const expectCarried = (data: string) => {
+      const meta = readJson(join(data, 'meta.json'))
+      expect(meta).toMatchObject({ academicYear: { id: 76, code: '2025-2026' }, yearInEffect: '2026-2027', carriedOver: true, validation: { passed: true } })
+      const index = readJson(join(data, 'index.json'))
+      for (const e of index) expect(readJson(join(data, 'agreements', e.file)).year).toBe('2025-2026')
+      const report = readJson(join(data, 'validation-report.json'))
+      expect(report.findings.filter((f: { check: string }) => f.check === 'meta.academic-year'))
+        .toEqual([expect.objectContaining({ severity: 'warning', message: expect.stringMatching(/carried over: 2026-2027 agreements are not published/) })])
+    }
+
+    it('mock lists only the old year: publishes it, marked carriedOver', async () => {
+      const m = await serve({ dataset: { ...defaultDataset(), academicYears: [{ Id: 75, FallYear: 2024 }, { Id: 76, FallYear: 2025 }] } })
+      const data = join(tmp('carry'), 'data')
+      const r = await run(m.url, data)
+      expect(r.ok, r.error).toBe(true)
+      expectCarried(data)
+      expect(m.log.filter((p) => p.startsWith('/api/agreements')).every((p) => p.includes('academicYearId=76'))).toBe(true)
+    })
+
+    it('new year listed but no agreements published for it: falls back to the prior year, marked carriedOver', async () => {
+      const m = await serve({ publishedYearIds: [75, 76] })
+      const data = join(tmp('carry2'), 'data')
+      const r = await run(m.url, data)
+      expect(r.ok, r.error).toBe(true)
+      expectCarried(data)
+      const listings = m.log.filter((p) => p.startsWith('/api/agreements'))
+      expect(listings.some((p) => p.includes('academicYearId=77'))).toBe(true) // tried first
+      expect(listings.filter((p) => p.includes('academicYearId=76')).length).toBeGreaterThan(0)
+    })
+
+    it('once ASSIST publishes the new year, the next run switches to it and clears the mark', async () => {
+      const m = await serve({ publishedYearIds: [76] })
+      const data = join(tmp('carry3'), 'data')
+      expect((await run(m.url, data)).ok).toBe(true)
+      await m.close(); mock = undefined
+      const m2 = await serve()
+      const r = await run(m2.url, data, { acceptDiff: true })
+      expect(r.ok, r.error).toBe(true)
+      expect(readJson(join(data, 'meta.json'))).toMatchObject({ academicYear: { id: 77, code: '2026-2027' }, yearInEffect: '2026-2027', carriedOver: false })
+    })
+
+    it('before July 1 the prior year is simply the year in effect (Jun 30 UTC), not a carry-over', async () => {
+      const m = await serve()
+      const data = join(tmp('jun30'), 'data')
+      const r = await run(m.url, data, { now: new Date('2026-06-30T23:59:59Z') })
+      expect(r.ok, r.error).toBe(true)
+      expect(readJson(join(data, 'meta.json'))).toMatchObject({ academicYear: { id: 76, code: '2025-2026' }, yearInEffect: '2025-2026', carriedOver: false })
+    })
   })
 
   it('transient 5xx and 429s are retried and the run still publishes', async () => {

@@ -3,7 +3,7 @@ import { gsap } from 'gsap'
 import { useGSAP } from '@gsap/react'
 import { useReveal } from '../motion/useReveal'
 import { byId, colleges, loadAgreement, majorsFor, unitSystems, universities, useTrust } from '../data'
-import { formatDataDate } from '../data-trust'
+import { agreementYearLabel, formatDataDate } from '../data-trust'
 import { nextOpenTerm, termKey, termLabel, termsFrom, type StartTerm } from '../terms'
 import { has, honorsColleges, ucOnly, verifySchedule } from '../engine/verify'
 import { solve } from '../engine/solve'
@@ -253,7 +253,7 @@ export default function Planner() {
               <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-full text-white ${ok ? 'bg-accent' : unconfirmed ? 'bg-warn' : 'bg-alert'}`}>{ok ? <Check /> : unconfirmed ? <Exclaim /> : <Cross />}</span>
               <div>
                 <div className={`text-[17px] font-medium ${unconfirmed ? 'text-warn' : ''}`}>{status.title}</div>
-                <div className="text-[14px] text-ink-2">{agreement.major} · {ucShort} · {agreement.year} agreement</div>
+                <div data-year className="text-[14px] text-ink-2">{agreement.major} · {ucShort} · {agreementYearLabel(agreement.year, trust)}</div>
                 {status.details.length > 0 && <div className="text-[14px] font-medium text-ink-2">{status.details.join(' · ')}</div>}
                 {status.caveat && <div data-caveat className={`mt-1 text-[13.5px] ${trust.level === 'aging' ? 'text-ink-3' : 'text-warn'}`}>{status.caveat}</div>}
               </div>

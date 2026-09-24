@@ -7,7 +7,9 @@
   "schema": 1,
   "normalizeVersion": 2,          // NORMALIZE_VERSION from src/engine/normalize.ts that built data/
   "fetchedAt": "2026-09-24T08:00:00Z" | null,
-  "academicYear": { "id": 76, "code": "2025-2026" } | null,
+  "academicYear": { "id": 76, "code": "2025-2026" } | null,   // the year the agreements are for
+  "yearInEffect": "2026-2027",    // optional: the year in effect (July 1 rule) when fetched
+  "carriedOver": true,            // optional: ASSIST had not published yearInEffect yet, so the prior year was fetched
   "validation": { "passed": true, "at": "<ISO>", "checks": 1234, "report": "data/validation-report.json" } | null,
   "agreements": 22
 }
@@ -21,11 +23,19 @@ Levels are evaluated in order.
 
 | Level | When | Effect in the UI |
 |---|---|---|
-| `untrusted` | `normalizeVersion !== NORMALIZE_VERSION`, `validation` missing or failed, `fetchedAt` missing, older than 30 days, or `academicYear` is not the one in effect today | No green verdict. The badge says the data needs a refresh and to confirm with a counselor. Red verdicts (split series, missing requirements) are still shown, because they come from ASSIST rows that exist. |
-| `aging` | Older than 7 days | Green is allowed. An amber banner shows the data date. |
+| `untrusted` | `normalizeVersion !== NORMALIZE_VERSION`, `validation` missing or failed, `fetchedAt` missing, older than 30 days, or `academicYear` is the wrong year: not the one in effect today, except for the prior-year cases under `aging` (two or more years back, or a future year, is always untrusted) | No green verdict. The badge says the data needs a refresh and to confirm with a counselor. Red verdicts (split series, missing requirements) are still shown, because they come from ASSIST rows that exist. |
+| `aging` | Older than 7 days; or `academicYear` is the year before the one in effect and either `carriedOver: true`, or it was fetched before this July 1 and today is within 7 days of July 1 | Green is allowed. An amber banner shows the data date and each caveat. A prior year adds "2026-27 agreements aren't published on ASSIST yet; showing 2025-26. Articulation can change between years", and the plan shows the year it uses ("2025-26 agreement (2026-27 agreements aren't published on ASSIST yet)"). |
 | `trusted` | Otherwise | Normal. |
 
 The academic year in effect runs from July 1 to June 30. For example, from 2026-07-01 the expected code is "2026-2027".
+
+### July 1 rollover (TESTER1_REPORT M-6)
+
+ASSIST often publishes a new year's agreements weeks after July 1. A hard cutoff would make the whole site untrusted for those weeks, so:
+
+- **Pipeline** (`scripts/pipeline/academic-year.ts`, `fetch.ts`): tries the year in effect first. If ASSIST does not list it, or lists it but has published no matching agreements for the configured pairs, it fetches the prior year and writes `carriedOver: true` and `yearInEffect` to `meta.json`. The validator accepts that as a warning. It never falls back two years: the run fails and the last published data stays. The daily refresh keeps re-checking, and the first run after ASSIST publishes the new year switches to it (`carriedOver: false`). The whole data set uses one year. If ASSIST has published the new year for some pairs but not others, the new year is used and the diff guard flags the majors or colleges that disappeared for review.
+- **App** (`src/data-trust.ts`): a carried-over prior year is `aging` with the caveat above, for as long as the pipeline keeps re-checking (the 30-day age limit still applies). Prior-year data that is not marked, fetched before July 1, is `aging` for 7 days after July 1 so the pipeline has time to run, then untrusted. Data two or more years back, a carry-over mark from an earlier rollover, and data for a future year are untrusted.
+- **Not covered**: which year's agreement governs a given student (the year a course was taken, or the year they will apply). The app checks every course against the one bundled year and says which year that is.
 
 ## Operations (workflows in `.github/workflows/`)
 

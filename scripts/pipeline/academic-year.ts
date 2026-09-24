@@ -1,4 +1,5 @@
-/* Academic year discovery. DATA_CONTRACT.md: the year in effect runs July 1 to June 30 (from 2026-07-01: "2026-2027"). */
+/* Academic year discovery. DATA_CONTRACT.md: the year in effect runs July 1 to June 30 (from 2026-07-01: "2026-2027").
+   Until ASSIST publishes the new year's agreements, the prior year is carried over and marked as such. */
 
 export interface AcademicYear { id: number; code: string }
 
@@ -27,21 +28,24 @@ export function parseAcademicYears(body: unknown): AcademicYear[] {
 }
 
 /**
- * The year in effect on `now`. `pinId` (ASSIST_ACADEMIC_YEAR_ID) forces a year; it must still exist in the list.
- * No silent fallback to an older year: data for the wrong year is untrusted by the app anyway (DATA_CONTRACT.md).
+ * The academic years to try, newest first (TESTER1_REPORT M-6). ASSIST often publishes a new year's agreements weeks
+ * after July 1, so the year in effect is tried first and the year before it is the explicit carry-over: the fetcher
+ * uses the first one with published agreements and records `carriedOver: true` in meta.json when that is not the year
+ * in effect. Nothing older is tried: data two or more years back is untrusted by the app (DATA_CONTRACT.md), so the
+ * run fails and the last published data stays. `pinId` (ASSIST_ACADEMIC_YEAR_ID) forces one year; it must be listed.
  */
-export function pickAcademicYear(years: AcademicYear[], now: Date, pinId?: number): AcademicYear {
+export function candidateYears(years: AcademicYear[], now: Date, pinId?: number): AcademicYear[] {
   if (pinId !== undefined) {
     const y = years.find((x) => x.id === pinId)
     if (!y) throw new Error(`AcademicYears: pinned id ${pinId} (ASSIST_ACADEMIC_YEAR_ID) is not listed by ASSIST`)
-    return y
+    return [y]
   }
-  const want = codeInEffect(now)
-  const y = years.find((x) => x.code === want)
-  if (!y) {
+  const fall = fallYearInEffect(now)
+  const out = [codeFor(fall), codeFor(fall - 1)].map((c) => years.find((x) => x.code === c)).filter((y): y is AcademicYear => !!y)
+  if (!out.length) {
     const known = years.map((x) => x.code).sort().slice(-3).join(', ')
-    throw new Error(`AcademicYears: ASSIST does not list ${want}, the academic year in effect on ${now.toISOString().slice(0, 10)} (latest: ${known}). ` +
+    throw new Error(`AcademicYears: ASSIST lists neither ${codeFor(fall)} (in effect on ${now.toISOString().slice(0, 10)}) nor the carry-over year ${codeFor(fall - 1)} (latest: ${known}). ` +
       'Keeping the last published data. Set ASSIST_ACADEMIC_YEAR_ID to fetch another year deliberately.')
   }
-  return y
+  return out
 }

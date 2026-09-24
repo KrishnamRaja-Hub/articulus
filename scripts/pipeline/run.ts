@@ -17,6 +17,7 @@ import { BASELINE_FILE, decideDirs, decisionMarkdown, makeBaseline, readDataSet,
 import { build, hasRaw, readRaw, writeBuilt, writeRaw, type RawManifest } from './store.ts'
 import { addSuites, runSuites, type Suite } from './suites.ts'
 import { validateData, type Meta, type Report } from './validate.ts'
+import { codeInEffect } from './academic-year.ts'
 
 export interface RunOptions {
   source: 'assist' | 'raw'
@@ -190,7 +191,11 @@ async function runLocked(o: RunOptions, dataDir: string, workDir: string, env: N
     writeBuilt(staging, built)
     if (o.source === 'assist') log(`raw store: ${(writeRaw(staging, bundle, cfg).totalBytes / 1024 / 1024).toFixed(2)} MB gzipped`)
     else cpSync(join(dataDir, cfg.raw.dir), join(staging, cfg.raw.dir), { recursive: true })
-    const meta: Meta = { schema: 1, normalizeVersion: NORMALIZE_VERSION, fetchedAt: bundle.fetchedAt, academicYear: bundle.academicYear, validation: null, agreements: built.index.length }
+    // M-6: record which year was fetched against the year in effect at fetch time; a raw store written before M-6 derives it.
+    const yearInEffect = bundle.yearInEffect ?? codeInEffect(new Date(bundle.fetchedAt))
+    const meta: Meta = { schema: 1, normalizeVersion: NORMALIZE_VERSION, fetchedAt: bundle.fetchedAt, academicYear: bundle.academicYear,
+      yearInEffect, carriedOver: bundle.carriedOver ?? bundle.academicYear.code !== yearInEffect, validation: null, agreements: built.index.length }
+    if (meta.carriedOver) log(`carried over: ${yearInEffect} agreements are not published on ASSIST yet; publishing ${bundle.academicYear.code} marked carriedOver`)
     writeJson(join(staging, 'meta.json'), meta)
 
     // 3. validate staged data against the contract, invariants, canaries, and the published data (diff guard)
