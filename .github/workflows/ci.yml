@@ -1,0 +1,88 @@
+# CI for every push and pull request, plus a nightly oracle stress run.
+#
+# Code failures and data failures are separate steps. `validate:data:ci` checks the COMMITTED data without network:
+#   - exit 1 (red) on structural data errors: schema, broken invariants, missing files, canaries on current data;
+#   - exit 0 (green) with "legacy" annotations when data/meta.json says the data predates the current
+#     NORMALIZE_VERSION: its known symptoms (F-01 orphans, title-shift heuristics, data-dependent canaries, freshness)
+#     are listed in the step summary as legacy, not failures. The daily Data refresh workflow replaces that data.
+name: CI
+
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: '30 10 * * *' # nightly stress, after the 09:00 UTC data refresh
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'schedule' }}
+
+jobs:
+  test:
+    if: ${{ github.event_name != 'schedule' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install
+        run: npm ci
+      - name: Typecheck
+        run: npx tsc -b
+      - name: Unit, engine and pipeline tests (mock ASSIST, no network)
+        run: npx vitest run
+      - name: Smoke (every agreement)
+        run: node scripts/smoke.mjs
+      - name: Build
+        run: npm run build
+      - name: Validate committed data (legacy data reported, not failed)
+        id: data
+        run: npm run validate:data:ci
+      - name: Flag legacy data
+        if: ${{ steps.data.outputs.legacy != '' && steps.data.outputs.legacy != '0' }}
+        run: echo "::notice title=Legacy data::${{ steps.data.outputs.legacy }} legacy-data findings (data predates NORMALIZE_VERSION); code checks passed. Run the Data refresh workflow or npm run renormalize."
+      - name: Upload validation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: validation-report-${{ github.run_id }}
+          path: .pipeline/
+          include-hidden-files: true
+          retention-days: 14
+          if-no-files-found: ignore
+
+  workflows:
+    if: ${{ github.event_name != 'schedule' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: actionlint
+        run: |
+          bash <(curl -sSfL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.7/scripts/download-actionlint.bash) 1.7.7
+          ./actionlint -color
+
+  oracle-stress:
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install
+        run: npm ci
+      - name: Solver vs oracle, 20k cases
+        env:
+          ORACLE_CASES: '20000'
+          ORDER_CASES: '20000'
+        run: npx vitest run src/engine/solve.test.ts
