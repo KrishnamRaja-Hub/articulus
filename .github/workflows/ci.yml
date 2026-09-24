@@ -36,6 +36,8 @@ jobs:
         run: npm ci
       - name: Typecheck
         run: npx tsc -b
+      - name: Typecheck independent suite
+        run: npx tsc -p tests/independent
       - name: Unit, engine and pipeline tests (mock ASSIST, no network)
         run: npx vitest run
       - name: Smoke (every agreement)
@@ -86,3 +88,14 @@ jobs:
           ORACLE_CASES: '20000'
           ORDER_CASES: '20000'
         run: npx vitest run src/engine/solve.test.ts
+      - name: Independent oracle, full budget
+        timeout-minutes: 20
+        env:
+          INDEPENDENT_BUDGET: full
+        run: npx vitest run tests/independent
+      - name: Upload independent metrics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: independent-metrics-${{ github.run_id }}
+          path: node_modules/.cache/articulus-independent/

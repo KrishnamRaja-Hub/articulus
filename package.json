@@ -12,7 +12,10 @@
     "renormalize": "node scripts/renormalize.ts",
     "validate:data": "node scripts/validate-data.ts",
     "validate:data:ci": "node scripts/validate-data.ts --mode=ci",
-    "mock:assist": "node scripts/pipeline/mock-assist.ts"
+    "mock:assist": "node scripts/pipeline/mock-assist.ts",
+    "test:independent": "vitest run tests/independent",
+    "test:independent:full": "INDEPENDENT_BUDGET=full vitest run tests/independent",
+    "typecheck:tests": "tsc -p tests/independent"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.3.0",
