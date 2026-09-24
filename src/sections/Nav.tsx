@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import { gsap } from 'gsap'
 import { useGSAP } from '@gsap/react'
 import Button from '../ui/Button'
+import { DataChip } from './DataStatus'
 
 export default function Nav() {
   const ref = useRef<HTMLElement>(null)
@@ -29,6 +30,7 @@ export default function Nav() {
         </div>
         <Button href="#plan" className="ml-1 h-9 px-4 text-[14px]">Plan my transfer</Button>
       </nav>
+      <DataChip />
     </header>
   )
 }

@@ -2,6 +2,8 @@ import type { Agreement, Institution } from './engine/types'
 import institutionsJson from '../data/institutions.json'
 import indexJson from '../data/index.json'
 import berkeleyME from '../data/agreements/79-mechanical-engineering-b-s.json'
+import metaJson from '../data/meta.json'
+import { dataTrust } from './data-trust'
 
 export interface IndexEntry { file: string; receivingId: number; major: string }
 
@@ -27,3 +29,9 @@ export const loadAgreement = (file: string): Promise<Agreement> => files[`../dat
 
 // eager sync export for Trap.tsx, which only needs Berkeley ME
 export const agreements: Agreement[] = [berkeleyME as unknown as Agreement]
+
+/** data/meta.json as bundled (DATA_CONTRACT.md). */
+export const meta: unknown = metaJson
+/** How far verdicts can be trusted. Evaluated when the page loads in the browser, with the viewer's current date, so a
+ *  build that was fresh when deployed still turns amber, then untrusted, as it ages. */
+export const trust = dataTrust(meta, new Date())

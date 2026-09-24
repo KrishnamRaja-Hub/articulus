@@ -2,13 +2,15 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { gsap } from 'gsap'
 import { useGSAP } from '@gsap/react'
 import { useReveal } from '../motion/useReveal'
-import { byId, colleges, loadAgreement, majorsFor, unitSystems, universities } from '../data'
+import { byId, colleges, loadAgreement, majorsFor, trust, unitSystems, universities } from '../data'
 import { has, honorsColleges, ucOnly, verifySchedule } from '../engine/verify'
 import { solve } from '../engine/solve'
+import { honorsHints, honorsNote } from '../engine/hints'
 import type { Agreement, CourseGroup, CourseId, Plan, ReqNode, Requirement, ValidationResult } from '../engine/types'
 import Button from '../ui/Button'
 import { Check, Cross } from './Trap'
-import { badgeStatus, deferredOf, isBlocking, optimalNote, splitUnsolvable } from './plannerStatus'
+import { badgeStatus, deferredOf, isBlocking, nothingLeftNote, optimalNote, splitUnsolvable } from './plannerStatus'
+import { DataBanner, Exclaim } from './DataStatus'
 
 const MAX_TERMS = 6
 const EMPTY_RESULT: ValidationResult = { isValid: false, satisfied: {}, missing: [], incomplete: {}, splitSeriesViolations: [], deferred: [] }
@@ -78,6 +80,8 @@ export default function Planner() {
       : EMPTY_PLAN),
     [taken, agreement, allowed.join(), home])
   const rows = useMemo(() => (agreement ? flatten(agreement.root) : []), [agreement])
+  // informational only: ASSIST lists the regular course where the student took the honors one (or the reverse)
+  const hints = useMemo(() => honorsHints(rows.map((r) => r.req), taken), [rows, taken])
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -135,8 +139,10 @@ export default function Planner() {
   const violations = current.splitSeriesViolations
   const ucShort = agreement ? byId[agreement.receivingId].short : ''
   // icon, color and title come from one status, so a red badge never claims coverage
-  const status = badgeStatus(current, plan, ucShort)
-  const ok = status.ok
+  // untrusted data never shows green (DATA_CONTRACT.md); red verdicts still show, with a caveat
+  const status = badgeStatus(current, plan, ucShort, trust.level)
+  const ok = status.ok, unconfirmed = status.tone === 'unconfirmed'
+  const hintList = Object.values(hints).flat()
   const deferred = deferredOf(current, plan)
   const reqOf = (id: string) => rows.find((r) => r.req.id === id)?.req
   const note = optimalNote(plan)
@@ -144,6 +150,7 @@ export default function Planner() {
   return (
     <section id="plan" ref={ref} className="px-6 py-32 md:py-48">
       <div className="mx-auto max-w-6xl">
+        <DataBanner className="mb-10" />
         <div className="max-w-3xl">
           <h2 data-reveal className="h2">Plan across campuses. Verify against every agreement at once.</h2>
           <p data-reveal={0.1} className="lede mt-6">Pick a target, the colleges you can enroll at, and what you have finished. The engine runs on every change.</p>
@@ -220,13 +227,14 @@ export default function Planner() {
 
         {/* ---- output ---- */}
         {!agreement ? <div className="card mt-8 p-6 opacity-60">Loading agreement…</div> : <div ref={out} className="relative z-0 mt-8">
-          <div data-badge className={`card flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between md:p-6 ${ok ? '' : 'border-alert/30'}`}>
+          <div data-badge data-tone={status.tone} className={`card flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between md:p-6 ${ok ? '' : unconfirmed ? 'border-warn/40' : 'border-alert/30'}`}>
             <div className="flex items-center gap-4">
-              <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-full text-white ${ok ? 'bg-accent' : 'bg-alert'}`}>{ok ? <Check /> : <Cross />}</span>
+              <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-full text-white ${ok ? 'bg-accent' : unconfirmed ? 'bg-warn' : 'bg-alert'}`}>{ok ? <Check /> : unconfirmed ? <Exclaim /> : <Cross />}</span>
               <div>
-                <div className="text-[17px] font-medium">{status.title}</div>
+                <div className={`text-[17px] font-medium ${unconfirmed ? 'text-warn' : ''}`}>{status.title}</div>
                 <div className="text-[14px] text-ink-2">{agreement.major} · {ucShort} · {agreement.year} agreement</div>
                 {status.details.length > 0 && <div className="text-[14px] font-medium text-ink-2">{status.details.join(' · ')}</div>}
+                {status.caveat && <div data-caveat className={`mt-1 text-[13.5px] ${trust.level === 'aging' ? 'text-ink-3' : 'text-warn'}`}>{status.caveat}</div>}
               </div>
             </div>
             <dl className="grid grid-cols-3 gap-6 text-[14px] text-ink-2 md:text-right">
@@ -257,6 +265,7 @@ export default function Planner() {
                       {fix && todo.length ? `These courses earn no credit toward it. Your plan completes it with ${todo.map(code).join(' and ')} at ${byId[fix.institutionId].name}.`
                         : "These courses earn no credit toward it, but your plan doesn't need it."}
                     </p>
+                    <HintNotes hints={hints[v.requirementId]} />
                     {wasted.length > 0 && (
                       <ul className="mt-4 flex flex-wrap gap-2">
                         {wasted.map((c) => (
@@ -285,6 +294,7 @@ export default function Planner() {
                         </div>
                       ))}
                     </div>
+                    <HintNotes hints={hints[v.requirementId]} />
                     {fix && (
                       <p className="mt-5 rounded-2xl bg-accent-soft px-5 py-4 text-[15px] text-accent">
                         <span className="font-semibold">Repair:</span> complete {todo.map(code).join(' and ')} at {byId[fix.institutionId].name}.
@@ -336,6 +346,24 @@ export default function Planner() {
             </div>
           )}
 
+          {hintList.length > 0 && (
+            <div data-hints className="card mt-4 p-6 text-[15px]">
+              <div className="font-medium">Ask before you retake</div>
+              <p className="mt-1 text-[14px] text-ink-2">These rows still count as missing, because ASSIST lists a different version of a course you took. The schedule below plans the listed course.</p>
+              <ul className="mt-3">
+                {hintList.map((h) => (
+                  <li key={`${h.requirementId}|${h.institutionId}`} className="border-t border-line py-2">
+                    <div className="flex flex-wrap items-baseline gap-x-3">
+                      <span className="font-medium">{h.requirementId}</span>
+                      <span className="text-[14px] text-ink-2">{byId[h.institutionId]?.name}</span>
+                    </div>
+                    <div className="text-[14px] text-ink-2">{honorsNote(h)}</div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {/* ---- schedule ---- */}
           <div className="mt-12">
             <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
@@ -343,7 +371,7 @@ export default function Planner() {
               <span className="text-[14px] text-ink-3">{UNIT_CAP} units per term max</span>
             </div>
             {plan.terms.length === 0 ? (
-              <p className="mt-4 text-ink-2">Everything required is already complete. Nothing left to schedule.</p>
+              <p className="mt-4 text-ink-2">{nothingLeftNote(trust.level)}</p>
             ) : (
               <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-3">
                 {plan.terms.map((t, i) => (
@@ -416,6 +444,9 @@ export default function Planner() {
                           <span className="font-medium">{r.req.id}</span>
                           <span className="truncate text-[14px] text-ink-2">{r.req.label !== r.req.id ? r.req.label : ''}</span>
                         </div>
+                        {!done && hints[r.req.id]?.map((h) => (
+                          <p key={h.institutionId} data-hint className="mt-1 text-[13px] text-campus-a">{honorsNote(h)}</p>
+                        ))}
                       </div>
                       <div className="flex max-w-[60%] shrink-0 flex-wrap justify-end gap-1.5">
                         {g ? g.courses.map((c) => (
@@ -436,6 +467,12 @@ export default function Planner() {
       </div>
     </section>
   )
+}
+
+/** Informational honors note inside a split card; never changes the verdict. */
+function HintNotes({ hints }: { hints?: ReturnType<typeof honorsHints>[string] }) {
+  if (!hints?.length) return null
+  return <>{hints.map((h) => <p key={h.institutionId} data-hint className="mt-4 rounded-2xl bg-campus-a-soft px-5 py-3 text-[14px] text-campus-a">{honorsNote(h)}</p>)}</>
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
