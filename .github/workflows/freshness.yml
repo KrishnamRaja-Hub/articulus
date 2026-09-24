@@ -1,0 +1,108 @@
+# Independent data freshness monitor (DATA_CONTRACT.md "Operations").
+#
+# Every 6 hours, reads data/meta.json on the default branch (and, if the LIVE_META_URL variable is set, the meta.json the
+# live site serves) and fails + opens/updates a `data-stale` issue when fetchedAt is older than FRESHNESS_MAX_HOURS
+# (default 36). It knows nothing about how the refresh works, so it catches what the refresh cannot report on itself:
+# a disabled schedule, a cancelled or stuck run, a review PR nobody merged, a stalled auto-merge, a missing deploy.
+# A fresh result closes the issue. It also re-enables both schedules (GitHub's 60-day inactivity rule), without commits.
+name: Data freshness
+
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: data-freshness
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+      actions: write # re-enable the scheduled workflows
+    env:
+      MAX_HOURS: ${{ vars.FRESHNESS_MAX_HOURS || '36' }}
+      LIVE_META_URL: ${{ vars.LIVE_META_URL }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          sparse-checkout: data/meta.json
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - name: Keep the schedules enabled
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for wf in data-refresh.yml freshness.yml; do
+            state=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/$wf" --jq .state || echo unknown)
+            [ "$state" = "active" ] || echo "::warning::$wf was '$state'; re-enabling."
+            gh api -X PUT "repos/$GITHUB_REPOSITORY/actions/workflows/$wf/enable" || echo "::warning::Could not enable $wf"
+          done
+
+      - name: Check fetchedAt
+        id: age
+        run: |
+          set -uo pipefail
+          now=$(date -u +%s)
+          problems=()
+          check() { # $1 label, $2 fetchedAt
+            if [ -z "$2" ] || [ "$2" = "null" ]; then problems+=("$1: fetchedAt is missing"); return; fi
+            t=$(date -u -d "$2" +%s 2>/dev/null) || { problems+=("$1: fetchedAt '$2' is not a date"); return; }
+            h=$(( (now - t) / 3600 ))
+            echo "$1: fetchedAt $2 ($h h old)" | tee -a "$GITHUB_STEP_SUMMARY"
+            if [ "$h" -gt "$MAX_HOURS" ]; then problems+=("$1: fetchedAt $2 is $h h old (limit $MAX_HOURS h)"); fi
+          }
+          check "default branch data/meta.json" "$(jq -r '.fetchedAt // empty' data/meta.json 2>/dev/null)"
+          if [ -n "$LIVE_META_URL" ]; then
+            live=$(curl -fsSL --max-time 30 "$LIVE_META_URL" | jq -r '.fetchedAt // empty' 2>/dev/null)
+            check "live site ($LIVE_META_URL)" "$live"
+          fi
+          {
+            for p in "${problems[@]}"; do echo "- $p"; done
+          } > "$RUNNER_TEMP/problems.md"
+          if [ "${#problems[@]}" -gt 0 ]; then echo "stale=true" >> "$GITHUB_OUTPUT"; else echo "stale=false" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Open or update the stale-data issue
+        if: ${{ steps.age.outputs.stale == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          {
+            echo "Production data is older than $MAX_HOURS hours:"
+            echo
+            cat "$RUNNER_TEMP/problems.md"
+            echo
+            echo "Check, in order: open \`data-refresh-failure\` issues; open \`data-refresh/*\` PRs waiting for review or stuck in auto-merge;"
+            echo "whether **Data refresh** is enabled and its last runs; the deploy after the last data commit."
+            echo "The app shows data as aging after 7 days and untrusted (no green verdicts) after 30."
+            echo
+            echo "Monitor run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          } > "$RUNNER_TEMP/issue.md"
+          gh label create data-stale --color D93F0B --description "Production data older than the freshness limit" --force || true
+          n=$(gh issue list --label data-stale --state open --json number --jq '.[0].number // empty')
+          if [ -n "$n" ]; then
+            gh issue comment "$n" --body-file "$RUNNER_TEMP/issue.md"
+          else
+            gh issue create --title "Production data is stale ($(date -u +%F))" --label data-stale --body-file "$RUNNER_TEMP/issue.md"
+          fi
+          echo "::error title=Stale data::$(tr '\n' ' ' < "$RUNNER_TEMP/problems.md")"
+          exit 1
+
+      - name: Close the stale-data issue
+        if: ${{ steps.age.outputs.stale == 'false' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for n in $(gh issue list --label data-stale --state open --json number --jq '.[].number'); do
+            gh issue close "$n" --comment "Fresh again: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          done
