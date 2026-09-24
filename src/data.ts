@@ -27,7 +27,13 @@ export const universities = institutions
   .filter((i) => !i.isCC && index.some((e) => e.receivingId === i.id))
   .sort((a, b) => (a.id === 79 ? -1 : b.id === 79 ? 1 : a.name.localeCompare(b.name)))
 export const majorsFor = (receivingId: number) => index.filter((e) => e.receivingId === receivingId)
-export const loadAgreement = (file: string): Promise<Agreement> => files[`../data/agreements/${file}`]().then((m) => m.default)
+/** Loads one agreement and records its academic year, so trust is re-checked against the agreements actually shown.
+ *  A missing file rejects instead of throwing synchronously (TESTER2_REPORT M-8). */
+export const loadAgreement = (file: string): Promise<Agreement> => {
+  const get = files[`../data/agreements/${file}`]
+  if (!get) return Promise.reject(new Error(`Agreement file ${file} is not bundled`))
+  return get().then((m) => { noteAgreementYear(m.default?.year); return m.default })
+}
 
 // eager sync export for Trap.tsx, which only needs Berkeley ME
 export const agreements: Agreement[] = [berkeleyME as unknown as Agreement]
@@ -36,7 +42,9 @@ export const agreements: Agreement[] = [berkeleyME as unknown as Agreement]
 export const meta: unknown = metaJson
 /** How far verdicts can be trusted, evaluated in the browser with the viewer's current date, so a build that was fresh
  *  when deployed still turns amber, then untrusted, as it ages. meta.agreements must match the bundled index. */
-export const trustAt = (now: Date): DataTrust => dataTrust(meta, now, NORMALIZE_VERSION, index.length)
+/** The `year` of every agreement loaded so far (Berkeley ME is bundled eagerly); each must match meta.academicYear. */
+const loadedYears: unknown[] = [(berkeleyME as { year?: unknown }).year]
+export const trustAt = (now: Date): DataTrust => dataTrust(meta, now, NORMALIZE_VERSION, index.length, loadedYears)
 
 // A tab left open for days must downgrade too: re-check every minute and whenever the tab becomes visible again.
 const RECHECK_MS = 60_000
@@ -53,6 +61,12 @@ export function refreshTrust(now = new Date()) {
   if (sameTrust(next, current)) return
   current = next
   for (const l of listeners) l()
+}
+
+function noteAgreementYear(year: unknown) {
+  if (loadedYears.includes(year)) return
+  loadedYears.push(year)
+  refreshTrust()
 }
 
 const onVisible = () => { if (document.visibilityState === 'visible') refreshTrust() }

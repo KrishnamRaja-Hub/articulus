@@ -45,7 +45,12 @@ const daysOld = (fetchedAt: Date, now: Date, limit: number) => {
  * `agreementCount`: how many agreements the app actually bundles (data/index.json). When given, meta.json must record
  * the same number; a mismatch means the data files and their description come from different downloads.
  */
-export function dataTrust(meta: unknown, now: Date, normalizeVersion: number = NORMALIZE_VERSION, agreementCount?: number): DataTrust {
+/**
+ * `agreementYears`: the `year` recorded in each agreement the app has actually loaded (TESTER2_REPORT M-2). Each must
+ * equal meta.academicYear: meta alone can say "current" while the agreements are last year's.
+ */
+export function dataTrust(meta: unknown, now: Date, normalizeVersion: number = NORMALIZE_VERSION, agreementCount?: number,
+  agreementYears?: readonly unknown[]): DataTrust {
   const reasons: string[] = []
   const m = isObj(meta) ? meta : {}
   if (!isObj(meta)) reasons.push('The data description file is missing or unreadable')
@@ -93,6 +98,17 @@ export function dataTrust(meta: unknown, now: Date, normalizeVersion: number = N
   else if (clockOk) {
     const expected = academicYearOn(now)
     if (academicYear !== expected) reasons.push(`Data is for ${academicYear} but ${expected} agreements are in effect`)
+  }
+
+  if (agreementYears?.length) {
+    const recorded = agreementYears.filter((y): y is string => typeof y === 'string' && YEAR.test(y))
+    if (recorded.length < agreementYears.length) reasons.push('The academic year of some agreements is not recorded')
+    const other = [...new Set(recorded.filter((y) => y !== academicYear))].sort()
+    if (other.length) {
+      reasons.push(academicYear
+        ? `The agreements are for ${other.join(' and ')}, but the data description says ${academicYear}`
+        : `The agreements are for ${other.join(' and ')}, and the data description does not say which year it covers`)
+    }
   }
 
   if (reasons.length) return { level: 'untrusted', reasons, fetchedAt, academicYear }

@@ -268,3 +268,31 @@ describe('demoTone (L-5)', () => {
     expect(demoTone(false, 'trusted')).toBe('split')
   })
 })
+
+describe('dataTrust: agreements cross-checked against meta (TESTER2_REPORT M-2)', () => {
+  it("is untrusted when meta says the current year but the agreements are last year's", () => {
+    const t = dataTrust(good(), NOW, NORMALIZE_VERSION, 22, ['2025-2026'])
+    expect(t.level).toBe('untrusted')
+    expect(t.reasons).toEqual(['The agreements are for 2025-2026, but the data description says 2026-2027'])
+  })
+
+  it('trusts agreements whose year matches meta', () => {
+    expect(dataTrust(good(), NOW, NORMALIZE_VERSION, 22, ['2026-2027', '2026-2027']).level).toBe('trusted')
+  })
+
+  it('names every mismatched year once, and flags a missing year', () => {
+    const t = dataTrust(good(), NOW, NORMALIZE_VERSION, 22, ['2026-2027', '2025-2026', undefined, '2024-2025', '2025-2026'])
+    expect(t.reasons).toEqual([
+      'The academic year of some agreements is not recorded',
+      'The agreements are for 2024-2025 and 2025-2026, but the data description says 2026-2027',
+    ])
+  })
+
+  it('still checks the agreement count alongside the year', () => {
+    const t = dataTrust(good(), NOW, NORMALIZE_VERSION, 21, ['2025-2026'])
+    expect(t.reasons).toEqual([
+      'The data description lists 22 agreements, but 21 are included',
+      'The agreements are for 2025-2026, but the data description says 2026-2027',
+    ])
+  })
+})
