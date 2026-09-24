@@ -1,4 +1,5 @@
 import type { Agreement, CourseGroup, CourseId, Partial, ReqNode, Requirement, ValidationResult, Violation } from './types'
+import { NOT_LISTED } from './normalize.ts'
 
 export interface ReqStatus { satisfied?: CourseGroup; partials: Partial[] }
 
@@ -61,7 +62,7 @@ const isSplit = (p: Partial[]) =>
  * transfer). `open`: the student still needs CC courses.
  */
 type St = 'sat' | 'def' | 'open'
-/** art: some CC route exists (!isDeferrable). miss: what it still needs. def: UC-only rows it relies on. */
+/** art: canRoute — CC courses (plus UC-only rows) could make it pass. miss: what it still needs. def: UC-only rows it relies on. */
 interface Res { st: St; art: boolean; miss: string[]; def: string[]; kids: Res[]; node: ReqNode | Requirement }
 
 const passes = (r: Res) => r.st !== 'open'
@@ -76,21 +77,20 @@ const alt = (rs: Res[]) => rs.map((r) => {
 
 /**
  * Fold one subtree; `leafSt` decides each row. Children are all evaluated, so optional rows are still reported.
- * `bare`: nothing is taken (the isDeferrable pass), so a node is articulable iff it fails.
  */
-function fold(n: ReqNode | Requirement, leafSt: (r: Requirement) => St, bare = false): Res {
+function fold(n: ReqNode | Requirement, leafSt: (r: Requirement) => St): Res {
   if (n.kind === 'req') {
     const st = leafSt(n)
-    return { st, art: n.groups.length > 0, miss: st === 'open' ? [n.id] : [], def: st === 'def' ? [n.id] : [], kids: [], node: n }
+    return { st, art: canRoute(n), miss: st === 'open' ? [n.id] : [], def: st === 'def' ? [n.id] : [], kids: [], node: n }
   }
-  const kids = n.children.map((c) => fold(c, leafSt, bare))
+  const kids = n.children.map((c) => fold(c, leafSt))
   const req = kids.filter(counted)
   const sat = req.filter((r) => r.st === 'sat')
   // among satisfied alternatives, rely on the ones that leave the least for the university (stable)
   const fewest = (k: number) => new Set([...sat].sort((x, y) => x.def.length - y.def.length).slice(0, k))
   const inOrder = (s: Set<Res>) => req.filter((r) => s.has(r)).flatMap((r) => r.def)
   const res = (st: St, miss: string[], def: string[]): Res =>
-    ({ st, art: bare ? st === 'open' : !isDeferrable(n), miss, def, kids, node: n })
+    ({ st, art: canRoute(n), miss, def, kids, node: n })
 
   if (n.type === 'AND') {
     const open = req.filter((r) => !passes(r))
@@ -98,14 +98,35 @@ function fold(n: ReqNode | Requirement, leafSt: (r: Requirement) => St, bare = f
     return res(open.length ? 'open' : sat.length || !req.length ? 'sat' : 'def', open.flatMap((r) => r.miss), def)
   }
   const need = n.type === 'OR' ? 1 : (n.n ?? 1)
-  const a = req.filter((r) => r.st !== 'sat' && r.art), d = req.filter((r) => r.st !== 'sat' && !r.art)
+  // a: still open but reachable with CC courses; d: passes only as UC-only. A row ASSIST never mentions is neither.
+  const a = req.filter((r) => r.st === 'open' && r.art), d = req.filter((r) => r.st === 'def')
   if (sat.length >= need) return res('sat', [], inOrder(fewest(need)))
   const left = need - sat.length
   const pick = (rs: Res[]) => (left === rs.length ? rs.flatMap((r) => r.miss) : [`${n.type === 'OR' ? 'One' : left} of: ${alt(rs)}`])
   // Enough CC routes remain: a UC-only alternative never stands in for one.
   if (sat.length + a.length >= need) return res('open', pick(a), inOrder(new Set(sat)))
   if (sat.length + a.length + d.length >= need) return res('def', [], inOrder(new Set([...sat, ...d])))
-  return res('open', pick([...a, ...d]), inOrder(new Set(sat))) // more required than listed: cannot be met
+  return res('open', pick(req.filter((r) => r.st !== 'sat')), inOrder(new Set(sat))) // cannot be met: name every option
+}
+
+/**
+ * UC-only: no CC group anywhere in the agreement AND ASSIST itself says so for at least one college. A row that is
+ * merely absent from the payloads (NOT_LISTED) is not proof; it stays open so the student is sent to a counselor
+ * rather than told to take it at the university.
+ */
+export const ucOnly = (r: Requirement) =>
+  r.groups.length === 0 && Object.values(r.noArticulation ?? {}).some((why) => why !== NOT_LISTED)
+
+const routable = new WeakMap<ReqNode | Requirement, boolean>()
+/** True iff taking the CC courses the agreement lists (leaving UC-only rows for the university) would make it pass. */
+export function canRoute(n: ReqNode | Requirement): boolean {
+  if (n.kind === 'req') return n.groups.length > 0 || ucOnly(n)
+  let v = routable.get(n)
+  if (v === undefined) {
+    routable.set(n, false) // the fold asks for n's own art, which this pass discards; guard the recursion
+    routable.set(n, (v = passes(fold(n, (r) => (r.groups.length ? 'sat' : ucOnly(r) ? 'def' : 'open')))))
+  }
+  return v
 }
 
 const deferrable = new WeakMap<ReqNode | Requirement, boolean>()
@@ -114,9 +135,9 @@ const deferrable = new WeakMap<ReqNode | Requirement, boolean>()
  * no sending college articulates. Optional children are ignored; the node's own `required` flag is not consulted.
  */
 export function isDeferrable(n: ReqNode | Requirement): boolean {
-  if (n.kind === 'req') return n.groups.length === 0
+  if (n.kind === 'req') return ucOnly(n)
   let v = deferrable.get(n)
-  if (v === undefined) deferrable.set(n, (v = passes(fold(n, (r) => (r.groups.length ? 'open' : 'def'), true))))
+  if (v === undefined) deferrable.set(n, (v = passes(fold(n, (r) => (ucOnly(r) ? 'def' : 'open')))))
   return v
 }
 
@@ -138,7 +159,7 @@ export function verifySchedule(taken: Set<CourseId>, agreement: Agreement): Vali
       else if (isSplit(st.partials)) out.splitSeriesViolations.push({ requirementId: req.id, label: req.label, partials: st.partials, blocking: false })
       else if (st.partials.length) out.incomplete[req.id] = st.partials.sort((a, b) => b.have.length - a.have.length)[0]
     }
-    return st.satisfied ? 'sat' : req.groups.length ? 'open' : 'def'
+    return st.satisfied ? 'sat' : ucOnly(req) ? 'def' : 'open'
   }
   const root = fold(agreement.root, leafSt)
 

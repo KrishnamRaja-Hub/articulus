@@ -33,11 +33,12 @@ describe('solve: never opens a new split series (F-06)', () => {
     expect(p.result.splitSeriesViolations).toHaveLength(0)
     expect(p.result.isValid).toBe(true)
   })
-  it('reports the split when every option opens one (Berkeley ME, Santa Monica only)', () => {
-    // Every Santa Monica physics group uses PHYSCS 23, which with Foothill PHYS 4C splits PHYSICS 7C.
+  it('a split the plan cannot avoid is only a warning when the plan does not need that row (Berkeley ME, Santa Monica only)', () => {
+    // Every Santa Monica physics group uses PHYSCS 23, which with Foothill PHYS 4C splits PHYSICS 7C. PHYSICS 7C is an
+    // unused alternative in the "one science" choice (chemistry covers it), so the plan is valid with a warning.
     const p = solve(new Set([`${DA}:PHYS 4B`, `${FH}:PHYS 4C`]), ME, { allowed: [SM], home: SM, termSystem: 'semester', unitSystems })
-    expect(p.result.isValid).toBe(false)
-    expect(p.unsolvable.some((u) => /splitting PHYSICS 7C/.test(u))).toBe(true)
+    expect(p.result.isValid).toBe(true)
+    expect(p.result.splitSeriesViolations.map((v) => [v.requirementId, v.blocking])).toEqual([['PHYSICS 7C', false]])
   })
 })
 

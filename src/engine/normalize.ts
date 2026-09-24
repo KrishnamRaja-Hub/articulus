@@ -22,6 +22,9 @@ export interface RawPayload {
   result: { name: string; templateAssets: string; articulations: string; academicYear: string; sendingInstitution: string; receivingInstitution: string }
 }
 /** Parse one nested JSON field, naming the payload on failure. */
+/** Placeholder for a UC row absent from every payload: not an ASSIST statement, so it never makes a row UC-only. */
+export const NOT_LISTED = 'No articulation listed'
+
 const parsed = <T>(p: RawPayload, f: keyof RawPayload['result']): T => {
   try { return JSON.parse(p.result[f]) as T }
   catch (e) { throw new Error(`normalize: ${p.result?.name ?? '?'} (sending ${p.result?.sendingInstitution ?? '?'}): bad ${f}: ${(e as Error).message}`) }
@@ -118,7 +121,7 @@ export function normalize(payloads: RawPayload[]): Agreement {
   }
 
   const leaf = (k: string): Requirement => {
-    if (!reqs.has(k)) reqs.set(k, { kind: 'req', id: k, label: k, units: 0, groups: [], noArticulation: Object.fromEntries(sendingIds.map((id) => [id, 'No articulation listed'])) })
+    if (!reqs.has(k)) reqs.set(k, { kind: 'req', id: k, label: k, units: 0, groups: [], noArticulation: Object.fromEntries(sendingIds.map((id) => [id, NOT_LISTED])) })
     return reqs.get(k)!
   }
   const prune = (n: ReqNode): ReqNode | null => {

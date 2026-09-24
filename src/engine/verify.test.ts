@@ -9,7 +9,7 @@ import ece from '../../data/agreements/7-ece-electrical-engineering-b-s.json'
 import dme from '../../data/agreements/89-mechanical-engineering-b-s.json'
 import index from '../../data/index.json'
 import type { Agreement, ReqNode, Requirement, ValidationResult } from './types'
-import { blockingSplits, has, honorsColleges, honorsMix, isDeferrable, reqStatus, verifySchedule } from './verify'
+import { blockingSplits, has, honorsColleges, honorsMix, isDeferrable, reqStatus, ucOnly, verifySchedule } from './verify'
 
 const ME = me as unknown as Agreement, MAE = mae as unknown as Agreement, MCS = mcs as unknown as Agreement, CSE = cse as unknown as Agreement
 const DA = 113, FH = 51
@@ -53,19 +53,22 @@ describe('split detection (F-09)', () => {
 })
 
 describe('missing (F-12)', () => {
-  it('an OR is one named choice; its alternatives are not each required', () => {
-    // UC Davis CSE: three articulated routes through ECS 32/36. The UC-only rows inside them (ECS 032C, ECS 034) are
-    // not named: they are done at Davis whichever route is taken.
+  it('an OR with one completable route names that route, not the ones through an unrecorded row', () => {
+    // UC Davis CSE: two of the three ECS 32/36 routes include ECS 032C, which no college articulates and for which
+    // ASSIST gives no reason (placeholder only). We cannot tell the student to take it at Davis, so the only route we
+    // can vouch for is ECS 036A + 036B + 036C; it is owed row by row.
     const r = verifySchedule(new Set(), CSE)
-    expect(r.missing).toContain('One of: (ECS 032B + ECS 036A), (ECS 036B + ECS 036C + ECS 036A), (ECS 032B + ECS 032A)')
-    expect(r.missing).not.toContain('ECS 036A')
+    expect(r.missing).toEqual(expect.arrayContaining(['ECS 036A', 'ECS 036B', 'ECS 036C']))
+    expect(r.missing.join()).not.toContain('ECS 032C')
     expect(r.missing.join()).not.toContain('(group)')
     expect(r.missing).toContain('MAT 021A')
   })
-  it('an OR of UC-only rows is not missing at all (it was "One of: CSE 15L, CSE 29" before deferral)', () => {
+  it('an OR of rows with no articulation and no ASSIST reason stays missing: only a counselor can confirm UC-only', () => {
+    // UCSD Math/CS: CSE 15L and CSE 29 have no CC groups, but the only "reason" is our placeholder for a row absent from
+    // every payload. Telling the student "take it at UCSD" could be wrong (F-01 dropped rows), so it is not deferred.
     const r = verifySchedule(new Set(), MCS)
-    expect(r.missing.join()).not.toMatch(/CSE 15L|CSE 29/)
-    expect(r.deferred).toEqual(['CSE 15L', 'CSE 29'])
+    expect(r.missing).toContain('One of: CSE 15L, CSE 29')
+    expect(r.deferred).toEqual([])
     expect(r.missing).toContain('MATH 20A')
   })
   it('names an alternative by what it still lacks, and drops a satisfied OR', () => {
@@ -355,23 +358,26 @@ describe('deferral and blocking on real agreements', () => {
     expect(r.missing).toContain('CHE 002A, CHE 002B')
     expect(r.deferred).toEqual(['EME 050'])
   })
-  it('UCLA CS: COM SCI 35L (no articulation anywhere) is deferred, not missing', () => {
+  it('UCLA CS: COM SCI 35L has no articulation and no ASSIST reason, so it is not deferred', () => {
+    // Placeholder only: the plan cannot be called complete until a counselor confirms 35L is taken at UCLA.
     const a = cs as unknown as Agreement
-    expect(verifySchedule(new Set(Object.keys(a.catalog)), a)).toMatchObject({ isValid: true, missing: [], deferred: ['COM SCI 35L'] })
-    expect(verifySchedule(new Set(), a).missing).not.toContain('COM SCI 35L')
+    expect(verifySchedule(new Set(Object.keys(a.catalog)), a)).toMatchObject({ isValid: false, missing: ['COM SCI 35L'], deferred: [] })
   })
   it('UCSD ECE: the lower-division ECE core that must be taken at UCSD is deferred', () => {
     const a = ece as unknown as Agreement
     expect(verifySchedule(new Set(Object.keys(a.catalog)), a).deferred.sort()).toEqual(['ECE 15', 'ECE 25', 'ECE 35', 'ECE 45', 'ECE 5', 'ECE 65'])
   })
-  it('every fixture: taking every articulated course is valid; deferred rows are UC-only and never missing', async () => {
+  it('every fixture: taking every articulated course leaves only unrecorded rows; deferred rows are UC-only and never missing', async () => {
     for (const { file } of index as { file: string }[]) {
       const a = (await import(`../../data/agreements/${file.replace(/\.json$/, '')}.json`)).default as Agreement
       const all = verifySchedule(new Set(Object.keys(a.catalog)), a)
-      expect(all.isValid, file).toBe(true)
+      // Anything still missing must involve a row with no CC group and no ASSIST reason (a counselor question).
+      const unrecorded = new Set(reqs(a.root).filter((x) => !x.groups.length && !ucOnly(x)).map((x) => x.id))
+      expect(all.isValid || all.missing.every((m) => [...unrecorded].some((id) => m.includes(id))), `${file} ${all.missing}`).toBe(true)
+      if (!all.missing.length) expect(all.isValid, file).toBe(true)
       expect(all.splitSeriesViolations, file).toEqual([])
       for (const r of [all, verifySchedule(new Set(), a)]) for (const id of r.deferred) {
-        expect(reqs(a.root).filter((x) => x.id === id).every((x) => x.groups.length === 0), `${file} ${id}`).toBe(true)
+        expect(reqs(a.root).filter((x) => x.id === id).every(ucOnly), `${file} ${id}`).toBe(true)
         const esc = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
         expect(r.missing.join('|'), `${file} ${id}`).not.toMatch(new RegExp(`(^|[|(]|: |, | \\+ )${esc}($|[|)]|, | \\+ )`))
       }
