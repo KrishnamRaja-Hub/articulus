@@ -1,18 +1,23 @@
 import type { Agreement, CourseGroup, CourseId, Institution, Partial, Plan, ReqNode, Requirement, Term } from './types'
-import { has, honorsColleges, reqStatus, ucOnly, verifySchedule, type ReqStatus } from './verify.ts'
+import { canRoute, has, honorsColleges, isDeferrable, reqStatus, ucOnly, verifySchedule, type ReqStatus } from './verify.ts'
 import institutions from '../../data/institutions.json' with { type: 'json' }
 
 export type TermSystem = 'quarter' | 'semester'
 
 export interface SolveOptions {
   allowed: number[]       // institutions the student can enroll at
-  home?: number           // tie-break preference
+  home?: number           // the student's college: no college penalty there; also a tie-break
   unitCap?: number        // per term, in the home (termSystem) unit system; default 16 quarter / 12 semester
   maxTerms?: number
   startTerm?: { season: 'Fall' | 'Winter' | 'Spring'; year: number }
   termSystem?: TermSystem                     // home college's system; Plan units are reported in it
   unitSystems?: Record<number, TermSystem>    // institutionId -> native system; missing => assumed termSystem
   budget?: number                             // search nodes before falling back to greedy (optimal = false); default 200k
+  /** Cost of each college other than `home` that planned courses use, in quarter units (5 = about one course),
+   *  converted to termSystem. Default 5. 0 (with chainPenalty 0) is pure minimum units. */
+  collegePenalty?: number
+  /** Cost of each subject chain (see `solve`) planned across two or more colleges, in quarter units. Default 5. */
+  chainPenalty?: number
 }
 
 const half = (u: number) => Math.round(u * 2) / 2
@@ -37,18 +42,72 @@ const lex = (x: (number | string)[], y: (number | string)[]) => {
   return 0
 }
 const stripH = (c: CourseId) => c.replace(/H$/, '')
-const instOf = (c: CourseId) => Number(c.slice(0, c.indexOf(':')))
+const colleges0 = new Map<CourseId, number>()
+const instOf = (c: CourseId) => {
+  let k = colleges0.get(c)
+  if (k === undefined) colleges0.set(c, (k = Number(c.slice(0, c.indexOf(':')))))
+  return k
+}
 /** verify's rule: pieces at two colleges that are different courses (1BH here, 1B there is a duplicate). */
 const code = (c: CourseId) => stripH(c.slice(c.indexOf(':') + 1))
 const splitAt = (st: ReqStatus) => !st.satisfied && new Set(st.partials.map((p: Partial) => p.institutionId)).size > 1 &&
   new Set(st.partials.flatMap((p) => p.have.map(code))).size > 1
 
+/** Required children only: optional (recommended) subtrees never fail, satisfy or defer anything for their parent. */
+const kidsOf = (n: ReqNode) => n.children.filter((c) => c.kind === 'req' || c.required)
+const needOf = (n: ReqNode) => (n.type === 'OR' ? 1 : n.n ?? 1)
+
 /**
- * Exact minimum-unit plan. The tree is passed by one of its "configs" (a set of requirements to complete, one per
- * combination of OR / N_OF choices); a config's requirements split into independent components (no shared course,
- * no split series between them), each solved by branch-and-bound over its requirements' groups. Objective, in order:
- * requirements left unmet, units, new split series, units away from home, honors courses, courses, course ids.
- * Falls back to the greedy set cover (optimal = false) past the search budget. Then quarter packing.
+ * verify's fold, given which rows are complete. `sat`: done with CC courses; `def`: passes only because what is left
+ * is UC-only; `open`: needs more. In an OR / N_OF, UC-only alternatives fill slots only while no articulable
+ * alternative (verify.canRoute) is open: the CC route is owed first. A row with no groups and no ASSIST reason is
+ * neither articulable nor UC-only.
+ */
+export function treeState(n: ReqNode | Requirement, done: (r: Requirement) => boolean): 'sat' | 'def' | 'open' {
+  if (n.kind === 'req') return done(n) ? 'sat' : ucOnly(n) ? 'def' : 'open'
+  const ks = kidsOf(n), sts = ks.map((c) => treeState(c, done))
+  const sat = sts.filter((s) => s === 'sat').length
+  if (n.type === 'AND') return sts.includes('open') ? 'open' : sat || !ks.length ? 'sat' : 'def'
+  const need = needOf(n)
+  if (sat >= need) return 'sat'
+  const open = ks.filter((c, j) => sts[j] === 'open' && canRoute(c)).length, def = sts.filter((s) => s === 'def').length
+  return open || sat + def < need ? 'open' : 'def'
+}
+
+/** Can the subtree pass as `def` for some set of complete rows? Over-approximate: it only gates route enumeration. */
+const mayDefM = new WeakMap<ReqNode | Requirement, boolean>()
+const mayDef = (n: ReqNode | Requirement): boolean => {
+  if (n.kind === 'req') return ucOnly(n)
+  let v = mayDefM.get(n)
+  if (v === undefined) {
+    const ks = kidsOf(n), art = ks.filter(canRoute)
+    v = n.type === 'AND' ? ks.length > 0 && ks.every(mayDef) : needOf(n) > 0 && art.length >= needOf(n) && art.some(mayDef)
+    mayDefM.set(n, v)
+  }
+  return v
+}
+
+/** "MATH 51" -> "MATH", "COM SCI M51A" -> "COM SCI", "CHEM 1A, CHEM 1AL" -> "CHEM": the UC subject of a row. */
+const subjectOf = (id: string) => {
+  const t = id.split(',')[0].trim().split(/\s+/), k = t.findIndex((w) => /\d/.test(w))
+  return t.slice(0, k < 0 ? t.length : k).join(' ')
+}
+
+/**
+ * Exact minimum-cost plan. Cost, in order: requirements left unmet; then units + collegePenalty per college other
+ * than home that planned courses use + chainPenalty per subject chain split across colleges; then new split series,
+ * units away from home, honors courses, courses, course ids. Penalties are in quarter units, costed in termSystem.
+ *
+ * Subject chain: the rows of the agreement that share a UC subject (MATH 51/52/53/54, PHYSICS 7A/7B/7C), when at least
+ * two such rows have CC groups. A course belongs to it when it (or its honors twin) appears in one of those rows'
+ * groups. The chain is split when its planned courses sit at two or more colleges, or at a college other than one
+ * where the student took courses of it. Taken courses alone cost nothing.
+ *
+ * The tree is passed by one of its "configs" (a minimal set of requirements to complete, under verify's rules); for a
+ * set of colleges the student would attend, a config's requirements split into independent components (no shared
+ * course, no split series and no subject chain between them), each solved by branch-and-bound over its requirements'
+ * groups. An outer branch-and-bound over the colleges charges each one used. Falls back to the greedy set cover
+ * (optimal = false) past the search budget. Then quarter packing.
  */
 export function solve(taken: Set<CourseId>, a: Agreement, opts: SolveOptions): Plan {
   const { allowed, home, termSystem = 'quarter', unitSystems = {}, maxTerms = 6, startTerm = { season: 'Fall', year: 2026 }, budget = 200_000 } = opts
@@ -57,6 +116,8 @@ export function solve(taken: Set<CourseId>, a: Agreement, opts: SolveOptions): P
     const k = a.catalog[c]
     return k ? convert(k.units, unitSystems[k.institutionId] ?? termSystem, termSystem, exact) : 0
   }
+  const penalty = (q = 5) => (Number.isFinite(q) && q > 0 ? convert(q, 'quarter', termSystem, true) : 0)
+  const pCollege = penalty(opts.collegePenalty), pChain = penalty(opts.chainPenalty)
 
   /* ---- the tree under the transfer rules ---- */
 
@@ -70,39 +131,17 @@ export function solve(taken: Set<CourseId>, a: Agreement, opts: SolveOptions): P
   }
   walk(a.root)
   type Ok = (i: number) => boolean
-  const kidsOf = (n: ReqNode) => n.children.filter((c) => c.kind === 'req' || c.required) // optional subtrees never fail a parent
-  const freeM = new Map<ReqNode | Requirement, boolean>(), quotaM = new Map<ReqNode, { art: (ReqNode | Requirement)[]; k: number }>()
-  /** Passes with no courses at all: every requirement in it is completed at the university (no groups). */
-  const free = (n: ReqNode | Requirement): boolean => {
-    let f = freeM.get(n)
-    if (f === undefined) freeM.set(n, (f = pass(n, () => false)))
-    return f
-  }
-  /** OR / N_OF: how many articulable children must pass. A deferred child fills a slot only if the articulable ones cannot reach n. */
-  const quota = (n: ReqNode) => {
-    let q = quotaM.get(n)
-    if (!q) {
-      const kids = kidsOf(n), art = kids.filter((c) => !free(c)), fixed = n.children.length - kids.length
-      const need = n.type === 'OR' ? 1 : n.n ?? 1
-      quotaM.set(n, (q = { art, k: need - fixed - Math.min(kids.length - art.length, Math.max(0, need - fixed - art.length)) }))
-    }
-    return q
-  }
-  /** Does the subtree pass, given which requirements are complete? A UC-only requirement (verify.ucOnly) is deferred. */
-  const pass = (n: ReqNode | Requirement, ok: Ok): boolean => {
-    if (n.kind === 'req') return ucOnly(n) || ok(ix.get(n)!)
-    if (n.type === 'AND') return kidsOf(n).every((c) => pass(c, ok))
-    const { art, k } = quota(n)
-    return art.filter((c) => pass(c, ok)).length >= k
-  }
-  /** Requirements the agreement still needs: every failing required path from the root. */
+  const state = (n: ReqNode | Requirement, ok: Ok) => treeState(n, (r) => ok(ix.get(r)!))
+  const pass = (n: ReqNode | Requirement, ok: Ok) => state(n, ok) !== 'open'
+  /** Requirements the agreement still needs (verify's rule): every failing child of a failing AND, every failing
+   *  articulable alternative of a failing OR / N_OF. */
   const needy = (ok: Ok) => {
     const out = new Set<number>()
     const go = (n: ReqNode | Requirement): void => {
-      if (n.kind === 'req') out.add(ix.get(n)!)
-      else kidsOf(n).forEach((c) => { if (!pass(c, ok)) go(c) })
+      if (n.kind === 'req') return void out.add(ix.get(n)!)
+      for (const c of kidsOf(n)) if (!pass(c, ok) && (n.type === 'AND' || canRoute(c))) go(c)
     }
-    if (a.root.required && !pass(a.root, ok)) go(a.root)
+    if (!pass(a.root, ok)) go(a.root)
     return out
   }
   const statOf = (h: Set<CourseId>) => L.map((r) => reqStatus(r, h))
@@ -128,15 +167,45 @@ export function solve(taken: Set<CourseId>, a: Agreement, opts: SolveOptions): P
         const alt = [c, ...(mix.has(g.institutionId) ? [c.endsWith('H') ? stripH(c) : `${c}H`] : [])].filter((x) => a.catalog[x])
         vs = vs.flatMap((v) => alt.map((x) => [...v, x]))
       }
-      for (const v of vs) { const s = [...new Set(v)].sort(); out.set(s.join('+'), s) }
+      for (const v of vs) { const s = [...new Set(v)].sort(); if (s.length) out.set(s.join('+'), s) }
     }
     return [...out.values()]
   })
-  const pool = ways.map((w) => new Set(w.flat()))
+  const poolOf = (w: CourseId[][][]) => w.map((x) => new Set(x.flat()))
+  const pool = poolOf(ways)
   /** Additive cost of one course: units, units away from home, honors, count. */
   const vec = new Map<CourseId, number[]>()
   pool.forEach((s) => s.forEach((c) => { const u = unitsOf(c, true); vec.set(c, [u, instOf(c) === home ? 0 : u, /H$/.test(c) ? 1 : 0, 1]) }))
-  const sumV = (cs: CourseId[]) => cs.reduce((t, c) => t.map((x, j) => x + vec.get(c)![j]), [0, 0, 0, 0])
+  const sumV = (cs: Iterable<CourseId>) => {
+    let u = 0, away = 0, hon = 0, n = 0
+    for (const c of cs) { const v = vec.get(c)!; u += v[0]; away += v[1]; hon += v[2]; n += v[3] }
+    return [u, away, hon, n]
+  }
+
+  /* ---- colleges and subject chains: the penalties ---- */
+
+  /** Every course a requirement's groups could match, honors twins included: where a new split can appear. */
+  const touch = L.map((r) => new Set(r.groups.flatMap((g) => g.courses.flatMap((c) => [c, `${c}H`, stripH(c)]))))
+  const bySubject = new Map<string, Set<string>>() // subject -> ids of its rows with CC groups
+  L.forEach((r) => { const s = subjectOf(r.id); if (s && r.groups.length) bySubject.set(s, (bySubject.get(s) ?? new Set()).add(r.id)) })
+  const subjects = [...bySubject].filter(([, ids]) => ids.size > 1).map(([s]) => s).sort()
+  const chainsOf = new Map<CourseId, number[]>() // course -> chains it belongs to
+  L.forEach((r, i) => {
+    const x = subjects.indexOf(subjectOf(r.id))
+    if (x >= 0) touch[i].forEach((c) => { const xs = chainsOf.get(c) ?? []; if (!xs.includes(x)) chainsOf.set(c, [...xs, x]) })
+  })
+  const chainOfRow = L.map((r) => subjects.indexOf(subjectOf(r.id)))
+  const tookAt = subjects.map((_, x) => new Set([...taken].filter((c) => chainsOf.get(c)?.includes(x)).map(instOf)))
+  /** Subject chains whose planned courses `cs` sit at 2+ colleges, counting where earlier parts were taken. */
+  const chains = (cs: Iterable<CourseId>) => {
+    const at = new Map<number, Set<number>>()
+    for (const c of cs) for (const x of chainsOf.get(c) ?? []) at.set(x, (at.get(x) ?? new Set()).add(instOf(c)))
+    let n = 0
+    for (const [x, s] of at) if (s.size > 1 || [...tookAt[x]].some((i) => !s.has(i))) n++
+    return n
+  }
+  /** Colleges other than home that `cs` uses. */
+  const colleges = (cs: Iterable<CourseId>) => new Set([...cs].map(instOf).filter((i) => i !== home)).size
 
   /* ---- what cannot be met at `allowed`, named so the student can act on it ---- */
 
@@ -145,26 +214,31 @@ export function solve(taken: Set<CourseId>, a: Agreement, opts: SolveOptions): P
     const ns = ids.map((i) => shortName.get(i)).filter((s): s is string => !!s).sort()
     return ns.length ? ` — offered at ${ns.join(', ')}` : ''
   }
-  /** Completable at the allowed colleges (plus college `x`), all else aside. */
-  const can = (n: ReqNode | Requirement, x?: number) => pass(n, (i) => sat0[i] || ways[i].length > 0 || L[i].groups.some((g) => g.institutionId === x))
+  /** Rows completable at the allowed colleges (plus college `x`), all else aside. */
+  const okAt = (x?: number): Ok => (i) => sat0[i] || ways[i].length > 0 || L[i].groups.some((g) => g.institutionId === x)
+  const canSat = (n: ReqNode | Requirement, x?: number) => state(n, okAt(x)) === 'sat'
+  const canPass = (n: ReqNode | Requirement) => pass(n, okAt())
   // a row with no CC group and no ASSIST reason: nothing to take anywhere, and not provably UC-only
   const offered = (r: Requirement) => !r.groups.length ? `${r.id} — no ASSIST articulation record; confirm with a counselor`
     : `${r.id}${listed(other.filter((x) => r.groups.some((g) => g.institutionId === x)))}`
   const names = (n: ReqNode | Requirement): string => {
     if (n.kind === 'req') return n.id
-    const ks = kidsOf(n).filter((c) => !free(c))
+    const ks = kidsOf(n).filter((c) => !isDeferrable(c))
     return ks.length === 1 ? names(ks[0]) : `(${ks.map(names).sort().join(' + ')})`
   }
   /** "1 of: (ECS 032B + ECS 036A), ECS 032A — offered at De Anza": colleges where one more alternative could be completed. */
   const shortfall = (n: ReqNode) => {
-    const { art, k } = quota(n), ok = art.filter((c) => can(c)), rest = art.filter((c) => !ok.includes(c))
-    const at = other.filter((x) => rest.some((c) => can(c, x)))
-    return `${k - ok.length}${ok.length ? ' more' : ''} of: ${[...new Set(rest.map(names))].sort().join(', ')}${listed(at)}`
+    const ks = kidsOf(n), k = needOf(n), ok = ks.filter((c) => canSat(c)), rest = ks.filter((c) => !ok.includes(c) && !isDeferrable(c))
+    // with UC-only alternatives, passing every articulable one may need fewer
+    const art = ks.filter(canRoute), viaDef = art.length >= k && art.some(mayDef) ? art.filter((c) => !canPass(c)).length : INF
+    const more = Math.min(k - ok.length, viaDef)
+    const at = other.filter((x) => rest.some((c) => canSat(c, x)))
+    return `${more}${ok.length ? ' more' : ''} of: ${[...new Set(rest.map(names))].sort().join(', ')}${listed(at)}`
   }
 
   /* ---- configs: minimal sets of articulable requirements whose completion passes the tree ---- */
 
-  const pseudo: string[] = [] // an N_OF with fewer articulable children than it needs: id L.length + k
+  const pseudo: string[] = [] // an OR / N_OF with fewer completable alternatives than it needs: id L.length + k
   let overflow = false
   const norm = (cs: number[][]) => {
     const out: number[][] = []
@@ -176,58 +250,128 @@ export function solve(taken: Set<CourseId>, a: Agreement, opts: SolveOptions): P
     return overflow ? out.slice(0, 1) : out
   }
   const cross = (ls: number[][][]) => ls.reduce<number[][]>((acc, l) => norm(acc.flatMap((x) => l.map((y) => [...new Set([...x, ...y])].sort((p, q) => p - q)))), [[]])
-  const cfgs = (n: ReqNode | Requirement): number[][] => {
-    if (overflow) return [[]]
-    if (n.kind === 'req') return [ucOnly(n) ? [] : [ix.get(n)!]] // one with no way at `allowed` is given up
-    if (n.type === 'AND') return cross(kidsOf(n).map(cfgs))
-    const { art, k } = quota(n), ok = art.filter((c) => can(c))
-    if (k <= 0) return [[]]
-    // Fewer alternatives completable here than needed: plan those, report the rest as one shortfall. Part of an
-    // alternative that cannot be completed earns nothing, so it is never planned.
-    if (ok.length < k) return cross([...ok.map(cfgs), [[L.length + pseudo.push(shortfall(n)) - 1]]])
-    const sub = ok.map(cfgs), out: number[][] = []
-    const pick = (from: number, got: number[]): void => {
-      if (got.length === k) { out.push(...cross(got.map((i) => sub[i]))); if (out.length > CONFIGS) overflow = true; return }
-      for (let i = from; i <= ok.length - (k - got.length) && !overflow; i++) pick(i + 1, [...got, i])
+  type Fam = number[][]
+  /** Minimal requirement sets that make the subtree `sat` (S) or pass (P). A row with no way at `allowed` is given up. */
+  const fams = (n: ReqNode | Requirement): { S: Fam; P: Fam } => {
+    if (overflow) return { S: [[]], P: [[]] }
+    if (n.kind === 'req') return ucOnly(n) ? { S: [], P: [[]] } : { S: [[ix.get(n)!]], P: [[ix.get(n)!]] }
+    const ks = kidsOf(n), fs = ks.map(fams)
+    if (n.type === 'AND') {
+      const P = cross(fs.map((f) => f.P))
+      // `sat` once all pass, unless every child can pass as UC-only: then one of them must be `sat`
+      return { S: ks.length && ks.every(mayDef) ? norm(fs.flatMap((f) => cross([f.S, P]))) : P, P }
     }
-    pick(0, [])
-    return norm(out)
+    const k = needOf(n)
+    if (k <= 0) return { S: [[]], P: [[]] }
+    // k alternatives `sat`. Fewer completable here than needed: plan those, report the rest as one shortfall. Part
+    // of an alternative that cannot be completed earns nothing, so it is never planned.
+    const ok = ks.flatMap((c, j) => (canSat(c) ? [j] : []))
+    let S: Fam
+    if (ok.length < k) S = cross([...ok.map((j) => fs[j].S), [[L.length + pseudo.push(shortfall(n)) - 1]]])
+    else {
+      const out: number[][] = []
+      const pick = (from: number, got: number[]): void => {
+        if (got.length === k) { out.push(...cross(got.map((j) => fs[j].S))); if (out.length > CONFIGS) overflow = true; return }
+        for (let i = from; i <= ok.length - (k - got.length) && !overflow; i++) pick(i + 1, [...got, ok[i]])
+      }
+      pick(0, [])
+      S = norm(out)
+    }
+    // Or every articulable alternative passes and UC-only ones fill the remaining slots.
+    const art = ks.flatMap((c, j) => (canRoute(c) ? [j] : []))
+    return { S, P: art.length >= k && art.some((j) => mayDef(ks[j])) ? norm([...S, ...cross(art.map((j) => fs[j].P))]) : S }
   }
-  const configs = a.root.required ? cfgs(a.root) : [[]]
+  const configs = a.root.required ? fams(a.root).P : [[]]
 
   /* ---- branch-and-bound ---- */
 
-  // v: requirements given up, units, new splits, units away from home, honors courses, courses. Then course ids,
+  // v: requirements given up, cost, new splits, units away from home, honors courses, courses. Then course ids,
   // requirements given up, the config: the order never depends on input order.
   type Sol = { v: number[]; cs: CourseId[]; skip: number[]; cfg: number[] }
   const idsOf = (is: number[]) => is.map((i) => (i < L.length ? L[i].id : pseudo[i - L.length])).sort()
   const flat = (x: Sol) => [...x.v, ...x.cs, ...idsOf(x.skip), x.cfg.length, ...idsOf(x.cfg)]
   const better = (x: Sol, y: Sol | null) => !y || lex(flat(x), flat(y)) < 0
   let nodes = 0
-  const memo = new Map<string, Sol | null>()
+  const memo = new Map<string, { cols: number[]; used: number[]; sol: Sol | null }[]>()
 
-  /** Cheapest way to complete requirements `ls` (independent of everything else). `ws`: other requirements their
-   *  courses touch, where a new split is counted, or, if in `guard`, forbidden; with a guard a requirement may be skipped. */
-  const component = (ls: number[], ws: number[], guard: Set<number> | null): Sol | null => {
-    const order = [...ls].sort((x, y) => ways[x].length - ways[y].length || x - y)
+  /** Cheapest way to complete requirements `ls` (independent of everything else) with ways `W`. Cost: units plus
+   *  split subject chains. `ws`: other requirements their courses touch, where a new split is counted, or, if in
+   *  `guard`, forbidden; with a guard a requirement may be skipped. */
+  const branch = (ls: number[], ws: number[], guard: Set<number> | null, W0: CourseId[][][], PW0: Set<CourseId>[], pCh: number): Sol | null => {
+    // Ways whose courses no other requirement here (or watched row) can use, with equal cost vectors, differ only by
+    // ids: keep the smallest, which also gives the smallest merged id list. Not with chains, which see colleges.
+    let W = W0, PW = PW0
+    if (!pCh) {
+      const n = new Map<CourseId, number>()
+      for (const i of ls) for (const c of PW0[i]) n.set(c, (n.get(c) ?? 0) + 1)
+      for (const w of ws) for (const c of touch[w]) n.set(c, (n.get(c) ?? 0) + 2)
+      W = [...W0]; PW = [...PW0]
+      for (const i of ls) {
+        const keep = new Map<string, CourseId[]>(), out: CourseId[][] = []
+        for (const w of W0[i]) {
+          if (w.some((c) => n.get(c) !== 1)) { out.push(w); continue }
+          const k = `${sumV(w)}|${w.length}`, o = keep.get(k)
+          if (!o || lex(w, o) < 0) keep.set(k, w)
+        }
+        W[i] = [...out, ...keep.values()]
+        PW[i] = new Set(W[i].flat())
+      }
+    }
+    const order = [...ls].sort((x, y) => W[x].length - W[y].length || x - y)
     const P = new Set<CourseId>(), skip: number[] = []
     let best: Sol | null = null
-    const done = (i: number) => ways[i].some((w) => w.every((c) => P.has(c)))
-    /** Admissible bound: each remaining requirement's cheapest group, a course shared by m of them costing 1/m each. */
+    const done = (i: number) => W[i].some((w) => w.every((c) => P.has(c)))
+    /** Admissible bound: each remaining requirement's cheapest group, a course shared by m of them costing 1/m each;
+     *  chains already split stay split, and a chain whose remaining rows cannot all go where it is (or to one
+     *  college) costs the cheaper of its penalty and the units to keep it there. */
     const bound = (k: number) => {
       const rest = order.slice(k).filter((i) => !done(i)), share = new Map<CourseId, number>()
-      for (const i of rest) for (const c of pool[i]) if (!P.has(c)) share.set(c, (share.get(c) ?? 0) + 1)
+      for (const i of rest) for (const c of PW[i]) if (!P.has(c)) share.set(c, (share.get(c) ?? 0) + 1)
       const t = [skip.length, ...sumV([...P])]
+      if (!pCh) {
+        for (const i of rest) {
+          let m0 = INF, m1 = 0, m2 = 0, m3 = 0
+          for (const w of W[i]) {
+            let s0 = 0, s1 = 0, s2 = 0, s3 = 0
+            for (const c of w) {
+              if (P.has(c)) continue
+              const v = vec.get(c)!, d = share.get(c)!
+              s0 += v[0] / d; s1 += v[1] / d; s2 += v[2] / d; s3 += v[3] / d
+            }
+            const d0 = s0 - m0, d1 = s1 - m1, d2 = s2 - m2
+            if (d0 < -EPS || (d0 <= EPS && (d1 < -EPS || (d1 <= EPS && (d2 < -EPS || (d2 <= EPS && s3 < m3 - EPS)))))) { m0 = s0; m1 = s1; m2 = s2; m3 = s3 }
+          }
+          t[1] += m0; t[2] += m1; t[3] += m2; t[4] += m3
+        }
+        return [t[0], t[1], 0, t[2], t[3], t[4]]
+      }
+      const lo = [...t], at = new Map<number, Map<number, number>>()
       for (const i of rest) {
         let m: number[] | null = null
-        for (const w of ways[i]) {
+        const byCol = new Map<number, number>(), each = [INF, INF, INF, INF]
+        for (const w of W[i]) {
           const s = [0, 0, 0, 0]
           for (const c of w) if (!P.has(c)) vec.get(c)!.forEach((x, j) => (s[j] += x / share.get(c)!))
           if (!m || lex(s, m) < 0) m = s
+          s.forEach((x, j) => (each[j] = Math.min(each[j], x)))
+          const col = instOf(w[0])
+          byCol.set(col, Math.min(byCol.get(col) ?? INF, s[0]))
         }
         m!.forEach((x, j) => (t[j + 1] += x))
+        each.forEach((x, j) => (lo[j + 1] += x))
+        at.set(i, new Map([...byCol].map(([col, u]) => [col, u - m![0]])))
       }
-      return [t[0], t[1], 0, t[2], t[3], t[4]]
+      let extra = 0
+      subjects.forEach((_, x) => {
+        const rs = rest.filter((i) => chainOfRow[i] === x)
+        if (!rs.length) return
+        const K = new Set([...tookAt[x], ...[...P].filter((c) => chainsOf.get(c)?.includes(x)).map(instOf)])
+        if (K.size > 1) return // already split, counted below
+        const cols = K.size ? [...K] : [...at.get(rs[0])!.keys()]
+        extra += Math.min(pCh, ...cols.map((col) => rs.reduce((u, i) => u + (at.get(i)!.get(col) ?? INF), 0)))
+      })
+      // with the chain term, cost ties no longer pin the ways: tie-breaks bounded row by row
+      return extra > EPS ? [t[0], t[1] + pCh * chains(P) + extra, 0, lo[2], lo[3], lo[4]] : [t[0], t[1] + pCh * chains(P), 0, t[2], t[3], t[4]]
     }
     const finish = () => {
       const h = withTaken(P)
@@ -238,7 +382,7 @@ export function solve(taken: Set<CourseId>, a: Agreement, opts: SolveOptions): P
         splits++
       }
       const cs = [...P].sort(), [u, away, hon, n] = sumV(cs)
-      const s: Sol = { v: [skip.length, u, splits, away, hon, n], cs, skip: [...skip], cfg: [] }
+      const s: Sol = { v: [skip.length, u + (pCh ? pCh * chains(cs) : 0), splits, away, hon, n], cs, skip: [...skip], cfg: [] }
       if (better(s, best)) best = s
     }
     const dfs = (k: number): void => {
@@ -247,7 +391,7 @@ export function solve(taken: Set<CourseId>, a: Agreement, opts: SolveOptions): P
       if (k === order.length) return finish()
       if (best && lex(bound(k), best.v) > 0) return
       const i = order[k]
-      const adds = ways[i].map((w) => w.filter((c) => !P.has(c))).map((add) => ({ add, key: [...sumV(add), ...add] }))
+      const adds = W[i].map((w) => w.filter((c) => !P.has(c))).map((add) => ({ add, key: [...sumV(add), ...add] }))
       for (const { add } of adds.sort((x, y) => lex(x.key, y.key))) {
         add.forEach((c) => P.add(c)); dfs(k + 1); add.forEach((c) => P.delete(c))
       }
@@ -256,17 +400,67 @@ export function solve(taken: Set<CourseId>, a: Agreement, opts: SolveOptions): P
     dfs(0)
     return best
   }
+  /** An exact component result for colleges `cols` also holds for fewer colleges, as long as it uses none of those
+   *  left out (the search space only shrinks); no plan with more colleges means none with fewer. */
+  const memoized = (key: string, cols: number[], run: () => Sol | null) => {
+    const seen = memo.get(key) ?? [], sub = (xs: number[], ys: number[]) => xs.every((x) => ys.includes(x))
+    const hit = seen.find((e) => sub(cols, e.cols) && sub(e.used, cols))
+    if (hit) return hit.sol
+    const sol = run()
+    memo.set(key, [...seen, { cols, used: sol ? [...new Set(sol.cs.map(instOf))] : [], sol }])
+    return sol
+  }
+  /** Colleges where chain x may stay whole: those of its courses in the pools, and where it was taken if anywhere. */
+  const homesOf = (x: number, ls: number[], PW: Set<CourseId>[]) =>
+    [...new Set(ls.flatMap((i) => [...PW[i]].filter((c) => chainsOf.get(c)?.includes(x)).map(instOf)))]
+      .filter((k) => [...tookAt[x]].every((t) => t === k)).sort((p, q) => p - q)
+  /**
+   * `branch` with split subject chains charged. Every plan plans no course of a chain, keeps it at one college k (all
+   * its planned courses there, where it was taken if anywhere) or splits it; so per assignment of the component's
+   * chains (avoid, keep at k, free) the unit-only search runs on the ways that respect it, and each result is scored
+   * with its real chains, which the assignment's free chains bound: the best is exact, tie-breaks included. Too many
+   * assignments: `branch` with the chain bound instead.
+   */
+  const component = (key: string, cols: number[], ls: number[], ws: number[], guard: Set<number> | null, W: CourseId[][][], PW: Set<CourseId>[], pCh: number): Sol | null => {
+    const plain = () => memoized(`${key}|0`, cols, () => branch(ls, ws, guard, W, PW, 0))
+    if (!pCh) return plain()
+    return memoized(`${key}|${pCh}`, cols, () => {
+      const xs = subjects.map((_, x) => x).filter((x) => ls.some((i) => [...PW[i]].some((c) => chainsOf.get(c)?.includes(x))))
+      const AVOID = -2, FREE = -1, opts = xs.map((x) => [AVOID, FREE, ...homesOf(x, ls, PW)])
+      if (opts.reduce((n, o) => n * o.length, 1) > 64) return branch(ls, ws, guard, W, PW, pCh)
+      let best: Sol | null = null
+      const score = (r: Sol | null) => {
+        if (!r) return
+        const s: Sol = { ...r, v: [r.v[0], r.v[1] + pCh * chains(r.cs), ...r.v.slice(2)] }
+        if (better(s, best)) best = s
+      }
+      const pick = (j: number, keep: [number, number][]): void => {
+        if (j < xs.length) { for (const k of opts[j]) pick(j + 1, k === FREE ? keep : [...keep, [xs[j], k]]); return }
+        if (!keep.length) return score(plain())
+        // a way is at one college: it respects "chain x stays at k" unless it holds a course of x elsewhere
+        const V = W.map((ws, i) => (ls.includes(i) ? ws.filter((w) => keep.every(([x, k]) => instOf(w[0]) === k || !w.some((c) => chainsOf.get(c)?.includes(x)))) : ws))
+        if (!guard && ls.some((i) => !V[i].length)) return
+        score(memoized(`${key}|${keep.map((p) => p.join(':'))}`, cols, () => branch(ls, ws, guard, V, poolOf(V), 0)))
+      }
+      pick(0, [])
+      return best
+    })
+  }
 
-  /** Every course a requirement's groups could match, honors twins included: where a new split can appear. */
-  const touch = L.map((r) => new Set(r.groups.flatMap((g) => g.courses.flatMap((c) => [c, `${c}H`, stripH(c)]))))
-  const solveConfig = (C: number[], guarded: boolean): Sol | null => {
-    const F = C.filter((i) => i < L.length && !sat0[i] && ways[i].length), inF = new Set(F)
-    const forced = C.filter((i) => i >= L.length || (!sat0[i] && !ways[i].length))
+  /** Best plan for config C using only the ways `W` (courses at home and the colleges being tried); the college
+   *  penalty is not included. */
+  const solveConfig = (C: number[], guarded: boolean, W: CourseId[][][], PW: Set<CourseId>[], pCh: number): Sol | null => {
+    const F = C.filter((i) => i < L.length && !sat0[i] && W[i].length), inF = new Set(F)
+    const forced = C.filter((i) => i >= L.length || (!sat0[i] && !W[i].length))
     const up = new Map(F.map((i) => [i, i]))
     const find = (i: number): number => (up.get(i) === i ? i : find(up.get(i)!))
     const join = (x: number, y: number) => { const p = find(x), q = find(y); if (p !== q) up.set(Math.max(p, q), Math.min(p, q)) }
-    const owner = new Map<CourseId, number>()
-    for (const i of F) for (const c of pool[i]) { if (owner.has(c)) join(owner.get(c)!, i); else owner.set(c, i) }
+    const owner = new Map<CourseId, number>(), chainOwner = new Map<number, number>()
+    for (const i of F) for (const c of PW[i]) {
+      if (owner.has(c)) join(owner.get(c)!, i); else owner.set(c, i)
+      // a subject chain's penalty depends on all its courses: one component per chain
+      if (pCh) for (const x of chainsOf.get(c) ?? []) { if (chainOwner.has(x)) join(chainOwner.get(x)!, i); else chainOwner.set(x, i) }
+    }
     const watch: [number, number][] = []
     for (let w = 0; w < L.length; w++) {
       if (!L[w].groups.length || sat0[w] || inF.has(w)) continue
@@ -280,23 +474,173 @@ export function solve(taken: Set<CourseId>, a: Agreement, opts: SolveOptions): P
     F.forEach((i) => at(i).ls.push(i))
     watch.forEach(([w, i]) => at(i).ws.push(w))
     const cs: CourseId[] = [], skip = [...forced]
-    let splits = 0
+    let splits = 0, cost = 0
     for (const { ls, ws } of comps.values()) {
-      const key = `${ls}|${ws}|${guard ? ws.filter((w) => guard.has(w)) : '-'}`
-      if (!memo.has(key)) memo.set(key, component(ls, ws, guard))
-      const s = memo.get(key)
+      // the colleges a component may use decide its ways
+      const cols = [...new Set(ls.flatMap((i) => W[i].map((w) => instOf(w[0]))))].sort((x, y) => x - y)
+      const s = component(`${ls}|${ws}|${guard ? ws.filter((w) => guard.has(w)) : '-'}`, cols, ls, ws, guard, W, PW, pCh)
       if (!s) return null
-      cs.push(...s.cs); skip.push(...s.skip); splits += s.v[2]
+      cs.push(...s.cs); skip.push(...s.skip); splits += s.v[2]; cost += s.v[1]
     }
     cs.sort()
-    const [u, away, hon, n] = sumV(cs)
-    return { v: [skip.length, u, splits, away, hon, n], cs, skip: skip.sort((x, y) => x - y), cfg: C }
+    const [, away, hon, n] = sumV(cs)
+    return { v: [skip.length, cost, splits, away, hon, n], cs, skip: skip.sort((x, y) => x - y), cfg: C }
   }
+  /** Every non-home college some requirement could use. */
+  const reachable = [...new Set(ways.flatMap((w) => w.map((v) => instOf(v[0]))))].filter((i) => i !== home).sort((x, y) => x - y)
+  /** Ways at home and the colleges `S` only. */
+  const restrict = (S: number[]) => {
+    const inS = new Set(S)
+    return ways.map((w) => w.filter((v) => { const i = instOf(v[0]); return i === home || inS.has(i) }))
+  }
+  const chainRows = subjects.map((x) => L.flatMap((r, i) => (subjectOf(r.id) === x ? [i] : [])))
+  /** Chains split in every plan that completes config C with ways `W`: no single college can finish the chain's rows
+   *  (and be the only one where the student took courses of it). */
+  const forcedChains = (C: number[], W: CourseId[][][]) => {
+    const inF = new Set(C.filter((i) => i < L.length && !sat0[i] && W[i].length))
+    return chainRows.filter((rows, x) => {
+      const rs = rows.filter((i) => inF.has(i)), took = [...tookAt[x]]
+      const at = (k: number) => took.every((t) => t === k) && rs.every((i) => W[i].some((w) => instOf(w[0]) === k))
+      return rs.length > 0 && ![...new Set(W[rs[0]].map((w) => instOf(w[0])))].some(at)
+    }).length
+  }
+  /**
+   * Admissible [unmet, cost] of the plans with ways `W` that use every college of I and maybe some of D (whose
+   * penalty is not yet counted). Per config: a row with no way left is unmet. The rest is a facility-location problem
+   * whose facilities are colleges (home and I open, D at pCollege) and whose clients are rows: a row costs its
+   * cheapest way at a college, a course shared by m rows 1/m each. A subject chain is one client: all its rows at one
+   * college (where it was taken, if anywhere), or split at pChain (a free facility). The dual ascent of the LP gives
+   * the bound (Erlenkotter).
+   */
+  const dualBound = (W: CourseId[][][], I: number[], D: number[], pCh: number) => {
+    const SPLIT = -1, free = (k: number) => k === SPLIT || k === home || I.includes(k)
+    let best: number[] = [INF, INF]
+    for (const C of configs) {
+      const skip = C.filter((i) => i >= L.length || (!sat0[i] && !W[i].length)).length
+      if (skip > best[0]) continue
+      const F = C.filter((i) => i < L.length && !sat0[i] && W[i].length), share = new Map<CourseId, number>()
+      for (const i of F) for (const c of new Set(W[i].flat())) share.set(c, (share.get(c) ?? 0) + 1)
+      const rowCost = (i: number) => {
+        const m = new Map<number, number>()
+        for (const w of W[i]) { const k = instOf(w[0]), u = w.reduce((t, c) => t + vec.get(c)![0] / share.get(c)!, 0); m.set(k, Math.min(m.get(k) ?? INF, u)) }
+        return m
+      }
+      const costs = new Map(F.map((i) => [i, rowCost(i)])), clients: Map<number, number>[] = []
+      const grouped = new Set<number>()
+      if (pCh) chainRows.forEach((rows, x) => {
+        const rs = rows.filter((i) => costs.has(i))
+        if (rs.length < 2) return
+        rs.forEach((i) => grouped.add(i))
+        const took = [...tookAt[x]], m = new Map<number, number>()
+        for (const k of costs.get(rs[0])!.keys()) {
+          if (took.some((t) => t !== k) || rs.some((i) => !costs.get(i)!.has(k))) continue
+          m.set(k, rs.reduce((t, i) => t + costs.get(i)!.get(k)!, 0))
+        }
+        m.set(SPLIT, rs.reduce((t, i) => t + Math.min(...costs.get(i)!.values()), 0) + pCh)
+        clients.push(m)
+      })
+      for (const i of F) if (!grouped.has(i)) clients.push(costs.get(i)!)
+      // the forced chains of a lone row (split by where it was taken) are counted outside the clients
+      const lone = pCh ? chainRows.filter((rows, x) => {
+        const rs = rows.filter((i) => costs.has(i))
+        return rs.length === 1 && ![...costs.get(rs[0])!.keys()].some((k) => [...tookAt[x]].every((t) => t === k))
+      }).length : 0
+      // clients as [college, cost] lists; ascent: raise each dual to its next cost level while every paid college it
+      // reaches has slack left
+      const cl = clients.map((m) => [...m])
+      const cap = cl.map((m) => { let x = INF; for (const [k, u] of m) if (free(k) && u < x) x = u; return x })
+      const v = cl.map((m, j) => { let x = cap[j]; for (const [k, u] of m) if (!free(k) && u < x) x = u; return x })
+      const slack = new Map(D.map((k) => [k, pCollege]))
+      const order = cl.map((_, j) => j).sort((x, y) => cl[x].length - cl[y].length || x - y)
+      for (let again = true; again;) {
+        again = false
+        for (const j of order) {
+          if (v[j] >= cap[j] - EPS) continue
+          let d = cap[j] - v[j]
+          for (const [k, u] of cl[j]) {
+            if (free(k)) continue
+            d = Math.min(d, u > v[j] + EPS ? u - v[j] : slack.get(k)!)
+          }
+          if (d <= EPS) continue
+          for (const [k, u] of cl[j]) if (!free(k) && u <= v[j] + EPS) slack.set(k, slack.get(k)! - d)
+          v[j] += d; again = true
+        }
+      }
+      const lb = v.reduce((t, x) => t + x, 0)
+      const out = [skip, lb + pCh * lone]
+      if (lex(out, best) < 0) best = out
+    }
+    return [best[0], best[1] + pCollege * I.length]
+  }
+  /**
+   * Outer branch-and-bound over the colleges other than home. A node (I, D) holds the plans that use every college
+   * in I and maybe some in D; `dualBound` prunes it first. Then the exact minimum-unit plan with home, I and D
+   * (chains and colleges not charged) is a candidate, and it plus the penalties for I and the forced chains bounds
+   * the node. If that plan uses no college of D, the chain-aware plan there is solved too (a candidate and a tighter
+   * bound); a relaxed plan using no college of D solves the node. Otherwise branch on the first college of D it uses:
+   * without it, then with it. A plan using U lives in leaf U, so the best candidate is optimal; ties are kept (only a
+   * strictly worse bound prunes), and within a node the relaxation is lexicographically first, tie-breaks included.
+   */
   const search = (guarded: boolean) => {
     nodes = 0
     let best: Sol | null = null
-    for (const C of configs) { const s = solveConfig(C, guarded); if (s && better(s, best)) best = s }
-    return nodes > budget ? null : best
+    const real = (r: Sol): Sol => ({ ...r, v: [r.v[0], sumV(r.cs)[0] + pCollege * colleges(r.cs) + pChain * chains(r.cs), ...r.v.slice(2)] })
+    const offer = (r: Sol) => { const t = real(r); if (better(t, best)) best = t }
+    const solved = new Map<string, Sol | null>()
+    const solveAt = (S: number[], W: CourseId[][][], pCh: number) => {
+      const key = `${S}|${pCh}`
+      if (!solved.has(key)) {
+        const PW = poolOf(W)
+        let b: Sol | null = null
+        for (const C of configs) { const r = solveConfig(C, guarded, W, PW, pCh); if (r && better(r, b)) b = r }
+        solved.set(key, b)
+      }
+      return solved.get(key)!
+    }
+    const worse = (v: number[]) => !!best && lex(v, best.v.slice(0, 2)) > 0
+    // chain terms in the bounds assume every row is completed; the guarded pass may give rows up instead
+    const pCh = guarded ? 0 : pChain
+    const node = (I: number[], D: number[]): void => {
+      if (++nodes > budget) return
+      const S = [...I, ...D].sort((p, q) => p - q), W = restrict(S)
+      if (worse(dualBound(W, I, D, pCh))) return
+      let r = solveAt(S, W, 0)
+      if (!r) return
+      offer(r)
+      const forced = pCh ? Math.min(...configs.map((C) => forcedChains(C, W))) : 0
+      if (worse([r.v[0], r.v[1] + pCollege * I.length + pCh * forced])) return
+      let x = D.find((k) => r!.cs.some((c) => instOf(c) === k))
+      if (x === undefined) {
+        if (chains(r.cs) <= forced) return // the relaxation is optimal here
+        if (!(r = solveAt(S, W, pChain))) return
+        offer(r)
+        if (worse([r.v[0], r.v[1] + pCollege * I.length])) return
+        if ((x = D.find((k) => r!.cs.some((c) => instOf(c) === k))) === undefined) return // optimal here
+      }
+      const rest = D.filter((k) => k !== x)
+      node(I, rest)
+      node([...I, x], rest)
+    }
+    if (pCollege) {
+      // Incumbent first, from small college sets (cheap to solve): home alone, then greedily add the college that helps most.
+      const at = (S: number[]) => { const W = restrict(S); for (const pCh of [0, pChain]) { const r = solveAt(S, W, pCh); if (r) offer(r) } }
+      let S: number[] = [], cur: Sol | null = null
+      at(S)
+      for (;;) {
+        cur = best
+        let pick: number | undefined
+        for (const k of reachable.filter((x) => !S.includes(x))) {
+          const b: Sol | null = best
+          at([...S, k].sort((p, q) => p - q))
+          if (best !== b) pick = k
+        }
+        if (pick === undefined || best === cur || nodes > budget) break
+        S = [...S, pick].sort((p, q) => p - q)
+      }
+      node([], reachable)
+    }
+    else { const e = solveAt(reachable, ways, pChain); if (e) offer(e) } // no college penalty: every college at once
+    return { best: best as Sol | null, complete: nodes <= budget }
   }
 
   /* ---- greedy set cover: the fallback ---- */
@@ -336,26 +680,39 @@ export function solve(taken: Set<CourseId>, a: Agreement, opts: SolveOptions): P
 
     const bestGroup = (req: Requirement, h: Set<CourseId>): Cand | null => {
       let best: Cand | null = null
-      const mix = honorsColleges(req)
+      const mix = honorsColleges(req), at = new Set([...planned].map(instOf))
       for (const g of req.groups) {
         const need = toPlan(g, h, mix)
         // Only complete groups at colleges the student can attend, unless it is already complete.
         if (need.length && (!allowed.includes(g.institutionId) || banned.has(g))) continue
         // A course missing from the catalog has unknown units: not plannable.
         if (need.some((c) => !a.catalog[c])) continue
-        // Marginal home-system units to complete the group given what is already taken or planned.
-        const cand = { g, cost: need.reduce((s, c) => s + unitsOf(c), 0) + (splitting.has(g) ? SPLIT : 0) }
+        // Marginal home-system units to complete the group given what is already taken or planned; a new college costs.
+        const fresh = need.length && g.institutionId !== home && !at.has(g.institutionId) ? pCollege : 0
+        const cand = { g, cost: need.reduce((s, c) => s + unitsOf(c), 0) + fresh + (splitting.has(g) ? SPLIT : 0) }
         if (!best || cmp(rank(cand), rank(best)) < 0) best = cand
       }
       return best
     }
 
-    /** Estimated cost to satisfy a subtree from scratch (used to choose among OR / N_OF children). */
-    const estimate = (n: ReqNode | Requirement, h: Set<CourseId>): number => {
-      if (n.kind === 'req') return ucOnly(n) || reqStatus(n, h).satisfied ? 0 : bestGroup(n, h)?.cost ?? INF
-      if (n.type === 'AND') return kidsOf(n).reduce((s, c) => s + estimate(c, h), 0)
-      const { art, k } = quota(n), costs = art.map((c) => estimate(c, h)).sort((x, y) => x - y)
-      return k <= 0 ? 0 : k > costs.length ? INF : costs.slice(0, k).reduce((s, c) => s + c, 0)
+    type Want = 'sat' | 'pass'
+    const meets = (n: ReqNode | Requirement, ok: Ok, want: Want) => { const s = state(n, ok); return s === 'sat' || (want === 'pass' && s === 'def') }
+    const sum = (xs: number[]) => xs.reduce((s, x) => s + x, 0)
+    /** Every articulable alternative passing (UC-only ones fill the rest): available only when one can be UC-only. */
+    const viaDef = (n: ReqNode) => { const art = kidsOf(n).filter(canRoute); return art.length >= needOf(n) && art.some(mayDef) ? art : null }
+    /** Estimated cost to make a subtree `sat` or pass from here (used to choose among OR / N_OF children). */
+    const estimate = (n: ReqNode | Requirement, h: Set<CourseId>, ok: Ok, want: Want): number => {
+      if (meets(n, ok, want)) return 0
+      if (n.kind === 'req') return bestGroup(n, h)?.cost ?? INF
+      const ks = kidsOf(n)
+      if (n.type === 'AND') {
+        const p = ks.map((c) => estimate(c, h, ok, 'pass')), tot = sum(p)
+        return want === 'pass' || tot === INF ? tot : tot + Math.min(...ks.map((c, j) => estimate(c, h, ok, 'sat') - p[j]))
+      }
+      const k = needOf(n) - ks.filter((c) => state(c, ok) === 'sat').length
+      const s = ks.filter((c) => state(c, ok) !== 'sat').map((c) => estimate(c, h, ok, 'sat')).sort((x, y) => x - y)
+      const A = s.length < k ? INF : sum(s.slice(0, k)), art = want === 'pass' ? viaDef(n) : null
+      return Math.min(A, art ? sum(art.map((c) => estimate(c, h, ok, 'pass'))) : INF)
     }
 
     /** Order-independent name of a subtree, to break cost ties among OR / N_OF children. */
@@ -365,17 +722,32 @@ export function solve(taken: Set<CourseId>, a: Agreement, opts: SolveOptions): P
      * Collect the requirements that still need a group, choosing cheapest branches at OR / N_OF. `alt` gets those
      * reached through such a choice, which may still change as courses are planned.
      */
-    const needed = (n: ReqNode | Requirement, h: Set<CourseId>, ok: Ok, acc: Requirement[], alt: Set<Requirement>, inAlt = false): void => {
-      if (n.kind === 'req') { if (!ucOnly(n) && !ok(ix.get(n)!)) { acc.push(n); if (inAlt) alt.add(n) } return }
+    const needed = (n: ReqNode | Requirement, h: Set<CourseId>, ok: Ok, want: Want, acc: Requirement[], alt: Set<Requirement>, inAlt = false): void => {
+      if (meets(n, ok, want)) return
+      if (n.kind === 'req') { if (!ucOnly(n)) { acc.push(n); if (inAlt) alt.add(n) } return }
       if (!n.required) return
-      if (n.type === 'AND') { kidsOf(n).forEach((c) => needed(c, h, ok, acc, alt, inAlt)); return }
-      const { art, k } = quota(n)
-      const ranked = art
-        .map((c) => ({ c, done: pass(c, ok), cost: estimate(c, h), key: keyOf(c) }))
+      const ks = kidsOf(n)
+      if (n.type === 'AND') {
+        ks.forEach((c) => needed(c, h, ok, 'pass', acc, alt, inAlt))
+        if (want === 'sat' && !ks.some((c) => state(c, ok) === 'sat')) {
+          const d = ks.map((c) => ({ c, cost: estimate(c, h, ok, 'sat') - estimate(c, h, ok, 'pass'), key: keyOf(c) }))
+            .filter((x) => x.cost < INF).sort((x, y) => x.cost - y.cost || cmp([x.key], [y.key]))
+          if (d.length) needed(d[0].c, h, ok, 'sat', acc, alt, inAlt)
+        }
+        return
+      }
+      const k = needOf(n) - ks.filter((c) => state(c, ok) === 'sat').length
+      const ranked = ks.filter((c) => state(c, ok) !== 'sat')
+        .map((c) => ({ c, cost: estimate(c, h, ok, 'sat'), key: keyOf(c) }))
         .sort((x, y) => x.cost - y.cost || cmp([x.key], [y.key]))
-      const done = ranked.filter((r) => r.done).length
-      ranked.filter((r) => !r.done && r.cost < INF).slice(0, Math.max(0, k - done)).forEach((r) => needed(r.c, h, ok, acc, alt, true))
-      if (ranked.filter((r) => r.cost < INF).length < k) unsolvable.add(shortfall(n))
+      const A = ranked.length < k ? INF : sum(ranked.slice(0, k).map((r) => r.cost))
+      const art = want === 'pass' ? viaDef(n) : null, B = art ? sum(art.map((c) => estimate(c, h, ok, 'pass'))) : INF
+      if (A < INF && A <= B) ranked.slice(0, k).forEach((r) => needed(r.c, h, ok, 'sat', acc, alt, true))
+      else if (B < INF) art!.forEach((c) => needed(c, h, ok, 'pass', acc, alt, true))
+      else {
+        ranked.filter((r) => r.cost < INF).slice(0, k).forEach((r) => needed(r.c, h, ok, 'sat', acc, alt, true))
+        unsolvable.add(shortfall(n))
+      }
     }
 
     const splitIds = (h: Set<CourseId>) => new Set(verifySchedule(h, a).splitSeriesViolations.map((v) => v.requirementId))
@@ -392,7 +764,7 @@ export function solve(taken: Set<CourseId>, a: Agreement, opts: SolveOptions): P
     for (;;) {
       const h = have(), st = statOf(h)
       const todo: Requirement[] = [], alt = new Set<Requirement>()
-      needed(a.root, h, (i) => !!st[i].satisfied, todo, alt)
+      needed(a.root, h, (i) => !!st[i].satisfied, 'pass', todo, alt)
       if (!rounds--) { todo.forEach(giveUp); break }
       let pick: { req: Requirement; g: CourseGroup; cost: number } | null = null
       for (const req of todo) {
@@ -447,17 +819,19 @@ export function solve(taken: Set<CourseId>, a: Agreement, opts: SolveOptions): P
     const h = withTaken(cs), st = statOf(h)
     const give = Math.min(...configs.map((C) => C.filter((i) => i >= L.length || !st[i].satisfied).length))
     const [u, away, hon, n] = sumV(cs.filter((c) => vec.has(c)))
-    return { v: [give, u, newSplits(h), away, hon, n], cs, skip: [], cfg: [] }
+    return { v: [give, u + pCollege * colleges(cs) + pChain * chains(cs), newSplits(h), away, hon, n], cs, skip: [], cfg: [] }
   }
 
   /* ---- choose ---- */
 
   // Pass 1 counts new splits but forbids none: if its optimum opens no split the plan still needs, it is optimal
   // outright (the constraint only removes plans). Otherwise pass 2 forbids them, and the result is not proven.
-  let best = overflow ? null : search(false), optimal = !!best
+  // Out of budget, a pass keeps the best plan it found, unproven.
+  const first = overflow ? null : search(false)
+  let best = first?.best ?? null, optimal = !!best && first!.complete
   if (best && blocking(withTaken(best.cs)).length) {
     optimal = false
-    best = search(true)
+    best = search(true).best
     if (best && blocking(withTaken(best.cs)).length) best = null
   }
   let planned: CourseId[], chosen: Record<string, CourseGroup> = {}, unsolvable: string[]
