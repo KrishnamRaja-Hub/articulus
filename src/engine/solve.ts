@@ -13,9 +13,13 @@ export interface SolveOptions {
   unitSystems?: Record<number, TermSystem>    // institutionId -> native system; missing => assumed termSystem
 }
 
-/** Native course units -> home-system units, nearest 0.5. */
-const convert = (units: number, from: TermSystem, to: TermSystem) =>
-  from === to ? units : Math.round((from === 'semester' ? units * 1.5 : units / 1.5) * 2) / 2
+const half = (u: number) => Math.round(u * 2) / 2
+
+/** Native course units -> home-system units, nearest 0.5 (exact: unrounded, for sums; F-16). */
+const convert = (units: number, from: TermSystem, to: TermSystem, exact = false) => {
+  const u = from === to ? units : from === 'semester' ? units * 1.5 : units / 1.5
+  return exact || from === to ? u : half(u)
+}
 
 const INF = Number.POSITIVE_INFINITY
 
@@ -23,9 +27,9 @@ const INF = Number.POSITIVE_INFINITY
 export function solve(taken: Set<CourseId>, a: Agreement, opts: SolveOptions): Plan {
   const { allowed, home, termSystem = 'quarter', unitSystems = {}, maxTerms = 6, startTerm = { season: 'Fall', year: 2026 } } = opts
   const unitCap = opts.unitCap ?? (termSystem === 'semester' ? 12 : 16)
-  const unitsOf = (c: CourseId) => {
+  const unitsOf = (c: CourseId, exact = false) => {
     const k = a.catalog[c]
-    return k ? convert(k.units, unitSystems[k.institutionId] ?? termSystem, termSystem) : 0
+    return k ? convert(k.units, unitSystems[k.institutionId] ?? termSystem, termSystem, exact) : 0
   }
   /** Marginal home-system units to complete a group given what is already taken or planned. */
   const groupCost = (g: CourseGroup, h: Set<CourseId>, mix = false) => g.courses.reduce((s, c) => s + (has(h, c, mix) ? 0 : unitsOf(c)), 0)
@@ -89,34 +93,48 @@ export function solve(taken: Set<CourseId>, a: Agreement, opts: SolveOptions): P
     pick.g.courses.forEach((c) => { if (!has(have(), c, honorsMix(pick!.req))) planned.add(c) })
   }
 
-  const terms = pack([...planned], unitsOf, unitCap, maxTerms, startTerm, termSystem)
+  const terms = pack([...planned], (c) => unitsOf(c, true), unitCap, maxTerms, startTerm, termSystem, (c) => a.catalog[c]?.title ?? '')
   const result = verifySchedule(have(), a)
-  return { terms, chosen, result, totalUnits: terms.reduce((s, t) => s + t.units, 0), unsolvable: [...unsolvable] }
+  return { terms, chosen, result, totalUnits: half([...planned].reduce((s, c) => s + unitsOf(c, true), 0)), unsolvable: [...unsolvable] }
 }
 
 /* ---- term packing ---- */
 
-/** "113:PHYS 4B" -> { stem: "PHYS 4", seq: 1 }  (A=0, B=1 ...). Honors "1BH" collapses to "1B". College-agnostic. */
+/** "113:PHYS 4B" -> { stem: "113:PHYS 4", seq: 1 }  (A=0, B=1 ...; plain number = -1). Honors "1BH" collapses to "1B",
+ *  "7H" to "7". The stem keeps the college: series order never crosses campuses. */
 const seqKey = (id: CourseId) => {
-  const m = /^\d+:(.+?)\s(\d+)([A-Z]?)H?$/.exec(id)
-  return m ? { stem: `${m[1]} ${m[2]}`, seq: m[3] ? m[3].charCodeAt(0) - 65 : -1 } : null
+  const m = /^(\d+):(.+?)\s(\d+)(?:H|([A-Z])H?)?$/.exec(id)
+  return m ? { stem: `${m[1]}:${m[2]} ${Number(m[3])}`, prev: `${m[1]}:${m[2]} ${Number(m[3]) - 1}`, seq: m[4] ? m[4].charCodeAt(0) - 65 : -1 } : null
 }
 
-// ponytail: sequence order inferred from letter suffix (4A < 4B < 4C) within one college; swap for real
-// requisite data if ASSIST ever populates `requisites`.
-function pack(courses: CourseId[], unitsOf: (c: CourseId) => number, cap: number, maxTerms: number, start: NonNullable<SolveOptions['startTerm']>, system: TermSystem): Term[] {
+/** "General Chemistry II" -> { base: "general chemistry #", n: 2 }: exactly one ordinal token (I-IV or 1-4). */
+const ordinalTitle = (t: string) => {
+  const toks = t.trim().toLowerCase().split(/\s+/)
+  const at = toks.flatMap((w, i) => (/^(i{1,3}|iv|[1-4])$/.test(w) ? [i] : []))
+  if (at.length !== 1) return null
+  const w = toks[at[0]], n = /\d/.test(w) ? Number(w) : w === 'iv' ? 4 : w.length
+  return { base: toks.map((x, i) => (i === at[0] ? '#' : x)).join(' '), n }
+}
+
+// ponytail: sequence order inferred from letter suffix (4A < 4B < 4C) within one college, and for plain numbers only
+// when titles say so (CHEM 11 "General Chemistry I" < CHEM 12 "... II"); swap for real requisite data if ASSIST ever
+// populates `requisites`. Plain PHYSCS 21/22/23 ("Mechanics", "Electricity and Magnetism", ...) stay unordered.
+function pack(courses: CourseId[], unitsOf: (c: CourseId) => number, cap: number, maxTerms: number, start: NonNullable<SolveOptions['startTerm']>, system: TermSystem, titleOf: (c: CourseId) => string = () => ''): Term[] {
+  if (!(cap > 0 && Number.isFinite(cap))) cap = system === 'semester' ? 12 : 16 // NaN / <=0 / Infinity -> default
   const keys = new Map(courses.map((c) => [c, seqKey(c)]))
-  // pred: previous letter in the same series (4A -> 4B), or for the first course of a series (2A), the last
-  // planned course of the numerically previous series with the same prefix (1D -> 2A).
+  // pred: nearest lower letter planned in the same series (1A -> 1C when 1B is not needed); for the first course of a
+  // series (2A), the last planned course of the numerically previous series at the same college (1C -> 2A); for a
+  // plain number, the previous plain number whose title differs only by ordinal (CHEM 11 -> CHEM 12).
   const pred = (c: CourseId) => {
     const k = keys.get(c)
-    if (!k || k.seq < 0) return undefined
-    if (k.seq > 0) return courses.find((o) => o !== c && keys.get(o)?.stem === k.stem && keys.get(o)!.seq === k.seq - 1)
-    const m = /^(.+?)\s(\d+)$/.exec(k.stem)
-    if (!m) return undefined
-    const lower = `${m[1]} ${Number(m[2]) - 1}`
+    if (!k) return undefined
+    if (k.seq < 0) {
+      const t = ordinalTitle(titleOf(c))
+      return t ? courses.find((o) => { const ko = keys.get(o), to = ordinalTitle(titleOf(o)); return ko?.stem === k.prev && ko.seq < 0 && to?.base === t.base && to.n === t.n - 1 }) : undefined
+    }
+    if (k.seq > 0) return courses.filter((o) => { const ko = keys.get(o); return ko?.stem === k.stem && ko.seq >= 0 && ko.seq < k.seq }).sort((x, y) => keys.get(y)!.seq - keys.get(x)!.seq)[0]
     // ponytail: assume the third course (C) of the lower series is the gate, as with MATH 1C -> 2A; real requisites if ASSIST ever ships them
-    const lowerCourses = courses.filter((o) => keys.get(o)?.stem === lower)
+    const lowerCourses = courses.filter((o) => keys.get(o)?.stem === k.prev)
     return lowerCourses.find((o) => keys.get(o)!.seq === 2) ?? lowerCourses.sort((x, y) => keys.get(y)!.seq - keys.get(x)!.seq)[0]
   }
   const depth = (c: CourseId, d = 0): number => { const p = pred(c); return p && d < 10 ? depth(p, d + 1) : d }
@@ -124,19 +142,24 @@ function pack(courses: CourseId[], unitsOf: (c: CourseId) => number, cap: number
 
   const seasons: string[] = system === 'semester' ? ['Fall', 'Spring'] : ['Fall', 'Winter', 'Spring']
   const name = (i: number) => {
-    let si = Math.max(0, seasons.indexOf(start.season)), year = start.year
+    // A season the system lacks (Winter on semesters) starts at the next one: Winter 2027 -> Spring 2027.
+    let si = seasons.indexOf(start.season), year = start.year
+    if (si < 0) si = start.season === 'Winter' ? seasons.indexOf('Spring') : 0
     for (let k = 0; k < i; k++) { si = (si + 1) % seasons.length; if (si === 1) year++ } // Fall 2026 -> Winter/Spring 2027 -> Fall 2027
     return `${seasons[si]} ${year}`
   }
+  const EPS = 1e-9 // units are exact (unrounded) conversions, e.g. 5q = 3.333s
   const terms: Term[] = []
   const placed = new Map<CourseId, number>()
   for (const c of ordered) {
     const units = unitsOf(c)
     const p = pred(c)
     let i = p !== undefined && placed.has(p) ? placed.get(p)! + 1 : 0
-    while (terms[i] && terms[i].units + units > cap) i++
+    while (terms[i] && terms[i].units + units > cap + EPS) i++
     while (terms.length <= i) terms.push({ name: name(terms.length), courses: [], units: 0 })
     terms[i].courses.push(c); terms[i].units += units; placed.set(c, i)
   }
+  // Only a single course larger than the cap can overflow a term; flag it rather than hide it.
+  for (const t of terms) { if (t.units > cap + EPS) t.overCap = true; t.units = half(t.units) }
   return terms.slice(0, Math.max(maxTerms, terms.length)) // never silently drop courses; UI flags > maxTerms
 }

@@ -62,7 +62,8 @@ export interface ValidationResult {
   splitSeriesViolations: Violation[]
 }
 
-export interface Term { name: string; courses: CourseId[]; units: number }
+/** units: home-system units, nearest 0.5. overCap: one course alone exceeds the per-term unit cap. */
+export interface Term { name: string; courses: CourseId[]; units: number; overCap?: boolean }
 
 export interface Plan {
   terms: Term[]
