@@ -14,9 +14,12 @@ export const deferredOf = (current: ValidationResult, plan: Plan) =>
 
 /** `ok`: green, every requirement covered. `problem`: red, grounded in ASSIST rows that exist. `unconfirmed`: would be
  *  green, but the data cannot be trusted (DATA_CONTRACT.md), so it is never shown as covered. */
-export type Tone = 'ok' | 'problem' | 'unconfirmed'
+export type Tone = 'ok' | 'problem' | 'unconfirmed' | 'pending'
 /** `caveat`: a line about the data behind the verdict, shown under the title. */
 export interface Status { ok: boolean; tone: Tone; title: string; details: string[]; caveat?: string }
+
+/** While a newer plan is being computed: no verdict at all, so the badge is never green on the previous plan. */
+export const PLANNING: Status = { ok: false, tone: 'pending', title: 'Planning…', details: [] }
 
 export const UNCONFIRMED_TITLE = "Can't confirm — data needs refresh"
 export const CAVEAT = {
