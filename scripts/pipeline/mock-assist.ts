@@ -145,7 +145,16 @@ export interface Fault {
   /** Only the first N matching requests fault (default: all). */
   times?: number
 }
+/** The request an articulation payload answers, for `rewrite`. */
+export interface PayloadRequest { receivingId: number; sendingId: number; yearId: number; label: string }
+export type MockPayload = ReturnType<typeof payload>
+/** Identity rewrites of a payload's nested JSON (C-2 scenarios: a proxy or ASSIST serving the wrong agreement). */
+export const setIdentity = (p: MockPayload, f: 'sendingInstitution' | 'receivingInstitution' | 'academicYear', v: object) => { p.result[f] = JSON.stringify(v) }
 export interface MockOptions {
+  /** Rewrite an articulation payload before it is served (identity mismatch scenarios). */
+  rewrite?: (p: MockPayload, req: PayloadRequest, ds: MockDataset) => void
+  /** Pad every articulation response with this many extra bytes (oversized response scenario). */
+  padBytes?: number
   dataset?: MockDataset
   faults?: Fault[]
   /** API requests allowed per session before 429 (ASSIST rate-limits per session). */
@@ -234,7 +243,9 @@ export async function startMockAssist(options: MockOptions = {}, port = 0): Prom
       const [y, cc, , uc, , label] = key.split('/')
       const m = ds.majors.find((x) => x.receivingId === Number(uc) && Buffer.from(x.label).toString('hex') === label && x.colleges.includes(Number(cc)))
       if (!m) return send(res, 404, { error: 'no such agreement' })
-      return send(res, 200, payload(ds, m, Number(cc), Number(y)))
+      const p = payload(ds, m, Number(cc), Number(y))
+      opts.rewrite?.(p, { receivingId: Number(uc), sendingId: Number(cc), yearId: Number(y), label: m.label }, ds)
+      return send(res, 200, opts.padBytes ? { ...p, pad: 'x'.repeat(opts.padBytes) } : p)
     }
     return send(res, 404, { error: 'not found' })
   }

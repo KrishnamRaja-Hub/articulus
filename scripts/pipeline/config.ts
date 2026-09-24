@@ -67,7 +67,8 @@ export const PIPELINE = {
     /** Majors that must have an effectively-required lower-division math row (heuristic guard for CRITICAL-1). */
     mathRequiredMajors: /Computer Science|Electrical Engineering|Mechanical Engineering/,
     /**
-     * Findings a human reviewed and accepted: `${checkId}|${agreementFile}`. Each needs a reason. An acknowledged
+     * Findings a human reviewed and accepted: `${checkId}|${agreementFile}`. Each needs a reason that includes
+     * "expires YYYY-MM-DD" (validate.ts ackRefusal); canary, schema and raw checks cannot be acknowledged. An acknowledged
      * error is reported as a warning. Keep this list short and dated.
      */
     acknowledged: {} as Record<string, string>,
@@ -87,5 +88,7 @@ export const httpConfig = (env = process.env) => ({
   renewals: PIPELINE.http.renewals,
   delayMs: num(env.ASSIST_DELAY_MS, PIPELINE.http.delayMs),
   deadlineMs: num(env.ASSIST_DEADLINE_MS, PIPELINE.http.deadlineMs),
+  /** Largest response body accepted, in bytes (ASSIST_MAX_RESPONSE_BYTES; L-8). Real payloads are well under 5 MB. */
+  maxResponseBytes: num(env.ASSIST_MAX_RESPONSE_BYTES, 32 * 1024 * 1024),
 })
 export type HttpConfig = ReturnType<typeof httpConfig>

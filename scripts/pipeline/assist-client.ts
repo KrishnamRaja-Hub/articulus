@@ -14,12 +14,36 @@ const retriable = (status: number) => status >= 500 || status === 408
 
 export interface AssistClient {
   get: <T>(path: string) => Promise<T>
-  stats: { requests: number; retries: number; renewals: number }
+  /** identityMismatches: payloads rejected by fetchRaw because they were not for the request (C-2). */
+  stats: { requests: number; retries: number; renewals: number; identityMismatches?: number }
+}
+
+/** Read a body, refusing more than `max` bytes (L-8: a huge response must not be parsed fully in memory). */
+async function boundedText(r: Response, max: number, path: string): Promise<string> {
+  const declared = Number(r.headers.get('content-length'))
+  if (Number.isFinite(declared) && declared > max) {
+    await r.body?.cancel()
+    throw new FetchError(`${path}: response of ${declared} bytes exceeds ASSIST_MAX_RESPONSE_BYTES (${max})`, path, r.status, true)
+  }
+  if (!r.body) return ''
+  const reader = r.body.getReader(), chunks: Uint8Array[] = []
+  let total = 0
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    total += value.byteLength
+    if (total > max) {
+      await reader.cancel()
+      throw new FetchError(`${path}: response exceeds ASSIST_MAX_RESPONSE_BYTES (${max})`, path, r.status, true)
+    }
+    chunks.push(value)
+  }
+  return Buffer.concat(chunks).toString('utf8')
 }
 
 export function assistClient(cfg: HttpConfig, log: (m: string) => void = () => {}): AssistClient {
   const deadline = Date.now() + cfg.deadlineMs
-  const stats = { requests: 0, retries: 0, renewals: 0 }
+  const stats: AssistClient['stats'] = { requests: 0, retries: 0, renewals: 0, identityMismatches: 0 }
   const timed = async (url: string, init: RequestInit = {}) => {
     if (Date.now() > deadline) throw new FetchError(`fetch budget of ${cfg.deadlineMs} ms (ASSIST_DEADLINE_MS) exhausted`, url, undefined, true)
     stats.requests++
@@ -79,7 +103,7 @@ export function assistClient(cfg: HttpConfig, log: (m: string) => void = () => {
         continue
       }
       if (!r.ok) { await r.body?.cancel(); throw new FetchError(`${path}: HTTP ${r.status}`, path, r.status) }
-      const text = await r.text()
+      const text = await boundedText(r, cfg.maxResponseBytes, path)
       if (cfg.delayMs) await sleep(cfg.delayMs)
       try { return JSON.parse(text) as T }
       catch { throw new FetchError(`${path}: response is not JSON (${text.slice(0, 80)})`, path, r.status) }

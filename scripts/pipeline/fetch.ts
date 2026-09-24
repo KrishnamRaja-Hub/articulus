@@ -23,6 +23,37 @@ export interface RawBundle {
   agreements: RawAgreement[]
 }
 
+/** What a payload must be for: the request that fetched it (C-2). */
+export interface PayloadIdentity { sendingId: number; receivingId: number; academicYear: { id: number; code: string }; major: string }
+
+/** A payload that is not for the college / UC / year / major that was requested. Never stored or published. */
+export class PayloadIdentityError extends FetchError {
+  readonly mismatches: string[]
+  constructor(mismatches: string[]) {
+    super(`${mismatches.length} ASSIST payload(s) do not match their request (identity mismatch, nothing published):\n  ${mismatches.join('\n  ')}`, '/api/articulation/Agreements', undefined, true)
+    this.mismatches = mismatches
+  }
+}
+
+/**
+ * Compare a payload's own identity (the JSON-in-JSON sendingInstitution, receivingInstitution, academicYear and the
+ * report name) with what was requested. Returns one message per mismatch; empty means the payload is what we asked for.
+ */
+export function payloadIdentityErrors(p: RawPayload, want: PayloadIdentity): string[] {
+  const r = p?.result as Record<string, unknown> | undefined
+  const obj = (f: string): Record<string, unknown> | undefined => {
+    try { const v = JSON.parse(String(r?.[f])); return v && typeof v === 'object' ? v : undefined } catch { return undefined }
+  }
+  const errs: string[] = []
+  const snd = obj('sendingInstitution'), rcv = obj('receivingInstitution'), yr = obj('academicYear')
+  if (snd?.id !== want.sendingId) errs.push(`sendingInstitution ${String(snd?.id)} (requested ${want.sendingId})`)
+  if (rcv?.id !== want.receivingId) errs.push(`receivingInstitution ${String(rcv?.id)} (requested ${want.receivingId})`)
+  if (yr?.code !== want.academicYear.code || (yr?.id !== undefined && yr.id !== want.academicYear.id))
+    errs.push(`academicYear ${String(yr?.id)}/${String(yr?.code)} (requested ${want.academicYear.id}/${want.academicYear.code})`)
+  if (r?.name !== want.major) errs.push(`name "${String(r?.name)}" (requested report "${want.major}")`)
+  return errs
+}
+
 export const slugFile = (receivingId: number, label: string) =>
   `${receivingId}-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+$/, '')}.json`
 
@@ -44,6 +75,7 @@ export async function fetchRaw(client: AssistClient, cfg: PipelineConfig, opts: 
   }
 
   const agreements: RawAgreement[] = []
+  const mismatches: string[] = []
   for (const uc of cfg.universities) {
     const byMajor = new Map<string, RawAgreement>()
     for (const cc of cfg.colleges) {
@@ -61,6 +93,15 @@ export async function fetchRaw(client: AssistClient, cfg: PipelineConfig, opts: 
         const r = p?.result
         if (!r || ['templateAssets', 'articulations', 'academicYear', 'sendingInstitution', 'receivingInstitution'].some((f) => typeof (r as Record<string, unknown>)[f] !== 'string'))
           throw new Error(`articulation ${uc}<-${cc} "${m.label}": payload lacks the nested JSON string fields normalize needs`)
+        // C-2: the payload must be for the college, UC, year and major we asked for. A mismatch is a fetch error:
+        // keep going to report every one, then fail the run (a mismatched payload is never stored or published).
+        const bad = payloadIdentityErrors(p, { sendingId: cc, receivingId: uc, academicYear, major: m.label })
+        if (bad.length) {
+          client.stats.identityMismatches = (client.stats.identityMismatches ?? 0) + 1
+          mismatches.push(`${uc} <- ${cc} "${m.label}" (key ${m.key}): ${bad.join('; ')}`)
+          log(`REJECTED ${uc} <- ${cc} ${m.label}: payload identity mismatch: ${bad.join('; ')}`)
+          continue
+        }
         const a = byMajor.get(m.label) ?? { file: slugFile(uc, m.label), receivingId: uc, major: m.label, sources: [], payloads: [] }
         a.sources.push({ sendingId: cc, key: m.key })
         a.payloads.push(p)
@@ -70,6 +111,7 @@ export async function fetchRaw(client: AssistClient, cfg: PipelineConfig, opts: 
     }
     agreements.push(...byMajor.values())
   }
+  if (mismatches.length) throw new PayloadIdentityError(mismatches)
   const dup = agreements.map((a) => a.file).filter((f, i, all) => all.indexOf(f) !== i)
   if (dup.length) throw new Error(`two majors map to the same file name: ${dup.join(', ')}`)
   if (!agreements.length) throw new Error('no agreements matched the major filter: refusing to publish an empty data set')
