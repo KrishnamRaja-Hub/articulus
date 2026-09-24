@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import { gsap } from 'gsap'
 import { useGSAP } from '@gsap/react'
 import { useReveal } from '../motion/useReveal'
-import { agreements } from '../data'
+import { agreements, byId } from '../data'
 import { verifySchedule } from '../engine/verify'
 
 const DA = 113, FH = 51
@@ -78,6 +78,13 @@ function LiveCheck() {
   const result = useMemo(() => verifySchedule(taken, me), [taken, me])
   const v = result.splitSeriesViolations.find((x) => x.requirementId === 'PHYSICS 7B')
   const ok = !!result.satisfied['PHYSICS 7B']
+  // credit in the university's own unit system: De Anza is on quarters, Berkeley on semesters (1 semester unit = 1.5 quarter)
+  const sys = byId[me.receivingId].terms
+  const credited = [...taken].reduce((u, c) => {
+    const k = me.catalog[c]
+    const from = byId[k.institutionId].terms
+    return u + (from === sys ? k.units : from === 'quarter' ? k.units / 1.5 : k.units * 1.5)
+  }, 0)
 
   const box = useRef<HTMLDivElement>(null)
   useGSAP(() => {
@@ -113,7 +120,7 @@ function LiveCheck() {
           </span>
           <span className="font-medium">{ok ? 'PHYSICS 7B satisfied at De Anza' : 'Split series. PHYSICS 7B not satisfied.'}</span>
         </div>
-        <span className="text-[14px] opacity-80">{ok ? '12 units credited' : v ? '0 units credited' : ''}</span>
+        <span className="text-[14px] opacity-80">{ok ? `${Math.round(credited * 10) / 10} ${sys} units credited` : v ? '0 units credited' : ''}</span>
       </div>
     </div>
   )
