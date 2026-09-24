@@ -77,5 +77,5 @@ export interface Plan {
   result: ValidationResult                 // verification of taken + planned
   totalUnits: number
   unsolvable: string[]                     // required reqs with no group at allowed colleges
-  optimal?: boolean                        // true: planned set proven unit-minimal; false: heuristic fallback
+  optimal?: boolean                        // true: planned set proven minimal-cost (solve: units + penalties); false: not proven
 }

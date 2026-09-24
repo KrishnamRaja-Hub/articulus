@@ -3,7 +3,7 @@ import me from '../../data/agreements/79-mechanical-engineering-b-s.json'
 import mae from '../../data/agreements/7-mae-mechanical-engineering-b-s.json'
 import institutions from '../../data/institutions.json'
 import type { Agreement, Course, CourseId, Institution, Plan, ReqNode, Requirement } from './types'
-import { solve, type SolveOptions } from './solve'
+import { solve, treeState, type SolveOptions } from './solve'
 import { has, honorsColleges, reqStatus, verifySchedule } from './verify'
 import { NOT_LISTED } from './normalize'
 
@@ -25,16 +25,18 @@ const or = (...children: (ReqNode | Requirement)[]): ReqNode => ({ kind: 'node',
 const agreement = (root: ReqNode, courses: [string, number][], sendingIds: number[] = []): Agreement =>
   ({ receivingId: 1, major: 'T', year: 'x', sendingIds, root, catalog: catalog(courses) })
 const plannedOf = (p: Plan) => p.terms.flatMap((t) => t.courses)
+/** Pure minimum units: the tests of the transfer rules below predate the college and chain penalties. */
+const UNITS = { collegePenalty: 0, chainPenalty: 0 }
 
 // verify.ts with blocking / deferred (merged separately). Checks of plan.result against those rules run only then.
 const NEW_VERIFY = verifySchedule(new Set(), agreement(and(req('D', [])), [])).deferred.length > 0
 
-describe('solve: split series under the blocking rule (F-06)', () => {
+describe('solve: split series under the blocking rule (F-06), pure minimum units', () => {
   // Taken 2:P 2 is half of U at college 2. Planning 1:P 1 for R puts U at two colleges.
   const a = agreement(and(req('R', [['1:P 1'], ['3:Q 1']]), or(req('U', [['1:P 1', '1:P 2'], ['2:P 1', '2:P 2']]), req('V', [['3:V 1']]))),
     [['1:P 1', 3], ['1:P 2', 3], ['2:P 1', 3], ['2:P 2', 3], ['3:Q 1', 4], ['3:V 1', 1]])
   it('takes the cheaper group when the split it opens is in an unused OR alternative (a warning)', () => {
-    const p = solve(new Set(['2:P 2']), a, { allowed: [1, 3], home: 1 })
+    const p = solve(new Set(['2:P 2']), a, { allowed: [1, 3], home: 1, ...UNITS })
     expect(p.chosen.R.institutionId).toBe(1)
     expect(plannedOf(p).sort()).toEqual(['1:P 1', '3:V 1'])
     expect(p.totalUnits).toBe(4)
@@ -42,14 +44,14 @@ describe('solve: split series under the blocking rule (F-06)', () => {
     expect(p.optimal).toBe(true)
   })
   it.runIf(NEW_VERIFY)('... and the verifier calls that split non-blocking', () => {
-    const r = solve(new Set(['2:P 2']), a, { allowed: [1, 3], home: 1 }).result
+    const r = solve(new Set(['2:P 2']), a, { allowed: [1, 3], home: 1, ...UNITS }).result
     expect(r.splitSeriesViolations.map((v) => [v.requirementId, v.blocking])).toEqual([['U', false]])
     expect(r.isValid).toBe(true)
   })
   it('equal units: avoids opening even a non-blocking split', () => {
     const b = agreement(and(req('R', [['1:P 1'], ['3:Q 1']]), or(req('U', [['1:P 1', '1:P 2'], ['2:P 1', '2:P 2']]), req('V', [['3:V 1']]))),
       [['1:P 1', 3], ['1:P 2', 3], ['2:P 1', 3], ['2:P 2', 3], ['3:Q 1', 3], ['3:V 1', 1]])
-    const p = solve(new Set(['2:P 2']), b, { allowed: [1, 3], home: 1 }) // home college loses to "no new split"
+    const p = solve(new Set(['2:P 2']), b, { allowed: [1, 3], home: 1, ...UNITS }) // home college loses to "no new split"
     expect(p.chosen.R.institutionId).toBe(3)
     expect(p.result.splitSeriesViolations).toHaveLength(0)
   })
@@ -218,75 +220,231 @@ describe('solve: exact minimum units', () => {
     expect(p.chosen['MATH 52'].courses).toContain(`${DA}:MATH 1B`)
   })
   it('budget exhausted: falls back to greedy, flagged not optimal, never better than the exact plan', () => {
-    for (const a of [ME, MAE]) {
-      const o: SolveOptions = { allowed: [DA, FH, SM], home: DA, unitSystems }
+    for (const a of [ME, MAE]) for (const w of [UNITS, {}]) {
+      const o: SolveOptions = { allowed: [DA, FH, SM], home: DA, unitSystems, ...w }
       const x = solve(new Set(), a, o), g = solve(new Set(), a, { ...o, budget: 0 })
       expect(x.optimal).toBe(true)
       expect(g.optimal).toBe(false)
       expect(x.unsolvable.length).toBeLessThanOrEqual(g.unsolvable.length)
-      if (x.unsolvable.length === g.unsolvable.length) expect(x.totalUnits).toBeLessThanOrEqual(g.totalUnits)
+      const cost = (p: Plan) => p.totalUnits + (w === UNITS ? 0 : 5 * penalties(a, new Set(), plannedOf(p), DA))
+      if (x.unsolvable.length === g.unsolvable.length) expect(cost(x)).toBeLessThanOrEqual(cost(g) + 0.5) // totals round to 0.5
     }
   })
 })
 
-/* ---- brute-force oracle over random small agreements ---- */
+
+describe('solve: stays at home and keeps a subject chain at one college (MED-4)', () => {
+  it('home alone can finish: a course elsewhere must save more units than a college costs', () => {
+    const a = agreement(and(req('R', [['1:A 1'], ['2:A 1']])), [['1:A 1', 5], ['2:A 1', 3]])
+    expect(plannedOf(solve(new Set(), a, { allowed: [1, 2], home: 1 }))).toEqual(['1:A 1']) // 2 units saved < 5
+    expect(plannedOf(solve(new Set(), a, { allowed: [1, 2], home: 1, ...UNITS }))).toEqual(['2:A 1'])
+    const b = agreement(and(req('R', [['1:A 1'], ['2:A 1']])), [['1:A 1', 9], ['2:A 1', 3]])
+    expect(plannedOf(solve(new Set(), b, { allowed: [1, 2], home: 1 }))).toEqual(['2:A 1']) // 6 units saved > 5
+  })
+  it('each college costs once: courses gather at one college', () => {
+    // A and B are different subjects (no chain). Cheapest per row: A at 2, B at 3 (6 units, two colleges).
+    const a = agreement(and(req('A 1', [['2:A 1'], ['3:A 1']]), req('B 1', [['2:B 1'], ['3:B 1']])),
+      [['2:A 1', 3], ['3:A 1', 4], ['2:B 1', 5], ['3:B 1', 3]])
+    expect(plannedOf(solve(new Set(), a, { allowed: [1, 2, 3], home: 1 })).sort()).toEqual(['3:A 1', '3:B 1'])
+    expect(plannedOf(solve(new Set(), a, { allowed: [1, 2, 3], home: 1, ...UNITS })).sort()).toEqual(['2:A 1', '3:B 1'])
+  })
+  it('a subject chain (MATH 1, MATH 2) stays at one college, counting where the student took its first part', () => {
+    const cs: [string, number][] = [['2:M 1', 3], ['3:M 1', 4], ['2:M 2', 5], ['3:M 2', 3]]
+    const a = agreement(and(req('MATH 1', [['2:M 1'], ['3:M 1']]), req('MATH 2', [['2:M 2'], ['3:M 2']])), cs)
+    const chainOnly = { allowed: [1, 2, 3], home: 1, collegePenalty: 0 }
+    expect(plannedOf(solve(new Set(), a, chainOnly)).sort()).toEqual(['3:M 1', '3:M 2']) // 7 < 6 + 5
+    expect(plannedOf(solve(new Set(), a, { ...chainOnly, chainPenalty: 0 })).sort()).toEqual(['2:M 1', '3:M 2'])
+    // MATH 1 taken at college 2: MATH 2 there (5) beats college 3 (3 + 5)
+    expect(plannedOf(solve(new Set(['2:M 1']), a, chainOnly))).toEqual(['2:M 2'])
+    expect(plannedOf(solve(new Set(['2:M 1']), a, { ...chainOnly, chainPenalty: 0 }))).toEqual(['3:M 2'])
+    // different subjects are not a chain
+    const b = agreement(and(req('MATH 1', [['2:M 1'], ['3:M 1']]), req('PHYS 2', [['2:M 2'], ['3:M 2']])), cs)
+    expect(plannedOf(solve(new Set(), b, chainOnly)).sort()).toEqual(['2:M 1', '3:M 2'])
+  })
+  it('penalties are quarter units, converted for a semester home', () => {
+    const a = (away: number) => agreement(and(req('R', [['1:A 1'], ['2:A 1']])), [['1:A 1', 4], ['2:A 1', away]])
+    const sem = { allowed: [1, 2], home: 1, termSystem: 'semester' as const, unitSystems: { 1: 'semester', 2: 'semester' } as const }
+    expect(plannedOf(solve(new Set(), a(0.5), sem))).toEqual(['2:A 1']) // 0.5 + 3.33 < 4
+    expect(plannedOf(solve(new Set(), a(1), sem))).toEqual(['1:A 1'])   // 1 + 3.33 > 4
+    expect(plannedOf(solve(new Set(), a(0.5), { ...sem, termSystem: 'quarter', unitSystems: {} }))).toEqual(['1:A 1'])
+  })
+  it('real agreements: a plan leaves a home that could finish alone only to save more than a college costs', () => {
+    for (const a of Object.values(import.meta.glob('../../data/agreements/*.json', { eager: true, import: 'default' })) as Agreement[]) {
+      for (const [home, extra] of [[DA, FH], [SM, FH], [FH, DA]]) {
+        const o: SolveOptions = { allowed: [home], home, termSystem: unitSystems[home], unitSystems }
+        const h = solve(new Set(), a, o)
+        if (h.unsolvable.length) continue
+        const p = solve(new Set(), a, { ...o, allowed: [home, extra] })
+        expect(p.unsolvable).toEqual([])
+        expect(p.optimal).toBe(true)
+        const away = plannedOf(p).some((c) => !c.startsWith(`${home}:`))
+        const pen = unitSystems[home] === 'semester' ? 5 / 1.5 : 5
+        if (away) expect(h.totalUnits - p.totalUnits, a.major).toBeGreaterThanOrEqual(pen - 0.5) // totals round to 0.5
+        else expect(plannedOf(p).sort()).toEqual(plannedOf(h).sort())
+      }
+    }
+  })
+})
+
+describe('solve: reads choices mixing UC-only and unrecorded rows as the verifier does (MED-1, MED-2)', () => {
+  const unrec = (id: string): Requirement => ({ kind: 'req', id, label: id, units: 4, groups: [], noArticulation: { 1: NOT_LISTED } })
+  const nof = (n: number, ...children: (ReqNode | Requirement)[]): ReqNode => ({ kind: 'node', type: 'N_OF', n, required: true, children })
+  const row = (id: string) => req(id, [[`1:${id} 1`]])
+  it('MED-1: a row with no ASSIST record is no alternative; the UC-only row fills the slot', () => {
+    const a = agreement(and(nof(3, unrec('R2'), row('R3'), req('R4', []), row('R5'))), [['1:R3 1', 3], ['1:R5 1', 3]])
+    const p = solve(new Set(), a, { allowed: [1], home: 1 })
+    expect(plannedOf(p).sort()).toEqual(['1:R3 1', '1:R5 1'])
+    expect(p.unsolvable).toEqual([])
+    expect(p.result.isValid).toBe(true)
+    const q = solve(new Set(), agreement(and(or(unrec('P1'), req('U1', []))), []), { allowed: [1], home: 1 })
+    expect(plannedOf(q)).toEqual([])
+    expect(q.unsolvable).toEqual([])
+    expect(q.result.isValid).toBe(true)
+  })
+  it('MED-2: an alternative that passes only through a UC-only slot does not satisfy the choice', () => {
+    // The inner N_OF(4) passes with R1, R7, R8 (3 units) only because R9 is UC-only; the CC alternative is owed first.
+    const root = and(nof(1, or(and(row('R1'), row('R2')), row('R3')), nof(4, or(row('R1')), and(req('R6', []), row('R7')), row('R8'), req('R9', []))))
+    const a = agreement(root, [['1:R1 1', 1], ['1:R2 1', 5], ['1:R3 1', 5], ['1:R7 1', 1], ['1:R8 1', 1]])
+    const p = solve(new Set(), a, { allowed: [1], home: 1 })
+    expect(plannedOf(p)).toEqual(['1:R3 1'])
+    expect(p.unsolvable).toEqual([])
+    expect(p.optimal).toBe(true)
+    expect(p.result.isValid).toBe(true)
+  })
+})
+
+/* ---- random synthetic trees ---- */
 
 type N = ReqNode | Requirement
+type St = 'sat' | 'def' | 'open'
 const kidsOf = (n: ReqNode) => n.children.filter((c) => c.kind === 'req' || c.required)
-/** The rules as stated: a deferred child fills an OR / N_OF slot only when the articulable children cannot reach n. */
-const passes = (n: N, ok: (r: Requirement) => boolean): boolean => {
-  if (n.kind === 'req') return !n.groups.length || ok(n)
-  const ks = kidsOf(n), fixed = n.children.length - ks.length
-  if (n.type === 'AND') return ks.every((c) => passes(c, ok))
-  const need = n.type === 'OR' ? 1 : n.n ?? 1, art = ks.filter((c) => !passes(c, () => false)), def = ks.length - art.length
-  return art.filter((c) => passes(c, ok)).length + fixed + Math.min(def, Math.max(0, need - fixed - art.length)) >= need
+const need = (n: ReqNode) => (n.type === 'OR' ? 1 : n.n ?? 1)
+const isUcOnly = (r: Requirement) => !r.groups.length && Object.values(r.noArticulation ?? {}).some((w) => w !== NOT_LISTED)
+/** The rules as stated (FIXES round 3), written out again: `sat`, `def` (passes as UC-only), `open`. */
+const stateOf = (n: N, ok: (r: Requirement) => boolean): St => {
+  if (n.kind === 'req') return ok(n) ? 'sat' : isUcOnly(n) ? 'def' : 'open'
+  const s = kidsOf(n).map((c) => stateOf(c, ok)), sat = s.filter((x) => x === 'sat').length
+  if (n.type === 'AND') return s.includes('open') ? 'open' : sat || !s.length ? 'sat' : 'def'
+  const art = kidsOf(n).filter((c, j) => s[j] === 'open' && routes(c)).length, def = s.filter((x) => x === 'def').length
+  return sat >= need(n) ? 'sat' : art || sat + def < need(n) ? 'open' : 'def'
 }
+/** Articulable: passes once every row with a CC group is done. */
+const routes = (n: N) => stateOf(n, (r) => r.groups.length > 0) !== 'open'
+const canDef = (n: N): boolean => n.kind === 'req' ? isUcOnly(n)
+  : n.type === 'AND' ? kidsOf(n).length > 0 && kidsOf(n).every(canDef)
+  : need(n) > 0 && kidsOf(n).filter(routes).length >= need(n) && kidsOf(n).filter(routes).some(canDef)
+
+describe('solve: the planner reads the tree as the verifier does', () => {
+  /** Random tree over G (one-course group), U (UC-only), X (no ASSIST record) rows; nested AND / OR / N_OF, optional children. */
+  const tree = (seed: number) => {
+    let s = seed
+    const rnd = () => ((s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 2 ** 32)
+    const int = (n: number) => Math.floor(rnd() * n)
+    const rows = Array.from({ length: 2 + int(5) }, (_, i): Requirement => {
+      const k = rnd()
+      return k < 0.6 ? req(`G${i}`, [[`1:G${i} 1`]]) : k < 0.8 ? req(`U${i}`, []) : { kind: 'req', id: `X${i}`, label: '', units: 4, groups: [], noArticulation: { 1: NOT_LISTED } }
+    })
+    const node = (d: number): N => {
+      if (d > 2 || rnd() < 0.35) return rows[int(rows.length)]
+      const type = (['AND', 'OR', 'N_OF'] as const)[int(3)]
+      return { kind: 'node', type, n: type === 'N_OF' ? int(4) : undefined, required: rnd() < 0.85, children: Array.from({ length: 1 + int(4) }, () => node(d + 1)) }
+    }
+    const r = node(0)
+    const root: ReqNode = r.kind === 'req' ? and(r) : { ...r, required: true }
+    const a = agreement(root, rows.filter((x) => x.groups.length).map((x): [string, number] => [x.groups[0].courses[0], 1 + int(5)]))
+    const done = new Set(rows.filter((x) => x.groups.length && rnd() < 0.5).map((x) => x.id))
+    return { a, done, taken: new Set(rows.filter((x) => done.has(x.id)).map((x) => x.groups[0].courses[0])) }
+  }
+  const trees = Array.from({ length: Number(process.env.TREE_CASES ?? 5000) }, (_, i) => tree(i + 1))
+  it(`${trees.length} random trees: the planner's reading of the tree equals verifySchedule's`, () => {
+    for (const [i, { a, done, taken }] of trees.entries()) {
+      const s = treeState(a.root, (r) => done.has(r.id))
+      expect(s, `tree ${i + 1}`).toBe(stateOf(a.root, (r) => done.has(r.id)))
+      expect(s !== 'open', `tree ${i + 1}`).toBe(verifySchedule(taken, a).isValid)
+    }
+  }, 600_000)
+  it(`${trees.length} random trees: a plan verifies exactly when nothing is reported unsolvable`, () => {
+    for (const [i, { a, taken }] of trees.entries()) for (const budget of [undefined, 0]) {
+      const p = solve(taken, a, { allowed: [1], home: 1, budget })
+      expect(p.result.isValid, `tree ${i + 1} budget ${budget}`).toBe(p.unsolvable.length === 0)
+      expect(p.unsolvable.length === 0, `tree ${i + 1} budget ${budget}`).toBe(verifySchedule(new Set([...taken, ...Object.keys(a.catalog)]), a).isValid)
+    }
+  }, 600_000)
+})
+
+/* ---- brute-force oracle over random small agreements ---- */
+
 const code = (c: CourseId) => c.slice(c.indexOf(':') + 1).replace(/H$/, '')
 const splitIn = (r: Requirement, h: Set<CourseId>) => {
   const s = reqStatus(r, h)
   return !s.satisfied && new Set(s.partials.map((p) => p.institutionId)).size > 1 && new Set(s.partials.flatMap((p) => p.have.map(code))).size > 1
 }
 const leavesOf = (n: N): Requirement[] => (n.kind === 'req' ? [n] : n.children.flatMap(leavesOf))
+const instOf = (c: CourseId) => Number(c.split(':')[0])
+
+/** [colleges other than home that planned courses `P` use, subject chains (2+ rows with CC groups sharing a UC
+ *  subject) whose planned courses, with the taken ones of the chain, sit at 2+ colleges]. */
+function penaltyCounts(a: Agreement, taken: Set<CourseId>, P: CourseId[], home: number) {
+  const subject = (id: string) => { const t = id.split(',')[0].trim().split(/\s+/), k = t.findIndex((w) => /\d/.test(w)); return t.slice(0, k < 0 ? t.length : k).join(' ') }
+  const rows = [...new Map(leavesOf(a.root).filter((r) => r.groups.length && subject(r.id)).map((r) => [r.id, r])).values()]
+  let chains = 0
+  for (const sub of new Set(rows.map((r) => subject(r.id)))) {
+    const rs = rows.filter((r) => subject(r.id) === sub)
+    if (rs.length < 2) continue
+    const inChain = (c: CourseId) => rs.some((r) => r.groups.some((g) => g.courses.some((x) => c === x || c === `${x}H` || c === x.replace(/H$/, ''))))
+    const planned = new Set(P.filter(inChain).map(instOf)), all = new Set([...planned, ...[...taken].filter(inChain).map(instOf)])
+    if (planned.size && all.size > 1) chains++
+  }
+  return [new Set(P.map(instOf).filter((i) => i !== home)).size, chains]
+}
+/** Colleges plus split chains: the penalty at equal weights, in units of the weight. */
+const penalties = (a: Agreement, taken: Set<CourseId>, P: CourseId[], home: number) => penaltyCounts(a, taken, P, home).reduce((x, y) => x + y, 0)
 
 /** Every subset of plannable courses, scored: unmet (fewest over all ways to pass the tree; an OR / N_OF with too few
- *  completable alternatives is one unmet entry), units, new splits, units away from home, honors, courses, ids. */
-function oracle(taken: Set<CourseId>, a: Agreement, allowed: number[], home: number, units: (c: CourseId) => number) {
+ *  completable alternatives is one unmet entry), units + penalties, new splits, units away from home, honors,
+ *  courses, ids. Plans that open a split the verifier calls blocking are out. */
+function oracle(taken: Set<CourseId>, a: Agreement, allowed: number[], home: number, units: (c: CourseId) => number, pc = 5, pch = 5) {
   const leaves = [...new Map(leavesOf(a.root).map((r) => [r.id, r])).values()]
   const U = Object.keys(a.catalog).filter((c) => allowed.includes(a.catalog[c].institutionId) && !taken.has(c)).sort()
   const sat = (h: Set<CourseId>) => (r: Requirement) => !!reqStatus(r, h).satisfied
   const all = sat(new Set([...taken, ...U]))
   let marks = 0
   const cross = (ls: string[][][]) => ls.reduce<string[][]>((acc, l) => acc.flatMap((x) => l.map((y) => [...x, ...y])), [[]])
-  const sels = (n: N): string[][] => {
-    if (n.kind === 'req') return [n.groups.length ? [n.id] : []]
-    const ks = kidsOf(n), fixed = n.children.length - ks.length
-    if (n.type === 'AND') return cross(ks.map(sels))
-    const need = n.type === 'OR' ? 1 : n.n ?? 1, art = ks.filter((c) => !passes(c, () => false))
-    const k = need - fixed - Math.min(ks.length - art.length, Math.max(0, need - fixed - art.length)), ok = art.filter((c) => passes(c, all))
-    if (k <= 0) return [[]]
-    if (ok.length < k) return cross([...ok.map(sels), [[`#${marks++}`]]])
-    const out: string[][] = []
-    const pick = (from: number, got: N[]): void => {
-      if (got.length === k) { out.push(...cross(got.map(sels))); return }
-      for (let i = from; i < ok.length; i++) pick(i + 1, [...got, ok[i]])
+  // S: ways to make the subtree `sat`; P: ways to make it pass (also: every articulable alternative passes)
+  const sels = (n: N): { S: string[][]; P: string[][] } => {
+    if (n.kind === 'req') return isUcOnly(n) ? { S: [], P: [[]] } : { S: [[n.id]], P: [[n.id]] }
+    const ks = kidsOf(n), fs = ks.map(sels)
+    if (n.type === 'AND') {
+      const P = cross(fs.map((f) => f.P))
+      return { S: ks.length && ks.every(canDef) ? fs.flatMap((f) => cross([f.S, P])) : P, P }
     }
-    pick(0, [])
-    return out
+    const k = need(n)
+    if (k <= 0) return { S: [[]], P: [[]] }
+    const ok = ks.flatMap((c, j) => (stateOf(c, all) === 'sat' ? [j] : []))
+    const S: string[][] = []
+    if (ok.length < k) S.push(...cross([...ok.map((j) => fs[j].S), [[`#${marks++}`]]]))
+    else {
+      const pick = (from: number, got: number[]): void => {
+        if (got.length === k) { S.push(...cross(got.map((j) => fs[j].S))); return }
+        for (let i = from; i < ok.length; i++) pick(i + 1, [...got, ok[i]])
+      }
+      pick(0, [])
+    }
+    const art = ks.flatMap((c, j) => (routes(c) ? [j] : []))
+    return { S, P: art.length >= k && art.some((j) => canDef(ks[j])) ? [...S, ...cross(art.map((j) => fs[j].P))] : S }
   }
-  const S = a.root.required ? sels(a.root).map((s) => [...new Set(s)]) : [[]]
+  const S = a.root.required ? sels(a.root).P.map((s) => [...new Set(s)]) : [[]]
   const split0 = new Set(leaves.filter((r) => splitIn(r, taken)).map((r) => r.id))
+  const byId = new Map(leaves.map((r) => [r.id, r]))
   let best: { key: (number | string)[]; P: CourseId[] } | null = null
   for (let m = 0; m < 1 << U.length; m++) {
     const P = U.filter((_, i) => m & (1 << i)), h = new Set([...taken, ...P]), ok = sat(h)
     const fresh = leaves.filter((r) => !split0.has(r.id) && splitIn(r, h))
-    const needed = new Set<string>()
-    const walk = (n: N): void => { if (passes(n, ok)) return; if (n.kind === 'req') needed.add(n.id); else kidsOf(n).forEach(walk) }
-    if (a.root.required) walk(a.root)
-    if (fresh.some((r) => needed.has(r.id))) continue // a new split the agreement still needs
-    const byId = new Map(leaves.map((r) => [r.id, r]))
+    if (fresh.length && verifySchedule(h, a).splitSeriesViolations.some((v) => v.blocking && !split0.has(v.requirementId))) continue
     const unmet = Math.min(...S.map((s) => s.filter((x) => x.startsWith('#') || !ok(byId.get(x)!)).length))
+    const [cols, chains] = penaltyCounts(a, taken, P, home)
     const u = P.reduce((t, c) => t + units(c), 0), away = P.reduce((t, c) => t + (a.catalog[c].institutionId === home ? 0 : units(c)), 0)
-    const key = [unmet, u, fresh.length, away, P.filter((c) => /H$/.test(c)).length, P.length, ...P]
+    const key = [unmet, u + pc * cols + pch * chains, fresh.length, away, P.filter((c) => /H$/.test(c)).length, P.length, ...P]
     if (!best || cmpKey(key, best.key) < 0) best = { key, P }
   }
   return best!
@@ -299,17 +457,20 @@ const cmpKey = (x: (number | string)[], y: (number | string)[]) => {
   return 0
 }
 
-/** Seeded random agreement: up to 3 colleges (3 is semester), shared course codes, honors twins, courses missing
- *  from the catalog, deferred rows, repeated rows, optional subtrees, OR / N_OF, a random transcript. */
+/** Seeded random agreement: up to 3 colleges (3 is semester; 5 in every fifth case), shared course codes, honors twins, courses missing
+ *  from the catalog, UC-only and unrecorded rows, repeated rows, rows sharing a UC subject, optional subtrees,
+ *  OR / N_OF, a random transcript, and the penalty weights. */
 function randomCase(seed: number, hard = false) {
   let s = seed
   const rnd = () => ((s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 2 ** 32)
   const int = (n: number) => Math.floor(rnd() * n), one = <T,>(xs: T[]) => xs[int(xs.length)]
   const courses: [string, number][] = [], ghosts: string[] = []
   const at: Record<number, string[]> = {}
-  for (const c of [1, 2, 3]) {
+  // every fifth case: five colleges (3 and 5 are semester), fewer courses at each, for the search over colleges
+  const cols = seed % 5 === 4 ? [1, 2, 3, 4, 5] : [1, 2, 3]
+  for (const c of cols) {
     at[c] = []
-    for (const k of ['M 1A', 'M 1B', 'P 1', 'Q 2'].filter(() => rnd() < 0.55)) {
+    for (const k of ['M 1A', 'M 1B', 'P 1', 'Q 2'].filter(() => rnd() < (cols.length > 3 ? 0.4 : 0.55))) {
       const id = `${c}:${k}`, u = 1 + int(5)
       if (rnd() < (hard ? 0.3 : 0.08)) ghosts.push(id); else courses.push([id, u])
       at[c].push(id)
@@ -320,13 +481,14 @@ function randomCase(seed: number, hard = false) {
   for (let i = 0, n = 2 + int(4); i < n; i++) {
     const groups: string[][] = []
     if (rnd() > 0.15) for (let g = 0, m = 1 + int(3); g < m; g++) {
-      const c = one([1, 2, 3]), reg = at[c].filter((x) => !x.endsWith('H'))
+      const c = one(cols), reg = at[c].filter((x) => !x.endsWith('H'))
       if (!reg.length) continue
       const gs = [...new Set([one(reg), ...(rnd() < (hard ? 0.85 : 0.5) ? [one(reg)] : [])])]
       groups.push(gs)
       if (gs.every((x) => at[c].includes(`${x}H`)) && rnd() < 0.6) groups.push(gs.map((x) => `${x}H`))
     }
-    rows.push(req(`R${i}`, groups))
+    const id = `${one(['MATH', 'PHYS'])} ${i}`
+    rows.push(groups.length || rnd() < 0.7 ? req(id, groups) : { kind: 'req', id, label: id, units: 4, groups: [], noArticulation: { 1: NOT_LISTED } })
   }
   const node = (d: number): N => {
     if (d > 1 || rnd() < 0.45) return one(rows)
@@ -343,43 +505,38 @@ function randomCase(seed: number, hard = false) {
     root.children.push(req('X', [[`${c1}:T 1`, `${c1}:T 2`], [`${c2}:T 1`, `${c2}:T 9`]]), rnd() < 0.7 ? y : or(y, one(rows)))
     if (rnd() < 0.7) trap.push(`${c1}:T 2`)
   }
-  const a = agreement(root, courses, [1, 2, 3])
+  const a = agreement(root, courses, cols)
   const taken = new Set([...courses.map(([c]) => c), ...ghosts].filter(() => rnd() < (hard ? 0.3 : 0.15)).concat(trap))
-  const allowed = [1, 2, 3].filter(() => rnd() < 0.6)
-  if (!allowed.length) allowed.push(one([1, 2, 3]))
-  return { a, taken, allowed, home: one([1, 2, 3]) }
+  const allowed = cols.filter(() => rnd() < (cols.length > 3 ? 0.8 : 0.6))
+  if (!allowed.length) allowed.push(one(cols))
+  // default weights for most cases; pure units, college only, chain only and odd weights for the rest
+  const w: { collegePenalty?: number; chainPenalty?: number } = [{}, {}, {}, UNITS, { chainPenalty: 0 }, { collegePenalty: 0 }, { collegePenalty: 2.5, chainPenalty: 8 }][seed % 7]
+  return { a, taken, allowed, home: one(cols), w }
 }
 
 // Stress run: ORACLE_CASES=20000 ORDER_CASES=20000 npx vitest run src/engine/solve.test.ts --reporter=verbose
 describe('solve: matches a brute-force oracle on random agreements', () => {
-  const sys = { 1: 'quarter', 2: 'quarter', 3: 'semester' } as const
-  const units = (a: Agreement) => (c: CourseId) => a.catalog[c].units * (a.catalog[c].institutionId === 3 ? 1.5 : 1)
+  const sys = { 1: 'quarter', 2: 'quarter', 3: 'semester', 4: 'quarter', 5: 'semester' } as const
+  const units = (a: Agreement) => (c: CourseId) => a.catalog[c].units * ([3, 5].includes(a.catalog[c].institutionId) ? 1.5 : 1)
   // Every third case is "hard": many courses missing from the catalog and a bigger transcript, so requirements that
   // cannot be met sit next to splits the solver must not deepen (the guarded second pass).
-  const cases = Array.from({ length: Number(process.env.ORACLE_CASES ?? 600) }, (_, i) => ({ seed: i + 1, ...randomCase(i + 1, i % 3 === 2) }))
+  const cases = Array.from({ length: Number(process.env.ORACLE_CASES ?? 620) }, (_, i) => ({ seed: i + 1, ...randomCase(i + 1, i % 3 === 2) }))
     .filter(({ a, allowed, taken }) => Object.values(a.catalog).filter((c) => allowed.includes(c.institutionId) && !taken.has(c.id)).length <= 11)
   it(`${cases.length} cases: proven-optimal plans equal the oracle; every plan obeys the rules`, () => {
     let proven = 0, same = 0
-    for (const { seed, a, taken, allowed, home } of cases) {
-      const p = solve(taken, a, { allowed, home, unitSystems: sys }), greedy = solve(taken, a, { allowed, home, unitSystems: sys, budget: 0 })
-      const best = oracle(taken, a, allowed, home, units(a)), P = plannedOf(p).sort()
+    for (const { seed, a, taken, allowed, home, w } of cases) {
+      const o: SolveOptions = { allowed, home, unitSystems: sys, ...w }
+      const p = solve(taken, a, o), greedy = solve(taken, a, { ...o, budget: 0 })
+      const best = oracle(taken, a, allowed, home, units(a), w.collegePenalty ?? 5, w.chainPenalty ?? 5), P = plannedOf(p).sort()
       const ctx = `seed ${seed}`
       // Rules hold for every plan, proven or not, and for the greedy fallback.
       for (const q of [p, greedy]) {
-        const Q = plannedOf(q), h = new Set([...taken, ...Q])
+        const Q = plannedOf(q), h = new Set([...taken, ...Q]), leaves = leavesOf(a.root)
         expect(Q.every((c) => allowed.includes(a.catalog[c]?.institutionId)), ctx).toBe(true)
-        const leaves = leavesOf(a.root), ok = (r: Requirement) => !!reqStatus(r, h).satisfied
-        if (!q.unsolvable.length) expect(passes(a.root, ok), ctx).toBe(true)
-        const needed = new Set<string>()
-        const walk = (n: N): void => { if (passes(n, ok)) return; if (n.kind === 'req') needed.add(n.id); else kidsOf(n).forEach(walk) }
-        walk(a.root)
-        expect(leaves.filter((r) => needed.has(r.id) && splitIn(r, h) && !splitIn(r, taken)).map((r) => r.id), ctx).toEqual([])
+        expect(q.result.isValid, ctx).toBe(q.unsolvable.length === 0)
+        expect(q.result.splitSeriesViolations.filter((v) => v.blocking && !splitIn(leaves.find((r) => r.id === v.requirementId)!, taken)), ctx).toEqual([])
         for (const [id, g] of Object.entries(q.chosen)) expect(g.courses.every((c) => has(h, c, honorsColleges(leaves.find((r) => r.id === id)!))), ctx).toBe(true)
         expect(q.unsolvable.length > 0, ctx).toBe((best.key[0] as number) > 0)
-        if (NEW_VERIFY) {
-          expect(q.result.isValid, ctx).toBe(q.unsolvable.length === 0)
-          expect(q.result.splitSeriesViolations.filter((v) => v.blocking && !splitIn(leaves.find((r) => r.id === v.requirementId)!, taken)), ctx).toEqual([])
-        }
       }
       if (greedy.optimal) expect(plannedOf(greedy).sort(), ctx).toEqual(P) // nothing to search: proven at no cost
       expect(p.unsolvable.length, ctx).toBeGreaterThanOrEqual(best.key[0] as number)
@@ -388,7 +545,6 @@ describe('solve: matches a brute-force oracle on random agreements', () => {
         proven++
         expect(p.unsolvable.length, ctx).toBe(best.key[0])
         expect(P, ctx).toEqual(best.P)
-        expect(Math.abs(P.reduce((t, c) => t + units(a)(c), 0) - (best.key[1] as number)), ctx).toBeLessThan(1e-9)
       }
     }
     if (process.env.ORACLE_CASES) console.log(`oracle: ${cases.length} cases, ${proven} proven optimal, ${same} unproven but equal to the oracle`)
@@ -396,9 +552,9 @@ describe('solve: matches a brute-force oracle on random agreements', () => {
   }, 600_000)
   it('the same plan whatever the input order', () => {
     const rev = (n: N): N => (n.kind === 'req' ? { ...n, groups: [...n.groups].reverse() } : { ...n, children: n.children.map(rev).reverse() })
-    for (const { a, taken, allowed, home } of cases.slice(0, Number(process.env.ORDER_CASES ?? 200))) {
-      const p1 = solve(taken, a, { allowed, home, unitSystems: sys })
-      const p2 = solve(new Set([...taken].reverse()), { ...a, root: rev(a.root) as ReqNode }, { allowed: [...allowed].reverse(), home, unitSystems: sys })
+    for (const { a, taken, allowed, home, w } of cases.slice(0, Number(process.env.ORDER_CASES ?? 200))) {
+      const p1 = solve(taken, a, { allowed, home, unitSystems: sys, ...w })
+      const p2 = solve(new Set([...taken].reverse()), { ...a, root: rev(a.root) as ReqNode }, { allowed: [...allowed].reverse(), home, unitSystems: sys, ...w })
       expect(plannedOf(p2).sort()).toEqual(plannedOf(p1).sort())
       expect(p2.chosen).toEqual(p1.chosen)
       expect([...p2.unsolvable].sort()).toEqual([...p1.unsolvable].sort())
