@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import { gsap } from 'gsap'
 import { useGSAP } from '@gsap/react'
 import { useReveal } from '../motion/useReveal'
-import { agreements, byId } from '../data'
+import { agreements, byId, trust } from '../data'
 import { verifySchedule } from '../engine/verify'
 
 const DA = 113, FH = 51
@@ -122,6 +122,11 @@ function LiveCheck() {
         </div>
         <span className="text-[14px] opacity-80">{ok ? `${Math.round(credited * 10) / 10} ${sys} units credited` : v ? '0 units credited' : ''}</span>
       </div>
+      {trust.level === 'untrusted' && (
+        <p data-trust-caption className="mt-3 text-[13px] text-ink-3">
+          An illustration on the bundled {trust.academicYear ? `${trust.academicYear} data` : 'data'}, which needs a refresh. Planner verdicts are paused until it is.
+        </p>
+      )}
     </div>
   )
 }

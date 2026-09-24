@@ -1,6 +1,8 @@
 import { useReveal } from '../motion/useReveal'
 import Button from '../ui/Button'
 import { Mark } from './Nav'
+import { trust } from '../data'
+import { formatDataDate } from '../data-trust'
 
 export default function Footer() {
   const ref = useReveal<HTMLElement>()
@@ -22,7 +24,8 @@ export default function Footer() {
         <div className="mt-12 flex flex-col items-start justify-between gap-6 text-[14px] text-ink-3 md:flex-row md:items-center">
           <div className="flex items-center gap-2 text-ink"><Mark /> <span className="font-semibold">Articulus</span></div>
           <p className="max-w-xl">
-            Articulation data is fetched from public ASSIST.org endpoints for 2025-26 and cached locally. Articulus is a planning aid.
+            Articulation data is fetched from public ASSIST.org endpoints{trust.academicYear ? ` for ${trust.academicYear}` : ''}
+            {trust.fetchedAt ? `, last downloaded ${formatDataDate(trust.fetchedAt)},` : ''} and cached locally. Articulus is a planning aid.
             Confirm any schedule with the receiving university before enrolling.
           </p>
         </div>
