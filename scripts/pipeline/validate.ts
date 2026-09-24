@@ -10,7 +10,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { classifyTitle, NORMALIZE_VERSION, NOT_LISTED } from '../../src/engine/normalize.ts'
 import type { Agreement, Course, Institution, ReqNode, Requirement } from '../../src/engine/types.ts'
-import { codeInEffect } from './academic-year.ts'
+import { codeFor, codeInEffect, fallYearInEffect } from './academic-year.ts'
 import { CANARIES, rows, sections } from './canaries.ts'
 import type { PipelineConfig } from './config.ts'
 import type { IndexEntry } from './store.ts'
@@ -27,6 +27,10 @@ export interface Meta {
   normalizeVersion: number
   fetchedAt: string | null
   academicYear: { id: number; code: string } | null
+  /** The academic year in effect when the data was fetched (M-6). */
+  yearInEffect?: string
+  /** True when ASSIST had not published `yearInEffect` yet and the prior year was carried over (M-6). */
+  carriedOver?: boolean
   validation: { passed: boolean; at: string; checks: number; report: string } | null
   agreements: number
 }
@@ -143,6 +147,11 @@ export function validateData(dataDir: string, o: ValidateOptions): Report {
       check(m?.validation === null || (isObj(m?.validation) && typeof m.validation.passed === 'boolean' && isIso(m.validation.at) && isInt(m.validation.checks) && typeof m.validation.report === 'string'),
         'meta.schema', 'error', 'meta.json: validation must be { passed, at, checks, report } or null'),
       check(isInt(m?.agreements), 'meta.schema', 'error', 'meta.json: agreements must be an integer'),
+      check(m?.yearInEffect === undefined || (typeof m.yearInEffect === 'string' && /^\d{4}-\d{4}$/.test(m.yearInEffect)), 'meta.schema', 'error', 'meta.json: yearInEffect must be "YYYY-YYYY" when present'),
+      check(m?.carriedOver === undefined || typeof m.carriedOver === 'boolean', 'meta.schema', 'error', 'meta.json: carriedOver must be true or false when present'),
+      // carriedOver means exactly "fetched the year before the one in effect at fetch time"
+      check(m?.carriedOver !== true || (typeof m.yearInEffect === 'string' && isObj(m.academicYear) && m.academicYear.code === codeFor(Number(m.yearInEffect.slice(0, 4)) - 1)),
+        'meta.schema', 'error', 'meta.json: carriedOver is true but academicYear is not the year before yearInEffect'),
     ].every(Boolean)
     if (ok) meta = m as unknown as Meta
   }
@@ -159,7 +168,11 @@ export function validateData(dataDir: string, o: ValidateOptions): Report {
         check(days <= o.cfg.validate.agingDays, 'meta.age', 'warning', `data is ${days.toFixed(1)} days old (> ${o.cfg.validate.agingDays}): the app shows it as aging`)
     }
     const want = codeInEffect(o.now)
-    check(meta.academicYear?.code === want, 'meta.academic-year', o.mode === 'publish' ? 'error' : 'warning',
+    // M-6: the prior year, explicitly carried over because ASSIST has not published `want` yet, is published as
+    // aging with a caveat; any other year is the wrong year (untrusted in the app).
+    const carried = meta.carriedOver === true && meta.academicYear?.code === codeFor(fallYearInEffect(o.now) - 1)
+    if (carried) check(false, 'meta.academic-year', 'warning', `academic year ${meta.academicYear!.code} carried over: ${want} agreements are not published on ASSIST yet (the app shows the data as aging)`)
+    else check(meta.academicYear?.code === want, 'meta.academic-year', o.mode === 'publish' ? 'error' : 'warning',
       `academic year ${meta.academicYear?.code ?? 'null'} is not the one in effect (${want}): the app treats the data as untrusted`, undefined, true)
     if (!o.staged) check(!!meta.validation?.passed, 'meta.validation', 'error', 'meta.validation is missing or failed: this data never passed the gate', undefined, true)
   }

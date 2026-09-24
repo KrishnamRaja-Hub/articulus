@@ -7,12 +7,19 @@ import { NORMALIZE_VERSION } from './engine/normalize.ts'
  */
 
 export type TrustLevel = 'trusted' | 'aging' | 'untrusted'
-export interface DataTrust { level: TrustLevel; reasons: string[]; fetchedAt: Date | null; academicYear: string | null }
+export interface DataTrust {
+  level: TrustLevel; reasons: string[]; fetchedAt: Date | null; academicYear: string | null
+  /** Set when the data is the prior academic year shown in place of the one in effect (TESTER1_REPORT M-6):
+   *  "2026-27 agreements aren't published on ASSIST yet". The UI shows it next to the year the plan uses. */
+  yearNote: string | null
+}
 
 export const META_SCHEMA = 1
 const DAY = 86_400_000
 export const AGING_DAYS = 7
 export const MAX_AGE_DAYS = 30
+/** After July 1, prior-year data fetched before it (and not marked carried over) stays 'aging' this long (M-6). */
+export const ROLLOVER_GRACE_DAYS = 7
 
 const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x)
 // a date, or a date-time with an explicit zone: a zone-less date-time would be read in the viewer's local time
@@ -31,6 +38,9 @@ export function academicYearOn(now: Date): string {
   const start = now.getUTCMonth() >= 6 ? y : y - 1
   return `${start}-${start + 1}`
 }
+
+/** "2026-2027" -> "2026-27", the way counselors and ASSIST write it. */
+export const shortYear = (code: string) => `${code.slice(0, 4)}-${code.slice(7)}`
 
 /** Whole days between two instants (floored). */
 export const ageInDays = (fetchedAt: Date, now: Date) => Math.floor((now.getTime() - fetchedAt.getTime()) / DAY)
@@ -94,10 +104,22 @@ export function dataTrust(meta: unknown, now: Date, normalizeVersion: number = N
   const ay = isObj(m.academicYear) ? m.academicYear.code : undefined
   const ym = typeof ay === 'string' ? YEAR.exec(ay) : null
   const academicYear = ym && Number(ym[2]) === Number(ym[1]) + 1 ? ay as string : null
+  let yearNote: string | null = null
   if (!academicYear) reasons.push('The academic year of the data is not recorded')
   else if (clockOk) {
     const expected = academicYearOn(now)
-    if (academicYear !== expected) reasons.push(`Data is for ${academicYear} but ${expected} agreements are in effect`)
+    const fall = Number(expected.slice(0, 4))
+    const prior = `${fall - 1}-${fall}`
+    // M-6: ASSIST often publishes the new year's agreements weeks after July 1. The prior year is shown as aging with a
+    // caveat when the pipeline carried it over explicitly (the new year is not published yet; still bounded by
+    // MAX_AGE_DAYS, so the pipeline must keep re-checking), or, for ROLLOVER_GRACE_DAYS after July 1, when it was
+    // fetched before July 1 and the pipeline has not run since. Two or more years back, a future year, or an unmarked
+    // prior year past the grace period is the wrong year: untrusted.
+    const rollover = Date.UTC(fall, 6, 1)
+    const inGrace = !!fetchedAt && fetchedAt.getTime() < rollover && now.getTime() <= rollover + ROLLOVER_GRACE_DAYS * DAY
+    if (academicYear === prior && m.carriedOver === true) yearNote = `${shortYear(expected)} agreements aren't published on ASSIST yet`
+    else if (academicYear === prior && m.carriedOver !== true && inGrace) yearNote = `${shortYear(expected)} agreements are now in effect but not downloaded yet`
+    else if (academicYear !== expected) reasons.push(`Data is for ${academicYear} but ${expected} agreements are in effect`)
   }
 
   if (agreementYears?.length) {
@@ -111,11 +133,12 @@ export function dataTrust(meta: unknown, now: Date, normalizeVersion: number = N
     }
   }
 
-  if (reasons.length) return { level: 'untrusted', reasons, fetchedAt, academicYear }
-  if (age !== null && age > AGING_DAYS * DAY) {
-    return { level: 'aging', reasons: [`Data is ${daysOld(fetchedAt!, now, AGING_DAYS)} old`], fetchedAt, academicYear }
-  }
-  return { level: 'trusted', reasons: [], fetchedAt, academicYear }
+  if (reasons.length) return { level: 'untrusted', reasons, fetchedAt, academicYear, yearNote: null }
+  const caveats: string[] = []
+  if (yearNote) caveats.push(`${yearNote}; showing ${shortYear(academicYear!)}. Articulation can change between years`)
+  if (age !== null && age > AGING_DAYS * DAY) caveats.push(`Data is ${daysOld(fetchedAt!, now, AGING_DAYS)} old`)
+  if (caveats.length) return { level: 'aging', reasons: caveats, fetchedAt, academicYear, yearNote }
+  return { level: 'trusted', reasons: [], fetchedAt, academicYear, yearNote: null }
 }
 
 /** "Sep 24, 2026", in UTC so every viewer sees the same date the pipeline wrote. */
@@ -152,16 +175,23 @@ export function heroDataNote(t: DataTrust): string {
   return `From ${year}ASSIST data${t.fetchedAt ? ` downloaded ${formatDataDate(t.fetchedAt)}` : ''}.`
 }
 
+/** Which academic year a plan is checked against (M-6), e.g. "2025-26 agreement (2026-27 agreements aren't published
+ *  on ASSIST yet)". Shown with every plan so a carried-over year is never silent. */
+export function agreementYearLabel(year: string, t: Pick<DataTrust, 'yearNote' | 'level'>): string {
+  const y = YEAR.test(year) ? shortYear(year) : year
+  return `${y} agreement${t.yearNote && t.level !== 'untrusted' ? ` (${t.yearNote})` : ''}`
+}
+
 /** One-line version for the fixed header. */
 export function trustChip(t: DataTrust): string | null {
   if (t.level === 'untrusted') return "Can't confirm plans: data needs a refresh"
-  if (t.level === 'aging') return `ASSIST data from ${formatDataDate(t.fetchedAt!)}`
+  if (t.level === 'aging') return t.yearNote && t.academicYear ? `Using ${shortYear(t.academicYear)} agreements` : `ASSIST data from ${formatDataDate(t.fetchedAt!)}`
   return null
 }
 
 /** Same level and reasons: lets a periodic re-check skip re-rendering when nothing changed. */
 export const sameTrust = (a: DataTrust, b: DataTrust) =>
-  a.level === b.level && a.academicYear === b.academicYear && a.fetchedAt?.getTime() === b.fetchedAt?.getTime()
+  a.level === b.level && a.academicYear === b.academicYear && a.yearNote === b.yearNote && a.fetchedAt?.getTime() === b.fetchedAt?.getTime()
   && a.reasons.length === b.reasons.length && a.reasons.every((r, i) => r === b.reasons[i])
 
 /** Tone of a pass/fail demo verdict (TESTER1_REPORT L-5): a pass on untrusted data is an illustration, never green. */

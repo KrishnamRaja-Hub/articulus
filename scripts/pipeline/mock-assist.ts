@@ -157,6 +157,9 @@ export interface MockOptions {
   padBytes?: number
   dataset?: MockDataset
   faults?: Fault[]
+  /** Academic year ids whose agreements are published (default: every listed year). A listed year that is not
+   *  published answers every listing with no reports: ASSIST's state for weeks after July 1 (M-6). */
+  publishedYearIds?: number[]
   /** API requests allowed per session before 429 (ASSIST rate-limits per session). */
   rateLimitPerSession?: number
 }
@@ -234,6 +237,7 @@ export async function startMockAssist(options: MockOptions = {}, port = 0): Prom
     if (url.pathname === '/api/agreements') {
       const uc = Number(url.searchParams.get('receivingInstitutionId')), cc = Number(url.searchParams.get('sendingInstitutionId')), y = Number(url.searchParams.get('academicYearId'))
       if (!yearOf(ds, y)) return send(res, 400, { error: 'bad year' })
+      if (opts.publishedYearIds && !opts.publishedYearIds.includes(y)) return send(res, 200, { reports: [], allReports: [] })
       const reports = [...ds.majors, ds.extra].filter((m) => m.receivingId === uc && m.colleges.includes(cc))
         .map((m) => ({ label: m.label, key: `${y}/${cc}/to/${uc}/Major/${Buffer.from(m.label).toString('hex')}`, ownerInstitutionId: uc }))
       return send(res, 200, { reports, allReports: reports })

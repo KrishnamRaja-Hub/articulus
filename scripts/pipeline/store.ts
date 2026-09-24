@@ -14,6 +14,8 @@ export interface RawManifest {
   fetchedAt: string
   base: string
   academicYear: RawBundle['academicYear']
+  yearInEffect?: string
+  carriedOver?: boolean
   academicYears: unknown
   institutions: string
   agreements: { file: string; receivingId: number; major: string; sources: RawAgreement['sources']; raw: string; sha256: string; bytes: number }[]
@@ -48,7 +50,7 @@ export function writeRaw(dataDir: string, bundle: RawBundle, cfg: PipelineConfig
     agreements.push({ file: a.file, receivingId: a.receivingId, major: a.major, sources: a.sources, raw, sha256: sha(buf), bytes: buf.length })
   }
   if (total > cfg.raw.maxTotalBytes) throw new Error(`raw store is ${total} bytes (> raw.maxTotalBytes ${cfg.raw.maxTotalBytes}); move raw storage to a workflow artifact`)
-  const manifest: RawManifest = { schema: 1, fetchedAt: bundle.fetchedAt, base: bundle.base, academicYear: bundle.academicYear, academicYears: bundle.academicYears, institutions: 'institutions.json.gz', agreements }
+  const manifest: RawManifest = { schema: 1, fetchedAt: bundle.fetchedAt, base: bundle.base, academicYear: bundle.academicYear, yearInEffect: bundle.yearInEffect, carriedOver: bundle.carriedOver, academicYears: bundle.academicYears, institutions: 'institutions.json.gz', agreements }
   writeFileSync(join(dir, 'manifest.json'), JSON.stringify(manifest, null, 1) + '\n')
   return { totalBytes: total }
 }
@@ -67,7 +69,7 @@ export function readRaw(dataDir: string, cfg: PipelineConfig): RawBundle {
     if (sha(readFileSync(path)) !== a.sha256) throw new Error(`raw store: ${a.raw} does not match its manifest checksum`)
     return { file: a.file, receivingId: a.receivingId, major: a.major, sources: a.sources, payloads: ungz(path) }
   })
-  return { fetchedAt: m.fetchedAt, base: m.base, academicYear: m.academicYear, academicYears: m.academicYears, institutions: ungz<RawInstitution[]>(join(dir, m.institutions)), agreements }
+  return { fetchedAt: m.fetchedAt, base: m.base, academicYear: m.academicYear, yearInEffect: m.yearInEffect, carriedOver: m.carriedOver, academicYears: m.academicYears, institutions: ungz<RawInstitution[]>(join(dir, m.institutions)), agreements }
 }
 
 export const rawBytes = (dataDir: string, cfg: PipelineConfig) => {
