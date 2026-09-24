@@ -220,3 +220,69 @@ A wrong "you're fine" (false positive) can cost a student their admission. A wro
 - Smoke: 95 of 95.
 - Build: clean.
 - `validate:data:ci`: passes, with legacy data reported rather than failed.
+
+# Round 5: two more testers (TESTER1_REPORT.md, TESTER2_REPORT.md)
+
+The work was split into 14 short, file-scoped agents, then merged and checked together.
+
+**Business decisions:**
+- Plans include enrollment prerequisites. Their units are counted and each is labeled "prerequisite".
+- Calculus-based Mechanics comes after Calc I, and E&M after Calc II.
+- Real quarter and semester calendars are used.
+- A subject chain costs 5 × (colleges − 1).
+- Plans start in the next term still open for registration.
+- UC Irvine advisory sections are optional.
+- Only neutral or stricter data changes publish on their own. Loosening changes, large drops and a changed academic year go to a review PR.
+- After July 1, the prior year's data is kept, with a caveat, until ASSIST publishes the new year.
+
+**Tester 1 (counselor):**
+
+| Finding | What changed |
+|---|---|
+| C-1: "Everything required is already complete" when nothing could be scheduled | The note now follows the verdict and names up to 3 unmet requirements (`scheduleNote`, `unmetNames`). |
+| H-1: missing enrollment prerequisites (business calculus before Calc I) | `src/engine/prereq.ts` adds same-college prerequisites, counts their units and labels them (`Plan.prereqOnly`). A prerequisite offered only at another college becomes a warning (`Plan.prereqWarnings`). `optimal` stays true only when it is still proven. |
+| H-2: no math→physics order | Mechanics comes after Calc I and E&M after Calc II (`sequence.ts`). Algebra-based physics is excluded. |
+| H-3: quarter and semester terms mixed | `src/engine/calendar.ts` puts all terms on one shared timeline. Each course goes in its college's own calendar, and the unit cap counts terms that run at the same time. |
+| H-4: UC Irvine advisory sections were required | Titles are classified in normalize, and unclear ones stay required and raise a warning. `NORMALIZE_VERSION` is now 3. New validator checks and a canary. |
+| M-1: "minimum units" | Replaced with "lowest cost under our rules". |
+| M-2: honors codes the student didn't take | The satisfied group with the fewest honors swaps is shown. |
+| M-3: no caveat on the schedule for untrusted or aging data | `scheduleCaveat`. |
+| M-4: 3 colleges cost the same as 2 | chainPenalty × (k−1). The independent brute force was updated to match, in its own code. |
+| M-5: always "Fall 2026" | A start-term selector. There is now one registration-cutoff rule (`src/terms.ts`), used by both the page and the engine. |
+| M-6: July 1 rollover | The pipeline falls back to the prior year, never two years back. `meta.carriedOver` makes the data aging with a caveat. Unmarked prior-year data has a 7-day grace period. The plan shows which year's agreement it uses. |
+| L-1 to L-7 | The hero and footer follow the live trust state. Plain-language banner. Trust is re-checked every minute and on tab focus. The count check was tightened. Honors hints name the 1AHP companion. The Trap demo is never green on untrusted data. LinAlg and DiffEq are not ordered by letter. A search with no match explains why. |
+
+**Tester 2 (adversarial systems):**
+
+| Finding | What changed |
+|---|---|
+| C-1: loosening changes auto-published; the gate stopped only 36% of false-green corruptions | `scripts/pipeline/diff.ts` classifies each change semantically and replays verdicts on sample transcripts. Anything looser than the last reviewed baseline (`data/baseline-manifest.json`) goes to review. It now stops **281 of 283 (99.3%)**; the 2 misses are exact duplicate groups, which don't change meaning. |
+| C-2: payload identity not checked | Each payload's college, UC, year and major must match the request, or the run fails before anything is stored. The CI gate re-checks the stored raw payloads. |
+| H-1: raw store optional | Required in publish and CI mode, except for legacy data that was never fetched. |
+| H-2: shared staging, no lock | Lock files with stale-lock detection, and a unique staging directory per run. The staged tree is hashed after validation and re-checked just before the swap. |
+| H-3: no recovery after a crash | `recoverPublish()` restores the last good data. Publishing onto an empty repo needs `--first-publish`. |
+| H-4, H-5: slow drift, one college's data dropping | Changes are judged against the reviewed baseline. Per-college drop thresholds send a run to review. |
+| H-6: no PR mode, deploy or freshness monitor | `data-refresh.yml` has separate jobs: refresh (read-only), publish (commit, review PR or auto-merge PR), notify and keepalive. `freshness.yml` opens an issue if data is more than 36 h old. |
+| M-1: `accept_large_change` too broad | Manual runs only. It needs a reason of at least 15 characters, which is logged, applies to one run, and always opens a review PR. |
+| M-2: trust read only meta.json | The academic year of each loaded agreement is checked against meta. |
+| M-3: an empty tree or "choose 0" counted as valid | Rejected by verify and by the validator. The independent oracle has the same fail-closed rule. |
+| M-4: no solver time limit, ran on the main thread | `timeLimitMs`, and a Web Worker (`solveClient.ts`) that drops stale answers. The badge shows "Planning…" and is never green meanwhile. Checked in Chromium: the worker loads, the plan renders, no errors. |
+| M-5: token exposure | `redact()` covers logs, reports and errors. Workflows turn off credential persistence and pass inputs through env. |
+| M-6: a normalize bump made data untrusted | The pipeline first rebuilds offline from the raw store. |
+| M-7: institution changes | A change to a college's calendar type or community-college flag is an error, and a rename is a warning. |
+| M-8: no error boundary | Each section has one, with a calm fallback that shows no green. |
+| M-9: cancelled runs, 60-day schedule disablement | The notify job also covers cancelled and timed-out runs. Keepalive re-enables the schedules. |
+| L items | Expiring acknowledgements, a cap on response size, escaped Markdown, the actionlint checksum, and a CI-must-be-green check before a refresh. Deferred: L-2 (signing the raw manifest with an HMAC needs a secret). |
+
+**Checks:**
+- `tsc -b` and `tsc -p tests/independent`: clean.
+- vitest: 799 pass.
+- Independent suite: 333 pass.
+- Smoke: 95 of 95.
+- Build: clean.
+- `validate:data:ci`: exit 0. The committed data is v1 and reported as legacy, so it stays untrusted until the first refresh.
+
+**Open:**
+- The committed data predates `NORMALIZE_VERSION` 3. The first refresh will go to review because no baseline exists yet, and merging that PR creates the baseline.
+- The advisory-section rule is based on titles. Check UC Irvine CS, CSE and EE, and UC Davis EE and ME, on ASSIST after the refresh.
+- Large synthetic "choose 20 of 40" trees take 1–2 s outside the search loop. They run in the worker, so the page doesn't freeze.
