@@ -25,7 +25,7 @@ import { instOf, isUcOnly, oracle, uniqueRows } from './oracle.ts'
  * Until then, pure-units mode passes weights 0 under those names, so the check stays valid after the merge as long
  * as the names match (if they do not, the units check fails loudly on multi-college plans).
  */
-export const OPTION_NAMES = { college: 'P_COLLEGE', chain: 'P_CHAIN' } as const
+export const OPTION_NAMES = { college: 'collegePenalty', chain: 'chainPenalty' } as const
 export const OBJECTIVE: Weights = (() => {
   const w = process.env.INDEPENDENT_PLANNER_WEIGHTS
   if (!w) return PURE_UNITS
