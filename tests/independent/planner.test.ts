@@ -11,7 +11,7 @@ import { BUDGET, FULL, SEED, SLOW } from './budget.ts'
 import { bruteMin, feasible, planCost, subjectChains, type Weights } from './brute.ts'
 import { CCS, FH, DA, INDEX, loadAgreement, SYS } from './fixtures.ts'
 import { writeMetrics } from './metrics.ts'
-import { instOf, oracle } from './oracle.ts'
+import { degenerate, instOf, oracle } from './oracle.ts'
 import { describeWeights, OBJECTIVES, PlannerStats, runPlanner, solveOptions, type PlanRun } from './planner-harness.ts'
 import { NO_RECORD, permuteAgreement, randomAgreement, rng, type Rng } from './synth.ts'
 
@@ -49,6 +49,7 @@ for (const W of OBJECTIVES) {
         const taken = Object.keys(a.catalog).filter(() => r.next() < 0.2)
         const allowed = a.sendingIds.filter(() => r.next() < 0.7)
         if (!allowed.length) allowed.push(a.sendingIds[0])
+        if (degenerate(a.root)) continue // malformed data: never valid by rule 8 (TESTER2 M-3); the gate rejects it
         const run = { a, file: `synthetic seed=${SEED + 10} #${i} root=${JSON.stringify(a.root)}`, taken, allowed, home: allowed[0], brute: true, bruteBudget: 50_000 }
         again(rp, runPlanner(SYNTH, run), run)
       }

@@ -30,14 +30,27 @@ export const has = (taken: Set<CourseId>, c: CourseId, mix: Mix) =>
 const takenAs = (taken: Set<CourseId>, c: CourseId, mix: Mix) =>
   taken.has(c) ? c : !swaps(c, mix) ? undefined : taken.has(`${c}H`) ? `${c}H` : c.endsWith('H') && taken.has(stripH(c)) ? stripH(c) : undefined
 
-/** How a single requirement stands against the taken set. */
+/**
+ * How a single requirement stands against the taken set.
+ * `satisfied`: of the groups the taken set completes, the one closest to what the student took: fewest honors swaps,
+ * then most courses taken exactly as listed, then ASSIST order. Always one of the row's own groups. So a student who took
+ * MATH 1B + 1C is shown that group, not the honors twin ASSIST lists first (TESTER1 M-2). Whether the row is satisfied
+ * does not depend on this choice.
+ */
 export function reqStatus(req: Requirement, taken: Set<CourseId>): ReqStatus {
   const best = new Map<number, Partial>() // one partial per college: its regular and honors groups overlap
   const mix = honorsColleges(req)
+  let done: { g: CourseGroup; exact: number; swapped: number } | undefined
   for (const g of req.groups) {
+    if (g.courses.every((c) => has(taken, c, mix))) {
+      // fewest honors swaps first (groups can differ in length), then most courses taken as listed; ties keep ASSIST order
+      const exact = g.courses.filter((c) => taken.has(c)).length, swapped = g.courses.length - exact
+      if (!done || swapped < done.swapped || (swapped === done.swapped && exact > done.exact)) done = { g, exact, swapped }
+      continue
+    }
+    if (done) continue // partials are reported only for an unsatisfied row
     // Report the courses the student actually took, not the honors twin that matched them.
     const have = [...new Set(g.courses.map((c) => takenAs(taken, c, mix)).filter((c): c is CourseId => !!c))]
-    if (g.courses.every((c) => has(taken, c, mix))) return { satisfied: g, partials: [] }
     const prev = best.get(g.institutionId)
     const missing = g.courses.filter((c) => !has(taken, c, mix))
     const honors = (m: CourseId[]) => m.filter((c) => c.endsWith('H')).length
@@ -45,6 +58,7 @@ export function reqStatus(req: Requirement, taken: Set<CourseId>): ReqStatus {
     if (have.length && (!prev || have.length > prev.have.length || (have.length === prev.have.length && honors(missing) < honors(prev.missing))))
       best.set(g.institutionId, { institutionId: g.institutionId, have, missing })
   }
+  if (done) return { satisfied: done.g, partials: [] }
   return { partials: [...best.values()] }
 }
 
@@ -147,6 +161,27 @@ export function blockingSplits(r: ValidationResult): Violation[] {
   return r.splitSeriesViolations.filter((v) => v.blocking)
 }
 
+/**
+ * Why the tree is degenerate, or null (TESTER2 M-3). The fold reads two shapes as met with nothing taken: a required AND
+ * with no required child, and an N_OF asking for fewer than 1; a tree with no required row at all is met the same way.
+ * (An OR or N_OF with no required child already stays open.) The data gate rejects these (tree.empty, tree.empty-node,
+ * tree.n-of, tree.no-required, tree.no-required-children); verifySchedule also fails closed on them, so a gate bypass
+ * can never show green. Only nodes reached through required nodes count: optional subtrees never decide a verdict.
+ */
+export function malformed(root: ReqNode): string | null {
+  let rows = 0, why: string | null = null
+  const walk = (n: ReqNode | Requirement) => {
+    if (n.kind === 'req') return void rows++
+    const req = n.children.filter((c) => c.kind === 'req' || c.required)
+    const name = n.title ? `"${n.title}"` : `${n.type} group`
+    if (n.type === 'AND' && !req.length) why ??= `${name} has no required rows`
+    if (n.type === 'N_OF' && !(Number.isInteger(n.n) && n.n! >= 1)) why ??= `${name} asks for ${n.n} of ${req.length}`
+    req.forEach(walk)
+  }
+  if (root.required) walk(root)
+  return why ?? (rows ? null : 'the requirement tree has no required rows')
+}
+
 /** Evaluate every requirement, then fold the tree. */
 export function verifySchedule(taken: Set<CourseId>, agreement: Agreement): ValidationResult {
   const out: ValidationResult = { isValid: true, satisfied: {}, missing: [], incomplete: {}, splitSeriesViolations: [], deferred: [] }
@@ -177,5 +212,7 @@ export function verifySchedule(taken: Set<CourseId>, agreement: Agreement): Vali
   if (!passes(root) && agreement.root.required) out.missing = root.miss
   out.deferred = uniq(root.def)
   out.isValid = passes(root) && !out.splitSeriesViolations.some((v) => v.blocking)
+  const bad = malformed(agreement.root)
+  if (bad) { out.isValid = false; out.missing = [...out.missing, `Agreement data is malformed (${bad}); check ASSIST`] }
   return out
 }
