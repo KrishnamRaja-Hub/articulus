@@ -2,6 +2,7 @@ import type { Agreement, CourseGroup, CourseId, Institution, Partial, Plan, ReqN
 import { canRoute, has, honorsColleges, isDeferrable, reqStatus, ucOnly, verifySchedule, type ReqStatus } from './verify.ts'
 import institutions from '../../data/institutions.json' with { type: 'json' }
 import { prereqs } from './sequence.ts'
+import { prereqClosure, prereqGraph } from './prereq.ts'
 
 export type TermSystem = 'quarter' | 'semester'
 
@@ -861,10 +862,47 @@ export function solve(taken: Set<CourseId>, a: Agreement, opts: SolveOptions): P
       return `${L[i].id} (only by splitting ${ids.length ? ids.join(', ') : 'a series'})`
     })
   } else ({ planned, chosen, unsolvable } = g!)
+  let prereqOnly: CourseId[] = [], prereqWarnings: string[] = []
+  ;({ planned, chosen, prereqOnly, prereqWarnings, optimal } = withPrereqs(planned, chosen, optimal))
   const terms = pack([...planned], (c) => unitsOf(c, true), unitCap, maxTerms, startTerm, termSystem, (c) => a.catalog[c]?.title ?? '')
   const result = verifySchedule(withTaken(planned), a)
   // unsolvable in a fixed order (tree order would follow the input)
-  return { terms, chosen, result, totalUnits: half(planned.reduce((s, c) => s + unitsOf(c, true), 0)), unsolvable: [...unsolvable].sort(), optimal }
+  return {
+    terms, chosen, result, totalUnits: half(planned.reduce((s, c) => s + unitsOf(c, true), 0)), unsolvable: [...unsolvable].sort(), optimal,
+    ...(prereqOnly.length ? { prereqOnly } : {}), ...(prereqWarnings.length ? { prereqWarnings } : {}),
+  }
+
+  /** Enrollment prerequisites (TESTER1 H-1, prereq.ts): each planned course's unmet prerequisites at its own college
+   *  are added and counted. Then a searched course is dropped while the plan, prerequisites included, costs fewer units
+   *  and still completes every chosen requirement without it (business calculus once Calculus I is in the plan for
+   *  Calculus II). The search's optimum ignores prerequisites, so it is a lower bound: `optimal` survives only when the
+   *  final plan scores no worse than the searched one (every added course priced by the search). */
+  function withPrereqs(searched: CourseId[], chosen: Record<string, CourseGroup>, optimal: boolean) {
+    const graph = prereqGraph(a.catalog, taken)
+    const nameOf = (c: CourseId) => shortName.get(instOf(c)) ?? String(instOf(c))
+    const close = (cs: CourseId[]) => { const k = prereqClosure(graph, cs, taken, a.catalog, nameOf); return { cs: [...cs, ...k.added], ...k } }
+    const units = (cs: CourseId[]) => cs.reduce((s, c) => s + unitsOf(c, true), 0)
+    const keeps = (cs: CourseId[]) => { const h = withTaken(cs); return Object.keys(chosen).every((id) => L.some((r) => r.id === id && completed(r, h))) }
+    const give0 = score(searched).v[0], block0 = blocking(withTaken(searched)).length
+    let base = searched, cur = close(base)
+    for (let changed = cur.added.length > 0; changed;) {
+      changed = false
+      // Only a course sharing a requirement with an added prerequisite can become redundant.
+      const rows = L.filter((r) => r.groups.some((g) => g.courses.some((x) => cur.added.includes(x) || cur.added.includes(`${x}H`) || cur.added.includes(stripH(x)))))
+      const may = (c: CourseId) => rows.some((r) => r.groups.some((g) => g.courses.some((x) => x === c || `${x}H` === c || stripH(x) === c)))
+      for (const c of base.filter(may).sort((x, y) => unitsOf(y, true) - unitsOf(x, true) || (x < y ? -1 : 1))) {
+        const nx = close(base.filter((x) => x !== c))
+        if (units(nx.cs) < units(cur.cs) - EPS && keeps(nx.cs) && score(nx.cs).v[0] <= give0 && blocking(withTaken(nx.cs)).length <= block0) {
+          base = base.filter((x) => x !== c); cur = nx; changed = true; break
+        }
+      }
+    }
+    const h = withTaken(cur.cs), out: Record<string, CourseGroup> = {}
+    for (const id of Object.keys(chosen)) out[id] = L.map((r) => (r.id === id ? completed(r, h) : undefined)).find(Boolean) ?? chosen[id]
+    const same = cur.cs.length === searched.length && cur.cs.every((c) => searched.includes(c))
+    const proven = optimal && (same || (cur.cs.every((c) => vec.has(c)) && lex(score(cur.cs).v, score(searched).v) <= 0))
+    return { planned: same ? searched : [...cur.cs].sort(), chosen: same ? chosen : out, prereqOnly: cur.added.filter((c) => !Object.values(out).some((g) => g.courses.includes(c))), prereqWarnings: cur.warnings, optimal: proven }
+  }
 }
 
 /* ---- term packing ---- */
