@@ -9,7 +9,7 @@ import ece from '../../data/agreements/7-ece-electrical-engineering-b-s.json'
 import dme from '../../data/agreements/89-mechanical-engineering-b-s.json'
 import index from '../../data/index.json'
 import type { Agreement, ReqNode, Requirement, ValidationResult } from './types'
-import { blockingSplits, has, honorsColleges, honorsMix, isDeferrable, reqStatus, ucOnly, verifySchedule } from './verify'
+import { blockingSplits, has, honorsColleges, honorsMix, isDeferrable, malformed, reqStatus, ucOnly, verifySchedule } from './verify'
 
 const ME = me as unknown as Agreement, MAE = mae as unknown as Agreement, MCS = mcs as unknown as Agreement, CSE = cse as unknown as Agreement
 const DA = 113, FH = 51
@@ -385,5 +385,53 @@ describe('deferral and blocking on real agreements', () => {
         expect(r.missing.join('|'), `${file} ${id}`).not.toMatch(new RegExp(`(^|[|(]|: |, | \\+ )${esc}($|[|)]|, | \\+ )`))
       }
     }
+  })
+})
+
+describe('reqStatus reports the group the student actually took (TESTER1 M-2)', () => {
+  const m52 = () => req(ME, 'MATH 52')
+  it('regular MATH 1B + 1C: the regular group, not the honors twin ASSIST lists first', () => {
+    const s = reqStatus(m52(), new Set([`${DA}:MATH 1B`, `${DA}:MATH 1C`]))
+    expect(s.satisfied?.courses.slice().sort()).toEqual([`${DA}:MATH 1B`, `${DA}:MATH 1C`])
+  })
+  it('honors MATH 1BH + 1CH: the honors group', () => {
+    const s = reqStatus(m52(), new Set([`${DA}:MATH 1BH`, `${DA}:MATH 1CH`]))
+    expect(s.satisfied?.courses.slice().sort()).toEqual([`${DA}:MATH 1BH`, `${DA}:MATH 1CH`])
+  })
+  it("the satisfied group is always one of the row's own groups", () => {
+    const s = reqStatus(m52(), new Set([`${DA}:MATH 1BH`, `${DA}:MATH 1C`]))
+    expect(m52().groups).toContain(s.satisfied)
+  })
+  it('synthetic: fewest swaps wins over ASSIST order', () => {
+    const r: Requirement = { kind: 'req', id: 'X', label: 'X', units: 4, groups: [
+      { institutionId: 1, courses: ['1:A 1H', '1:A 2H'] }, { institutionId: 1, courses: ['1:A 1', '1:A 2'] }] }
+    expect(reqStatus(r, new Set(['1:A 1', '1:A 2'])).satisfied).toBe(r.groups[1])
+    expect(reqStatus(r, new Set(['1:A 1H', '1:A 2H'])).satisfied).toBe(r.groups[0])
+  })
+})
+
+describe('degenerate trees fail closed (TESTER2 M-3)', () => {
+  const row: Requirement = { kind: 'req', id: 'R1', label: 'R1', units: 4, groups: [{ institutionId: 1, courses: ['1:C 1'] }] }
+  const tree = (children: (ReqNode | Requirement)[]): Agreement =>
+    ({ receivingId: 1, major: 'x', year: 'x', sendingIds: [1], catalog: {}, root: { kind: 'node', type: 'AND', required: true, children } })
+  const cases: [string, Agreement][] = [
+    ['empty root', tree([])],
+    ['choose 0', tree([{ kind: 'node', type: 'N_OF', n: 0, required: true, children: [row] }])],
+    ['only optional rows', tree([{ kind: 'node', type: 'AND', required: false, children: [row] }])],
+    ['an OR alternative that is an empty AND', tree([row, { kind: 'node', type: 'OR', required: true, children: [{ kind: 'node', type: 'AND', required: true, children: [] }, { ...row, id: 'R2' }] }])],
+  ]
+  for (const [name, a] of cases) it(`${name}: never valid, and says why`, () => {
+    expect(malformed(a.root)).not.toBeNull()
+    const r = verifySchedule(new Set(['1:C 1']), a)
+    expect(r.isValid).toBe(false)
+    expect(r.missing.join(' ')).toMatch(/malformed/)
+  })
+  it('a well-formed tree with an optional subtree is not flagged', () => {
+    const a = tree([row, { kind: 'node', type: 'AND', required: false, children: [{ ...row, id: 'R2' }] }])
+    expect(malformed(a.root)).toBeNull()
+    expect(verifySchedule(new Set(['1:C 1']), a).isValid).toBe(true)
+  })
+  it('no real agreement is malformed', () => {
+    for (const a of [ME, MAE, MCS, CSE]) expect(malformed(a.root)).toBeNull()
   })
 })

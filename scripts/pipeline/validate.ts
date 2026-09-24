@@ -8,10 +8,10 @@
  */
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { NORMALIZE_VERSION, NOT_LISTED } from '../../src/engine/normalize.ts'
+import { classifyTitle, NORMALIZE_VERSION, NOT_LISTED } from '../../src/engine/normalize.ts'
 import type { Agreement, Course, Institution, ReqNode, Requirement } from '../../src/engine/types.ts'
 import { codeInEffect } from './academic-year.ts'
-import { CANARIES, rows } from './canaries.ts'
+import { CANARIES, rows, sections } from './canaries.ts'
 import type { PipelineConfig } from './config.ts'
 import type { IndexEntry } from './store.ts'
 
@@ -72,6 +72,8 @@ export interface ValidateOptions {
 }
 
 const SEVERITIES: Severity[] = ['error', 'warning', 'info', 'legacy']
+/** Title suffix normalize gives requirements only other colleges' templates list (always optional). */
+const ONLY_SOME = /only in some colleges/i
 const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v)
 const isInt = (v: unknown): v is number => Number.isInteger(v)
 const isIso = (v: unknown) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(v) && !Number.isNaN(Date.parse(v))
@@ -283,7 +285,8 @@ export function validateData(dataDir: string, o: ValidateOptions): Report {
         warn(node.n !== node.children.length, 'tree.n-of-all', `${path}: N_OF ${node.n} of ${node.children.length} is "take all"`)
       }
       if (node.title) {
-        err(!(/RECOMMEND/i.test(node.title) && node.required), 'tree.recommended-required', `"${node.title}" is marked required`)
+        // a title that also says "required" is ambiguous and kept required on purpose (tree.ambiguous-title)
+        err(!(/RECOMMEND/i.test(node.title) && node.required && classifyTitle(node.title).kind !== 'ambiguous'), 'tree.recommended-required', `"${node.title}" is marked required`)
       }
       node.children.forEach((c, i) => walk(c, `${path}/${i}`))
     }
@@ -298,8 +301,26 @@ export function validateData(dataDir: string, o: ValidateOptions): Report {
     // semantics
     const all = rows(a.root)
     const required = [...new Map(all.filter((r) => r.required).map((r) => [r.req.id, r])).values()]
+    // Sections (TESTER1 H-4): the top-level groups' titles, resolved in order the way normalize v3 does. Rows under a
+    // time-to-degree, elective or other advisory section must not fail a plan; a title it cannot place stays required.
+    // Degenerate trees (TESTER2 M-3): the engine fails closed on them, but they must never publish. A tree with no
+    // required row, or a required node none of whose children are required, would otherwise read as "nothing to do".
+    err(required.length > 0, 'tree.no-required', 'requirement tree has no required rows: every plan would be trivially complete')
     for (const n of nodes(a.root)) {
-      if (!n.required && n.title) warn(/RECOMMEND|only in some colleges/i.test(n.title), 'tree.optional-title', `optional node "${n.title}" has no "recommended" title`)
+      if (!n.required || !n.children.length) continue // tree.empty-node reports childless nodes
+      const req = n.children.filter((c) => c.kind === 'req' || c.required).length
+      err(req > 0, 'tree.no-required-children', `${n.title ? `"${n.title}"` : `${n.type} node`}: required, but none of its ${n.children.length} children is`)
+      if (n.type === 'N_OF') err(isInt(n.n) && n.n! >= 1 && n.n! <= req, 'tree.n-of-required', `${n.title ? `"${n.title}"` : 'N_OF node'}: choose ${n.n} of ${req} required children`)
+    }
+    const secs = new Map(sections(a.root))
+    for (const [n, r] of secs) {
+      if (!n.required) continue
+      const ids = rows(n).map((x) => x.req.id), list = `${ids.slice(0, 6).join('; ')}${ids.length > 6 ? '; ...' : ''}`
+      err(r.required, 'tree.advisory-required', `"${n.title}" is required but reads as advisory (${r.rule}); normalize v3 makes it optional. Rows: ${list}`, true)
+      warn(!r.ambiguous, 'tree.ambiguous-title', `"${n.title ?? ''}" kept required, but its title is ambiguous (${r.rule}): confirm on ASSIST whether these are needed for admission. Rows: ${list}`)
+    }
+    for (const n of nodes(a.root)) {
+      if (!n.required && n.title) warn(ONLY_SOME.test(n.title) || secs.get(n)?.required === false || ['advisory', 'additional'].includes(classifyTitle(n.title).kind), 'tree.optional-title', `optional node "${n.title}" has no advisory ("recommended", electives, ...) title`)
       for (const [subject, prefix] of TITLE_SUBJECTS) {
         if (!n.title || !subject.test(n.title)) continue
         const ids = rows(n).map((r) => r.req.id)
@@ -330,6 +351,7 @@ export function validateData(dataDir: string, o: ValidateOptions): Report {
     if (mism?.length) warn(false, 'normalize.template-mismatch', `template differs from the first college's at colleges ${mism.join(', ')}; their rows were matched by UC course`)
     for (const note of o.notes?.[f] ?? []) {
       if (/in no template, not added/.test(note)) warn(false, 'normalize.dropped', note)
+      else if (/ambiguous section title/.test(note)) warn(false, 'normalize.ambiguous-title', note)
       else info('normalize.note', note, f)
     }
     agreementsStats.push({

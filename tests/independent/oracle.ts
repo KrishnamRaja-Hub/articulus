@@ -17,6 +17,8 @@
  *  6. Blocking vs warning: top down from a failing root, an AND needs every failing required child, an OR / N_OF every
  *     failing child that has a CC route. A split in a needed row is blocking; any other split is a warning.
  *  7. isValid = the root passes and there is no blocking split.
+ *  8. Fail closed on a degenerate tree (TESTER2 M-3): if, following only required children from a required root, there
+ *     is no row at all, or an AND with no required child, or an N_OF asking for fewer than 1, nothing is valid.
  */
 import type { Agreement, CourseGroup, CourseId, ReqNode, Requirement } from '../../src/engine/types'
 
@@ -207,6 +209,16 @@ export interface OracleResult {
   missing: Set<string>
 }
 
+/** Rule 8. */
+export function degenerate(root: ReqNode): boolean {
+  if (!root.required) return false
+  const req = (n: ReqNode) => n.children.filter((c) => c.kind === 'req' || c.required)
+  const bad = (n: Node): boolean => n.kind !== 'req' && (
+    (n.type === 'AND' && req(n).length === 0) || (n.type === 'N_OF' && !((n.n ?? 0) >= 1)) || req(n).some(bad))
+  const anyRow = (n: Node): boolean => n.kind === 'req' || req(n).some(anyRow)
+  return bad(root) || !anyRow(root)
+}
+
 export function oracle(a: Agreement, taken: ReadonlySet<CourseId>, opts: OracleOptions = {}): OracleResult {
   const rows = new Map<string, RowEval>()
   const rowOf = (r: Requirement) => {
@@ -230,7 +242,7 @@ export function oracle(a: Agreement, taken: ReadonlySet<CourseId>, opts: OracleO
   const splits = new Set([...rows.values()].filter((e) => e.split).map((e) => e.req.id))
   const blocking = new Set([...splits].filter((id) => needed.has(id)))
   return {
-    isValid: rootPass && blocking.size === 0,
+    isValid: rootPass && blocking.size === 0 && !degenerate(a.root),
     rootPass, rows, needed, splits, blocking,
     satisfied: new Set([...rows.values()].filter((e) => e.sat).map((e) => e.req.id)),
     deferred: new Set(root.def),

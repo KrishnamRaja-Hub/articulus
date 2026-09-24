@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReqNode, Requirement } from './types'
-import { normalize, templateMismatches, type RawPayload } from './normalize'
+import { classifyTitle, normalize, NORMALIZE_VERSION, sectionRules, templateMismatches, type RawPayload } from './normalize'
 import { verifySchedule } from './verify'
 
 /* Synthetic payloads in the ASSIST shape (nested JSON strings, positioned templateAssets). */
@@ -63,6 +63,50 @@ describe('normalize: N-of sections (F-02)', () => {
     const g = a.root.children[0] as ReqNode
     expect(g.type).toBe('AND')
     expect([(g.children[1] as ReqNode).type, (g.children[1] as ReqNode).n]).toEqual(['N_OF', 2])
+  })
+  it('choose 0 is kept as N_OF(0), warned about, and never reads as valid (TESTER2 M-3)', () => {
+    const s0 = { ...section([[M31A], [M31B]]), advisements: [{ type: 'NFollowing', amount: 0 }] }
+    const a = normalize([payload(DA, [group(0, [s0])], arts)])
+    expect([(a.root.children[0] as ReqNode).type, (a.root.children[0] as ReqNode).n]).toEqual(['N_OF', 0])
+    expect(warn.mock.calls.flat().join(' ')).toMatch(/NFollowing 0/)
+    expect(verifySchedule(new Set(), a).isValid).toBe(false)
+  })
+})
+
+describe('normalize v3: only admission sections are required (TESTER1 H-4)', () => {
+  it('NORMALIZE_VERSION is 3', () => expect(NORMALIZE_VERSION).toBe(3))
+  it('classifies titles', () => {
+    expect(classifyTitle('MAJOR PREPARATION COURSES REQUIRED FOR TRANSFER').kind).toBe('admission')
+    expect(classifyTitle('LOWER DIVISION MAJOR REQUIREMENTS').kind).toBe('required')
+    expect(classifyTitle('STRONGLY RECOMMENDED').kind).toBe('advisory')
+    expect(classifyTitle('MAJOR PREPARATION COURSES NECESSARY TO GRADUATE IN TWO YEARS').kind).toBe('advisory')
+    expect(classifyTitle('ADDITIONAL MAJOR ELECTIVES').kind).toBe('advisory')
+    expect(classifyTitle('ADDITIONAL LOWER DIVISION COURSES').kind).toBe('additional')
+    expect(classifyTitle('REQUIRED: RECOMMENDED COURSES').kind).toBe('ambiguous')
+    expect(classifyTitle('MATHEMATICS').kind).toBe('neutral')
+  })
+  it('"ADDITIONAL ..." is optional only beside an explicit required-for-admission section', () => {
+    expect(sectionRules(['REQUIRED FOR ADMISSION', 'ADDITIONAL COURSES']).map((r) => r.required)).toEqual([true, false])
+    expect(sectionRules(['ADDITIONAL COURSES'])[0]).toMatchObject({ required: true, ambiguous: true })
+  })
+  it('a subject heading takes the section above it; under an optional one it stays required but ambiguous', () => {
+    expect(sectionRules(['MATHEMATICS'])[0].required).toBe(true)
+    expect(sectionRules(['RECOMMENDED', 'PHYSICS'])[1]).toMatchObject({ required: true, ambiguous: true })
+  })
+  it('UC Irvine shape: time-to-degree and elective sections become optional; the admission section still decides', () => {
+    const a = normalize([payload(DA, [
+      title(0, 'MAJOR PREPARATION COURSES REQUIRED FOR TRANSFER'), group(1, [section([[M31A], [M31B]])]),
+      title(2, 'MAJOR PREPARATION COURSES NECESSARY TO GRADUATE IN TWO YEARS'), group(3, [section([[P1A]])]),
+      title(4, 'ADDITIONAL MAJOR ELECTIVES'), group(5, [section([[E100]])]),
+    ], arts)])
+    expect((a.root.children as ReqNode[]).map((n) => n.required)).toEqual([true, false, false])
+    expect(verifySchedule(new Set(['113:MATH 1', '113:MATH 2']), a).isValid).toBe(true)
+    expect(verifySchedule(new Set(['113:PHYS 1', '113:ENGR 100']), a).missing).toContain('MATH 31A')
+  })
+  it('an ambiguous title is kept required and warned about', () => {
+    const a = normalize([payload(DA, [title(0, 'REQUIRED: RECOMMENDED COURSES'), group(1, [section([[M31A]])])], arts)])
+    expect((a.root.children[0] as ReqNode).required).toBe(true)
+    expect(warn.mock.calls.flat().join(' ')).toMatch(/ambiguous section title/)
   })
 })
 

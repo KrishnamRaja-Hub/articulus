@@ -4,7 +4,7 @@ import mae from '../../data/agreements/7-mae-mechanical-engineering-b-s.json'
 import institutions from '../../data/institutions.json'
 import type { Agreement, Course, CourseId, Institution, Plan, ReqNode, Requirement } from './types'
 import { solve, treeState, type SolveOptions } from './solve'
-import { has, honorsColleges, reqStatus, verifySchedule } from './verify'
+import { has, honorsColleges, malformed, reqStatus, verifySchedule } from './verify'
 import { NOT_LISTED } from './normalize'
 
 const ME = me as unknown as Agreement, MAE = mae as unknown as Agreement
@@ -394,7 +394,9 @@ describe('solve: the planner reads the tree as the verifier does', () => {
     const done = new Set(rows.filter((x) => x.groups.length && rnd() < 0.5).map((x) => x.id))
     return { a, done, taken: new Set(rows.filter((x) => done.has(x.id)).map((x) => x.groups[0].courses[0])) }
   }
-  const trees = Array.from({ length: Number(process.env.TREE_CASES ?? 5000) }, (_, i) => tree(i + 1))
+  // degenerate trees (choose 0, an AND with nothing required) are malformed data: verifySchedule fails closed on them and
+  // the gate rejects them (TESTER2 M-3), so the planner's reading is not compared there
+  const trees = Array.from({ length: Number(process.env.TREE_CASES ?? 5000) }, (_, i) => tree(i + 1)).filter(({ a }) => !malformed(a.root))
   it(`${trees.length} random trees: the planner's reading of the tree equals verifySchedule's`, () => {
     for (const [i, { a, done, taken }] of trees.entries()) {
       const s = treeState(a.root, (r) => done.has(r.id))

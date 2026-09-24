@@ -24,9 +24,78 @@ export interface RawPayload {
 /** Parse one nested JSON field, naming the payload on failure. */
 /**
  * Bump whenever normalize() output changes meaning. data/meta.json records the version that built data/; the app
- * trusts verdicts only when the two match (src/data-trust.ts). 1 = fixtures fetched before FIXES rounds 1-3.
+ * trusts verdicts only when the two match (src/data-trust.ts).
+ *   1 = fixtures fetched before FIXES rounds 1-3.
+ *   2 = titles paired by position, N_OF kept, other templates matched by UC course (F-01..F-03).
+ *   3 = only admission sections are required: time-to-degree, elective and other advisory sections ("...NECESSARY TO
+ *       GRADUATE IN TWO YEARS", "ADDITIONAL MAJOR ELECTIVES", "ADDITIONAL ... COURSES" beside a "REQUIRED FOR
+ *       TRANSFER" section) become optional, like "RECOMMENDED" ones (TESTER1 H-4; `sectionRules`).
  */
-export const NORMALIZE_VERSION = 2
+export const NORMALIZE_VERSION = 3
+
+/*
+ * Section titles (TESTER1 H-4). ASSIST puts the courses a campus requires for admission under one heading ("MAJOR
+ * PREPARATION COURSES REQUIRED FOR TRANSFER", "REQUIRED FOR ADMISSION", "LOWER DIVISION MAJOR REQUIREMENTS") and
+ * guidance under others (recommended courses, courses to graduate on time, electives). Only the first kind can fail a
+ * plan; the others are optional (shown as recommended). Titles are classified conservatively: a title that reads as
+ * both required and advisory, or that cannot be placed, stays required and is reported as ambiguous.
+ */
+/** Advisory wording, by rule name (first match names the rule). */
+export const ADVISORY_TITLE: readonly (readonly [string, RegExp])[] = [
+  ['not required', /\bNOT\s+(?:BE\s+)?REQUIRED\b|\bNOT\s+(?:AN?\s+)?(?:ADMISSION\s+|TRANSFER\s+)?REQUIREMENTS?\b/i],
+  ['recommended', /RECOMMEND/i],
+  ['time to degree', /\bGRADUAT(?:E|ION)\s+(?:IN|WITHIN)\b|\bTIMELY\b|\bTIME[\s-]+TO[\s-]+DEGREE\b|\bNORMAL\s+PROGRESS\b/i],
+  ['electives', /\bELECTIVES?\b/i],
+  ['after transfer', /\bNOT\s+COMPLETED\s+(?:PRIOR\s+TO|BEFORE)\s+TRANSFER\b|\bAFTER\s+TRANSFER\b/i],
+  ['optional', /\bOPTIONAL\b|\bSUGGESTED\b|\bENCOURAGED\b/i],
+]
+/** Explicitly the admission set. */
+const ADMISSION_TITLE = /\bREQUIRED\s+(?:COURSES\s+)?(?:FOR|PRIOR\s+TO|BEFORE)\s+(?:ADMISSION|TRANSFER)\b|\b(?:ADMISSION|TRANSFER|SELECTION)\s+(?:REQUIREMENTS?|CRITERIA)\b|\bMUST\s+BE\s+COMPLETED\b/i
+/** Required wording that overrides nothing: next to advisory wording it makes the title ambiguous. */
+const MUST_TITLE = /\bREQUIRED\b|\bMUST\b/i
+/** Major-preparation wording: required when nothing advisory is in the title. */
+const PREP_TITLE = /\bREQUIRED\b|\bREQUIREMENTS?\b|\bMUST\b|\bPREPARATION\b|\bPREREQUISITES?\b/i
+
+export type TitleKind = 'admission' | 'required' | 'advisory' | 'additional' | 'ambiguous' | 'neutral'
+/** What one title says on its own. `rule` names the pattern that decided it. */
+export function classifyTitle(title: string): { kind: TitleKind; rule: string } {
+  const adv = ADVISORY_TITLE.find(([, re]) => re.test(title))?.[0]
+  if (adv === 'not required') return { kind: 'advisory', rule: adv }
+  if (ADMISSION_TITLE.test(title)) return adv ? { kind: 'ambiguous', rule: `required for admission + ${adv}` } : { kind: 'admission', rule: 'required for admission/transfer' }
+  if (adv) return MUST_TITLE.test(title) ? { kind: 'ambiguous', rule: `required + ${adv}` } : { kind: 'advisory', rule: adv }
+  if (/\bADDITIONAL\b/i.test(title)) return { kind: 'additional', rule: 'additional' }
+  if (PREP_TITLE.test(title)) return { kind: 'required', rule: 'major preparation' }
+  return { kind: 'neutral', rule: title.trim() ? 'subject heading' : 'untitled' }
+}
+
+export interface SectionRule { required: boolean; ambiguous: boolean; rule: string }
+/**
+ * Resolve a template's titles, in position order, to required / optional:
+ *   admission, major preparation      required
+ *   advisory (recommended, time to degree, electives, not required, after transfer, optional)   optional
+ *   "ADDITIONAL ..."                  optional when the agreement also has an explicit required-for-admission section
+ *                                     (it is then, by contrast, not that set); otherwise ambiguous: required
+ *   required + advisory wording       ambiguous: required
+ *   a subject heading ("CHEMISTRY") or empty title   takes the section it sits under (required before any heading);
+ *                                     under an optional section it is ambiguous: required
+ */
+export function sectionRules(titles: readonly string[]): SectionRule[] {
+  const kinds = titles.map(classifyTitle)
+  const admission = kinds.some((k) => k.kind === 'admission')
+  let section: SectionRule = { required: true, ambiguous: false, rule: 'untitled' }
+  return kinds.map(({ kind, rule }) => {
+    if (kind === 'neutral') {
+      return section.required ? { ...section, rule: section.rule === 'untitled' ? rule : `${rule} under ${section.rule}` }
+        : { required: true, ambiguous: true, rule: `${rule} under an optional section (${section.rule})` }
+    }
+    section = kind === 'admission' || kind === 'required' ? { required: true, ambiguous: false, rule }
+      : kind === 'advisory' ? { required: false, ambiguous: false, rule }
+      : kind === 'ambiguous' ? { required: true, ambiguous: true, rule }
+      : admission ? { required: false, ambiguous: false, rule: 'additional, beside a required-for-admission section' }
+      : { required: true, ambiguous: true, rule: 'additional, with no required-for-admission section' }
+    return section
+  })
+}
 
 /** Placeholder for a UC row absent from every payload: not an ASSIST statement, so it never makes a row UC-only. */
 export const NOT_LISTED = 'No articulation listed'
@@ -137,14 +206,18 @@ export function normalize(payloads: RawPayload[]): Agreement {
     return children.length ? { ...n, children } : null
   }
   const placed = new Map<string, string[] | null>() // tree requirement key -> UC courses it needs
-  /** Tree nodes for one template. Each group takes the nearest RequirementTitle before it by position. */
+  const ambiguous = new Map<string, string>() // title -> why it was kept required
+  /** Tree nodes for one template. Each group takes the nearest RequirementTitle before it by position, and is required
+   *  only if that title's section is (`sectionRules`). */
   const build = (assets: (RawGroup | RawTitle)[], keep: (k: string) => boolean, optional = '') => {
     const out: ReqNode[] = []
-    let title = ''
-    for (const asset of [...assets].sort(byPos)) {
-      if (asset.type === 'RequirementTitle') title = asset.content ?? ''
+    const sorted = [...assets].sort(byPos)
+    const rules = sectionRules(sorted.filter((a): a is RawTitle => a.type === 'RequirementTitle').map((a) => a.content ?? ''))
+    let title = '', rule: SectionRule = { required: true, ambiguous: false, rule: 'untitled' }, ti = 0
+    for (const asset of sorted) {
+      if (asset.type === 'RequirementTitle') { title = asset.content ?? ''; rule = rules[ti++] }
       if (asset.type !== 'RequirementGroup') continue
-      const required = !optional && !/RECOMMEND/i.test(title)
+      const required = !optional && rule.required
       const sections: ReqNode[] = (asset.sections ?? [])
         .filter((s) => s.type === 'Section' && s.rows?.length)
         .map((s) => {
@@ -154,6 +227,8 @@ export function normalize(payloads: RawPayload[]): Agreement {
             return cells.length === 1 ? cells[0] : { kind: 'node', type: 'OR', required, children: cells }
           })
           const nOf = s.advisements?.find((a) => a.type === 'NFollowing')
+          // "choose 0" (or a missing amount) is kept as is: the validator rejects it and verify never counts it as met (TESTER2 M-3)
+          if (nOf && !(Number.isInteger(nOf.amount) && nOf.amount >= 1)) console.warn(`normalize: ${first.result.name}: NFollowing ${nOf.amount} in "${title}"`)
           return nOf ? { kind: 'node', type: 'N_OF', n: nOf.amount, required, children: rows } : { kind: 'node', type: 'AND', required, children: rows }
         })
       const type = asset.instruction?.type === 'Conjunction' && asset.instruction.conjunction === 'Or' ? 'OR' : 'AND'
@@ -161,12 +236,14 @@ export function normalize(payloads: RawPayload[]): Agreement {
       // One section: the group is that section (keeps its N_OF). Several: the group's conjunction joins them.
       const node = prune(sections.length === 1 ? { ...sections[0], title: t } : { kind: 'node', type, title: t, required, children: sections })
       if (node) out.push(node)
+      if (node && required && rule.ambiguous) ambiguous.set(title, rule.rule)
     }
     return out
   }
 
   // The tree is built from the FIRST payload's template.
   const children = build(parsed(first, 'templateAssets'), () => true)
+  if (ambiguous.size) console.warn(`normalize: ${first.result.name}: ambiguous section title, kept required: ${[...ambiguous].map(([t, why]) => `"${t}" (${why})`).join('; ')}`)
 
   // A college with no articulation under a tree requirement's key may still articulate its UC courses under
   // differently shaped cells (a series split into rows, or rows merged into a series). Attach those by UC course.
@@ -197,6 +274,9 @@ export function normalize(payloads: RawPayload[]): Agreement {
     if (added.length) console.warn(`normalize: ${first.result.name}: not in college ${sendingIds[0]}'s template, added as optional: ${added.join('; ')}`)
     if (orphan.length) console.warn(`normalize: ${first.result.name}: articulated but in no template, not added: ${orphan.join('; ')}`)
   }
+
+  const anyRequired = (n: ReqNode | Requirement): boolean => n.kind === 'req' || (n.required && n.children.some(anyRequired))
+  if (!children.some(anyRequired)) console.warn(`normalize: ${first.result.name}: no required rows; the agreement can never read as complete`)
 
   return {
     receivingId: parsed<{ id: number }>(first, 'receivingInstitution').id,

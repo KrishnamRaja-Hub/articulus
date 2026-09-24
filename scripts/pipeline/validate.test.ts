@@ -57,7 +57,10 @@ describe('invariants (errors)', () => {
     ['empty node', (d) => agreement(d, (a) => { (a.root.children[0] as ReqNode).children = [] }), 'tree.empty-node'],
     ['requirement with neither groups nor reason', (d) => agreement(d, (a) => { const r = req(a, 'ENGIN 7'); r.groups = []; delete r.noArticulation }), 'tree.req-empty'],
     ['N_OF asks for more than it has', (d) => agreement(d, (a) => { const n = a.root.children[0] as ReqNode; n.type = 'N_OF'; n.n = 99 }), 'tree.n-of'],
-    ['RECOMMENDED title marked required', (d) => agreement(d, (a) => { (a.root.children[1] as ReqNode).required = true }), 'tree.recommended-required'],
+    ['N_OF choose 0 (TESTER2 M-3)', (d) => agreement(d, (a) => { const n = a.root.children[0] as ReqNode; n.type = 'N_OF'; n.n = 0 }), 'tree.n-of'],
+    ['required node with only optional children (TESTER2 M-3)', (d) => agreement(d, (a) => { const n = a.root.children[0] as ReqNode; n.children = [{ kind: 'node', type: 'AND', required: false, children: n.children }] }), 'tree.no-required-children'],
+    ['advisory section marked required (TESTER1 H-4)', (d) => agreement(d, (a) => { const n = a.root.children[0] as ReqNode; a.root.children.push({ ...n, title: 'ADDITIONAL MAJOR ELECTIVES', required: true }) }), 'tree.advisory-required'],
+    ['RECOMMENDED title marked required',(d) => agreement(d, (a) => { (a.root.children[1] as ReqNode).required = true }), 'tree.recommended-required'],
     ['bad node type', (d) => agreement(d, (a) => { (a.root.children[0] as { type: string }).type = 'XOR' }), 'tree.schema'],
     ['same requirement id, different content', (d) => agreement(d, (a) => { (a.root.children[1] as ReqNode).children.push({ ...req(a, 'MATH 51'), groups: [] } as Requirement) }), 'tree.req-consistent'],
     ['index/agreement mismatch', (d) => edit(d, 'index.json', (ix) => { ix.find((e: { file: string }) => e.file === BME).major = 'Other'; return ix }), 'agreement.index-match'],
@@ -88,10 +91,12 @@ describe('invariants (errors)', () => {
     expect(r.passed).toBe(false)
     expect(errors(r)).toContain(id)
   })
-  it('an empty transcript that validates is caught by the canary', () => {
+  it('a tree with nothing required is rejected (the engine also fails closed, so the canary stays quiet)', () => {
     const d = copy()
     agreement(d, (a) => { for (const n of a.root.children as ReqNode[]) n.required = false })
-    expect(errors(validate(d))).toContain('canary.all.empty-transcript-invalid')
+    const e = errors(validate(d))
+    expect(e).toContain('tree.no-required')
+    expect(e).not.toContain('canary.all.empty-transcript-invalid')
   })
   it('hand edits are caught by raw reproducibility', () => {
     const d = copy()
