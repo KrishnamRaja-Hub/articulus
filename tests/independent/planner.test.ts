@@ -126,6 +126,16 @@ describe('independent brute force', () => {
     expect(planCost(['1:CHEM 1'], u, w, 1, subjectChains(b, ['1:CS 1', '2:CIS 22A'])).cost).toBe(5) // taken-only chain: 0
     expect(planCost(['2:CHEM 2'], u, { college: 5, chain: 0 }, 1, ch).cost).toBe(10)     // one college away from home
   })
+  it('a chain across k colleges costs chain × (k − 1): 3 colleges cost twice 2 (TESTER1 M-4)', () => {
+    const c = tiny([req('MATH 1', ['1:M 1'], ['2:M 1'], ['3:M 1']), req('MATH 2', ['1:M 2'], ['2:M 2'], ['3:M 2']), req('MATH 3', ['1:M 3'], ['2:M 3'], ['3:M 3'])],
+      Object.fromEntries([1, 2, 3].flatMap((k) => [1, 2, 3].map((n) => [`${k}:M ${n}`, 4]))))
+    const u = (x: CourseId) => c.catalog[x].units, w = { college: 0, chain: 5 }, ch = subjectChains(c, [])
+    expect(planCost(['1:M 1', '1:M 2', '1:M 3'], u, w, 1, ch).cost).toBe(12)
+    expect(planCost(['1:M 1', '2:M 2', '2:M 3'], u, w, 1, ch).cost).toBe(17)
+    expect(planCost(['1:M 1', '2:M 2', '3:M 3'], u, w, 1, ch).cost).toBe(22)
+    expect(planCost(['2:M 2', '3:M 3'], u, w, 1, subjectChains(c, ['1:M 1'])).cost).toBe(18) // taken at 1: 3 colleges
+    expect(planCost(['1:M 2', '1:M 3'], u, w, 1, subjectChains(c, ['1:M 1'])).cost).toBe(8)
+  })
   it('agrees with the oracle on feasibility', () => {
     expect(bruteMin(a, new Set(), { allowed: [3], unitsOf })).toBeNull()
     expect(feasible(a, new Set(), [3])).toBe(false)

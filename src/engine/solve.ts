@@ -96,13 +96,14 @@ const subjectOf = (id: string) => {
 
 /**
  * Exact minimum-cost plan. Cost, in order: requirements left unmet; then units + collegePenalty per college other
- * than home that planned courses use + chainPenalty per subject chain split across colleges; then new split series,
+ * than home that planned courses use + chainPenalty × (k − 1) per subject chain whose courses sit at k colleges; then
+ * new split series,
  * units away from home, honors courses, courses, course ids. Penalties are in quarter units, costed in termSystem.
  *
  * Subject chain: the rows of the agreement that share a UC subject (MATH 51/52/53/54, PHYSICS 7A/7B/7C), when at least
  * two such rows have CC groups. A course belongs to it when it (or its honors twin) appears in one of those rows'
- * groups. The chain is split when its planned courses sit at two or more colleges, or at a college other than one
- * where the student took courses of it. Taken courses alone cost nothing.
+ * groups. k counts the colleges of its planned courses and of those the student took; a chain with no planned course
+ * costs nothing.
  *
  * The tree is passed by one of its "configs" (a minimal set of requirements to complete, under verify's rules); for a
  * set of colleges the student would attend, a config's requirements split into independent components (no shared
@@ -198,12 +199,13 @@ export function solve(taken: Set<CourseId>, a: Agreement, opts: SolveOptions): P
   })
   const chainOfRow = L.map((r) => subjects.indexOf(subjectOf(r.id)))
   const tookAt = subjects.map((_, x) => new Set([...taken].filter((c) => chainsOf.get(c)?.includes(x)).map(instOf)))
-  /** Subject chains whose planned courses `cs` sit at 2+ colleges, counting where earlier parts were taken. */
+  /** Chain splits of the planned courses `cs`: per subject chain with a planned course, the colleges its courses are
+   *  planned or were taken at, minus one (so a chain across 3 colleges counts 2). Only grows as courses are added. */
   const chains = (cs: Iterable<CourseId>) => {
     const at = new Map<number, Set<number>>()
     for (const c of cs) for (const x of chainsOf.get(c) ?? []) at.set(x, (at.get(x) ?? new Set()).add(instOf(c)))
     let n = 0
-    for (const [x, s] of at) if (s.size > 1 || [...tookAt[x]].some((i) => !s.has(i))) n++
+    for (const [x, s] of at) n += new Set([...s, ...tookAt[x]]).size - 1
     return n
   }
   /** Colleges other than home that `cs` uses. */
@@ -425,11 +427,13 @@ export function solve(taken: Set<CourseId>, a: Agreement, opts: SolveOptions): P
     [...new Set(ls.flatMap((i) => [...PW[i]].filter((c) => chainsOf.get(c)?.includes(x)).map(instOf)))]
       .filter((k) => [...tookAt[x]].every((t) => t === k)).sort((p, q) => p - q)
   /**
-   * `branch` with split subject chains charged. Every plan plans no course of a chain, keeps it at one college k (all
+   * `branch` with subject chain splits charged. Every plan plans no course of a chain, keeps it at one college k (all
    * its planned courses there, where it was taken if anywhere) or splits it; so per assignment of the component's
    * chains (avoid, keep at k, free) the unit-only search runs on the ways that respect it, and each result is scored
-   * with its real chains, which the assignment's free chains bound: the best is exact, tie-breaks included. Too many
-   * assignments: `branch` with the chain bound instead.
+   * with its real chains. Every plan of an assignment costs at least its result's units plus one penalty per free
+   * chain (a split costs at least that); a result at that bound is the best of its assignment, tie-breaks included.
+   * So the best result is exact unless some assignment's bound, missed by its result (a free chain at 3+ colleges),
+   * is not above it: then, and with too many assignments, `branch` with the chain bound instead.
    */
   const component = (key: string, cols: number[], ls: number[], ws: number[], guard: Set<number> | null, W: CourseId[][][], PW: Set<CourseId>[], pCh: number): Sol | null => {
     const plain = () => memoized(`${key}|0`, cols, () => branch(ls, ws, guard, W, PW, 0))
@@ -439,20 +443,25 @@ export function solve(taken: Set<CourseId>, a: Agreement, opts: SolveOptions): P
       const AVOID = -2, FREE = -1, opts = xs.map((x) => [AVOID, FREE, ...homesOf(x, ls, PW)])
       if (opts.reduce((n, o) => n * o.length, 1) > 64) return branch(ls, ws, guard, W, PW, pCh)
       let best: Sol | null = null
-      const score = (r: Sol | null) => {
+      const open: number[][] = [] // bounds of assignments whose result is above them
+      const score = (r: Sol | null, free: number) => {
         if (!r) return
-        const s: Sol = { ...r, v: [r.v[0], r.v[1] + pCh * chains(r.cs), ...r.v.slice(2)] }
+        const s: Sol = { ...r, v: [r.v[0], r.v[1] + pCh * chains(r.cs), ...r.v.slice(2)] }, lb = [r.v[0], r.v[1] + pCh * free]
+        if (s.v[1] > lb[1] + EPS) open.push(lb)
         if (better(s, best)) best = s
       }
       const pick = (j: number, keep: [number, number][]): void => {
         if (j < xs.length) { for (const k of opts[j]) pick(j + 1, k === FREE ? keep : [...keep, [xs[j], k]]); return }
-        if (!keep.length) return score(plain())
+        const free = xs.length - keep.length
+        if (!keep.length) return score(plain(), free)
         // a way is at one college: it respects "chain x stays at k" unless it holds a course of x elsewhere
         const V = W.map((ws, i) => (ls.includes(i) ? ws.filter((w) => keep.every(([x, k]) => instOf(w[0]) === k || !w.some((c) => chainsOf.get(c)?.includes(x)))) : ws))
         if (!guard && ls.some((i) => !V[i].length)) return
-        score(memoized(`${key}|${keep.map((p) => p.join(':'))}`, cols, () => branch(ls, ws, guard, V, poolOf(V), 0)))
+        score(memoized(`${key}|${keep.map((p) => p.join(':'))}`, cols, () => branch(ls, ws, guard, V, poolOf(V), 0)), free)
       }
       pick(0, [])
+      const b = best as Sol | null
+      if (b && open.some((lb) => lex(b.v.slice(0, 2), lb) >= 0)) return branch(ls, ws, guard, W, PW, pCh)
       return best
     })
   }
@@ -519,7 +528,7 @@ export function solve(taken: Set<CourseId>, a: Agreement, opts: SolveOptions): P
    * penalty is not yet counted). Per config: a row with no way left is unmet. The rest is a facility-location problem
    * whose facilities are colleges (home and I open, D at pCollege) and whose clients are rows: a row costs its
    * cheapest way at a college, a course shared by m rows 1/m each. A subject chain is one client: all its rows at one
-   * college (where it was taken, if anywhere), or split at pChain (a free facility). The dual ascent of the LP gives
+   * college (where it was taken, if anywhere), or split at pChain (a free facility; a split costs at least that). The dual ascent of the LP gives
    * the bound (Erlenkotter).
    */
   const dualBound = (W: CourseId[][][], I: number[], D: number[], pCh: number) => {

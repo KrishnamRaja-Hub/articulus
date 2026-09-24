@@ -300,6 +300,15 @@ describe('solve: stays at home and keeps a subject chain at one college (MED-4)'
     const b = agreement(and(req('MATH 1', [['2:M 1'], ['3:M 1']]), req('PHYS 2', [['2:M 2'], ['3:M 2']])), cs)
     expect(plannedOf(solve(new Set(), b, chainOnly)).sort()).toEqual(['2:M 1', '3:M 2'])
   })
+  it('a chain across 3 colleges costs twice one across 2 (TESTER1 M-4)', () => {
+    const cs: [string, number][] = [['2:M 1', 1], ['3:M 1', 7], ['4:M 1', 7], ['2:M 2', 7], ['3:M 2', 1], ['4:M 2', 7], ['2:M 3', 6], ['3:M 3', 7], ['4:M 3', 3]]
+    const a = agreement(and(...[1, 2, 3].map((n) => req(`MATH ${n}`, [2, 3, 4].map((k) => [`${k}:M ${n}`])))), cs)
+    const chainOnly = { allowed: [1, 2, 3, 4], home: 1, collegePenalty: 0 }
+    // 3 colleges: 5 + 2 × 5 = 15; 2 colleges: 8 + 5 = 13; 1 college: 14. (A flat penalty would pick 3 colleges: 10.)
+    const p = solve(new Set(), a, chainOnly)
+    expect(plannedOf(p).sort()).toEqual(['2:M 1', '2:M 3', '3:M 2'])
+    expect(p.optimal).toBe(true)
+  })
   it('penalties are quarter units, converted for a semester home', () => {
     const a = (away: number) => agreement(and(req('R', [['1:A 1'], ['2:A 1']])), [['1:A 1', 4], ['2:A 1', away]])
     const sem = { allowed: [1, 2], home: 1, termSystem: 'semester' as const, unitSystems: { 1: 'semester', 2: 'semester' } as const }
@@ -421,8 +430,8 @@ const splitIn = (r: Requirement, h: Set<CourseId>) => {
 const leavesOf = (n: N): Requirement[] => (n.kind === 'req' ? [n] : n.children.flatMap(leavesOf))
 const instOf = (c: CourseId) => Number(c.split(':')[0])
 
-/** [colleges other than home that planned courses `P` use, subject chains (2+ rows with CC groups sharing a UC
- *  subject) whose planned courses, with the taken ones of the chain, sit at 2+ colleges]. */
+/** [colleges other than home that planned courses `P` use, sum over subject chains (2+ rows with CC groups sharing a
+ *  UC subject) with a planned course of k - 1, k the colleges of its planned and taken courses]. */
 function penaltyCounts(a: Agreement, taken: Set<CourseId>, P: CourseId[], home: number) {
   const subject = (id: string) => { const t = id.split(',')[0].trim().split(/\s+/), k = t.findIndex((w) => /\d/.test(w)); return t.slice(0, k < 0 ? t.length : k).join(' ') }
   const rows = [...new Map(leavesOf(a.root).filter((r) => r.groups.length && subject(r.id)).map((r) => [r.id, r])).values()]
@@ -432,7 +441,7 @@ function penaltyCounts(a: Agreement, taken: Set<CourseId>, P: CourseId[], home: 
     if (rs.length < 2) continue
     const inChain = (c: CourseId) => rs.some((r) => r.groups.some((g) => g.courses.some((x) => c === x || c === `${x}H` || c === x.replace(/H$/, ''))))
     const planned = new Set(P.filter(inChain).map(instOf)), all = new Set([...planned, ...[...taken].filter(inChain).map(instOf)])
-    if (planned.size && all.size > 1) chains++
+    if (planned.size) chains += all.size - 1
   }
   return [new Set(P.map(instOf).filter((i) => i !== home)).size, chains]
 }
