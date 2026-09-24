@@ -52,6 +52,9 @@ export interface Violation {
   requirementId: string
   label: string
   partials: Partial[]
+  /** true: the agreement still needs this requirement, so the split fails the plan. false: the pieces earn no
+   *  credit, but the plan does not depend on this requirement (optional subtree, or an alternative not needed). */
+  blocking: boolean
 }
 
 export interface ValidationResult {
@@ -59,7 +62,10 @@ export interface ValidationResult {
   satisfied: Record<string, CourseGroup>   // requirementId -> group that satisfied it
   missing: string[]                        // required requirement ids not satisfied
   incomplete: Record<string, Partial>      // single-college partial progress
-  splitSeriesViolations: Violation[]
+  splitSeriesViolations: Violation[]      // blocking ones fail isValid; non-blocking ones are warnings
+  /** required requirement ids no sending college in the agreement articulates: completed at the university
+   *  after transfer. They do not make isValid false and are never "missing". */
+  deferred: string[]
 }
 
 /** units: home-system units, nearest 0.5. overCap: one course alone exceeds the per-term unit cap. */
@@ -71,4 +77,5 @@ export interface Plan {
   result: ValidationResult                 // verification of taken + planned
   totalUnits: number
   unsolvable: string[]                     // required reqs with no group at allowed colleges
+  optimal?: boolean                        // true: planned set proven unit-minimal; false: heuristic fallback
 }

@@ -10,7 +10,7 @@ import Button from '../ui/Button'
 import { Check, Cross } from './Trap'
 
 const MAX_TERMS = 6
-const EMPTY_RESULT: ValidationResult = { isValid: false, satisfied: {}, missing: [], incomplete: {}, splitSeriesViolations: [] }
+const EMPTY_RESULT: ValidationResult = { isValid: false, satisfied: {}, missing: [], incomplete: {}, splitSeriesViolations: [], deferred: [] }
 const EMPTY_PLAN: Plan = { terms: [], chosen: {}, result: EMPTY_RESULT, totalUnits: 0, unsolvable: [] }
 const capFor = (inst: number) => (byId[inst]?.terms === 'semester' ? 12 : 16)
 // one hue per selected college, assigned by position: home first

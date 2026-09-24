@@ -57,7 +57,7 @@ const isSplit = (p: Partial[]) =>
 
 /** Evaluate every requirement, then fold the boolean tree. */
 export function verifySchedule(taken: Set<CourseId>, agreement: Agreement): ValidationResult {
-  const out: ValidationResult = { isValid: true, satisfied: {}, missing: [], incomplete: {}, splitSeriesViolations: [] }
+  const out: ValidationResult = { isValid: true, satisfied: {}, missing: [], incomplete: {}, splitSeriesViolations: [], deferred: [] }
   const seen = new Set<string>()
 
   const leaf = (req: Requirement): boolean => {
@@ -65,7 +65,7 @@ export function verifySchedule(taken: Set<CourseId>, agreement: Agreement): Vali
     if (!seen.has(req.id)) {
       seen.add(req.id)
       if (st.satisfied) out.satisfied[req.id] = st.satisfied
-      else if (isSplit(st.partials)) out.splitSeriesViolations.push({ requirementId: req.id, label: req.label, partials: st.partials })
+      else if (isSplit(st.partials)) out.splitSeriesViolations.push({ requirementId: req.id, label: req.label, partials: st.partials, blocking: true })
       else if (st.partials.length) out.incomplete[req.id] = st.partials.sort((a, b) => b.have.length - a.have.length)[0]
     }
     return !!st.satisfied
