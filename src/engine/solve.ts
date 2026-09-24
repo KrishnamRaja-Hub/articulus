@@ -2,6 +2,7 @@ import type { Agreement, CourseGroup, CourseId, Institution, Partial, Plan, ReqN
 import { canRoute, has, honorsColleges, isDeferrable, reqStatus, ucOnly, verifySchedule, type ReqStatus } from './verify.ts'
 import institutions from '../../data/institutions.json' with { type: 'json' }
 import { prereqs } from './sequence.ts'
+import { nextOpenTerm, nthTerm, startSlot, type CalendarTerm } from './calendar.ts'
 
 export type TermSystem = 'quarter' | 'semester'
 
@@ -10,6 +11,7 @@ export interface SolveOptions {
   home?: number           // the student's college: no college penalty there; also a tie-break
   unitCap?: number        // per term, in the home (termSystem) unit system; default 16 quarter / 12 semester
   maxTerms?: number
+  /** first term of the plan, read in the home calendar; default nextOpenTerm(today) (calendar.ts) */
   startTerm?: { season: 'Fall' | 'Winter' | 'Spring'; year: number }
   termSystem?: TermSystem                     // home college's system; Plan units are reported in it
   unitSystems?: Record<number, TermSystem>    // institutionId -> native system; missing => assumed termSystem
@@ -111,7 +113,7 @@ const subjectOf = (id: string) => {
  * (optimal = false) past the search budget. Then quarter packing.
  */
 export function solve(taken: Set<CourseId>, a: Agreement, opts: SolveOptions): Plan {
-  const { allowed, home, termSystem = 'quarter', unitSystems = {}, maxTerms = 6, startTerm = { season: 'Fall', year: 2026 }, budget = 200_000 } = opts
+  const { allowed, home, termSystem = 'quarter', unitSystems = {}, maxTerms = 6, startTerm = nextOpenTerm(new Date(), termSystem), budget = 200_000 } = opts
   const unitCap = opts.unitCap ?? (termSystem === 'semester' ? 12 : 16)
   const unitsOf = (c: CourseId, exact = false) => {
     const k = a.catalog[c]
@@ -861,7 +863,8 @@ export function solve(taken: Set<CourseId>, a: Agreement, opts: SolveOptions): P
       return `${L[i].id} (only by splitting ${ids.length ? ids.join(', ') : 'a series'})`
     })
   } else ({ planned, chosen, unsolvable } = g!)
-  const terms = pack([...planned], (c) => unitsOf(c, true), unitCap, maxTerms, startTerm, termSystem, (c) => a.catalog[c]?.title ?? '')
+  const terms = pack([...planned], (c) => unitsOf(c, true), unitCap, maxTerms, startTerm, termSystem, (c) => a.catalog[c]?.title ?? '',
+    (c) => (a.catalog[c] ? unitSystems[a.catalog[c].institutionId] : undefined) ?? termSystem)
   const result = verifySchedule(withTaken(planned), a)
   // unsolvable in a fixed order (tree order would follow the input)
   return { terms, chosen, result, totalUnits: half(planned.reduce((s, c) => s + unitsOf(c, true), 0)), unsolvable: [...unsolvable].sort(), optimal }
@@ -871,7 +874,7 @@ export function solve(taken: Set<CourseId>, a: Agreement, opts: SolveOptions): P
 
 // ponytail: prerequisite order is inferred from ids and titles (sequence.ts); swap for real requisite data if ASSIST
 // ever populates `requisites`.
-function pack(courses: CourseId[], unitsOf: (c: CourseId) => number, cap: number, maxTerms: number, start: NonNullable<SolveOptions['startTerm']>, system: TermSystem, titleOf: (c: CourseId) => string = () => ''): Term[] {
+function pack(courses: CourseId[], unitsOf: (c: CourseId) => number, cap: number, maxTerms: number, start: NonNullable<SolveOptions['startTerm']>, system: TermSystem, titleOf: (c: CourseId) => string = () => '', systemOf: (c: CourseId) => TermSystem = () => system): Term[] {
   if (!(cap > 0 && Number.isFinite(cap))) cap = system === 'semester' ? 12 : 16 // NaN / <=0 / Infinity -> default
   // preds: [course, gap]: gap 1 = strictly later term, 0 = same term or later (a lab after its lecture)
   const preds = new Map<CourseId, [CourseId, number][]>(courses.map((c) => [c, []]))
@@ -881,33 +884,58 @@ function pack(courses: CourseId[], unitsOf: (c: CourseId) => number, cap: number
   const depth = (c: CourseId): number => memo.get(c) ?? (memo.set(c, Math.max(0, ...preds.get(c)!.map(([p, g]) => depth(p) + (g || 0.5)))), memo.get(c)!)
   const ordered = [...courses].sort((x, y) => depth(x) - depth(y) || unitsOf(y) - unitsOf(x))
 
-  const seasons: string[] = system === 'semester' ? ['Fall', 'Spring'] : ['Fall', 'Winter', 'Spring']
-  const name = (i: number) => {
-    // A season the system lacks (Winter on semesters) starts at the next one: Winter 2027 -> Spring 2027.
-    let si = seasons.indexOf(start.season), year = start.year
-    if (si < 0) si = start.season === 'Winter' ? seasons.indexOf('Spring') : 0
-    for (let k = 0; k < i; k++) { si = (si + 1) % seasons.length; if (si === 1) year++ } // Fall 2026 -> Winter/Spring 2027 -> Fall 2027
-    return `${seasons[si]} ${year}`
+  // H-3: each course goes in a term of its own college's calendar; quarter and semester terms share one timeline
+  // (calendar.ts) and the cap applies to the combined load of every term running in each quarter period.
+  const slot0 = startSlot(start, system)
+  type Slot = { cal: CalendarTerm; courses: CourseId[]; units: number }
+  const bySys: Record<TermSystem, Slot[]> = { quarter: [], semester: [] }
+  const termAt = (s: TermSystem, j: number) => {
+    while (bySys[s].length <= j) bySys[s].push({ cal: nthTerm(s, slot0, bySys[s].length), courses: [], units: 0 })
+    return bySys[s][j]
   }
+  // order on the timeline: start, then end, then home calendar first (Fall quarter and Fall semester share a span)
+  const key = (t: CalendarTerm) => [t.start, t.end, t.system === system ? 0 : 1]
+  const geq = (x: number[], y: number[]) => x[0] - y[0] || x[1] - y[1] || x[2] - y[2]
+  const load = new Map<number, number>() // quarter period -> combined units
+  const loadOf = (t: CalendarTerm) => { let m = 0; for (let k = t.start; k <= t.end; k++) m = Math.max(m, load.get(k) ?? 0); return m }
   const EPS = 1e-9 // units are exact (unrounded) conversions, e.g. 5q = 3.333s
-  const terms: Term[] = []
-  const placed = new Map<CourseId, number>()
+  const placed = new Map<CourseId, CalendarTerm>()
   const labs = new Map<CourseId, CourseId[]>()
-  for (const [l, ps] of preds) for (const [p, g] of ps) if (!g) labs.set(p, [...(labs.get(p) ?? []), l])
-  const after = (x: CourseId, skip?: CourseId) => Math.max(0, ...preds.get(x)!.filter(([p]) => p !== skip).map(([p, g]) => placed.get(p)! + g))
+  for (const [l, ps] of preds) for (const [p, g] of ps) if (!g && systemOf(l) === systemOf(p)) labs.set(p, [...(labs.get(p) ?? []), l])
+  const ok = (t: CalendarTerm, x: CourseId, skip?: CourseId) => preds.get(x)!.every(([p, g]) => {
+    if (p === skip) return true
+    const q = placed.get(p)!
+    return g ? t.start > q.end : geq(key(t), key(q)) >= 0
+  })
   for (const c of ordered) {
     if (placed.has(c)) continue
+    const sys = systemOf(c)
     // A lecture takes its labs into the same term when they fit and nothing else holds them back.
     let go = (labs.get(c) ?? []).filter((l) => preds.get(l)!.every(([p]) => p === c || placed.has(p)))
     if (go.reduce((s, l) => s + unitsOf(l), unitsOf(c)) > cap + EPS) go = []
     const units = go.reduce((s, l) => s + unitsOf(l), unitsOf(c))
-    let i = Math.max(after(c), ...go.map((l) => after(l, c))) // after every prerequisite
-    while (terms[i] && terms[i].units + units > cap + EPS) i++
-    while (terms.length <= i) terms.push({ name: name(terms.length), courses: [], units: 0 })
-    for (const x of [c, ...go]) { terms[i].courses.push(x); placed.set(x, i) }
-    terms[i].units += units
+    // earliest term after every prerequisite with room in every period it covers; a course bigger than the cap
+    // alone goes to a term with nothing running alongside it
+    let j = 0
+    for (;; j++) {
+      const t = termAt(sys, j).cal
+      if (!ok(t, c) || !go.every((l) => ok(t, l, c))) continue
+      if (units > cap + EPS ? loadOf(t) === 0 : loadOf(t) + units <= cap + EPS) break
+    }
+    const t = termAt(sys, j)
+    for (const x of [c, ...go]) { t.courses.push(x); placed.set(x, t.cal) }
+    t.units += units
+    for (let k = t.cal.start; k <= t.cal.end; k++) load.set(k, (load.get(k) ?? 0) + units)
   }
-  // Only a single course larger than the cap can overflow a term; flag it rather than hide it.
-  for (const t of terms) { if (t.units > cap + EPS) t.overCap = true; t.units = half(t.units) }
+  const used = [...bySys.quarter, ...bySys.semester].filter((t) => t.courses.length).sort((x, y) => geq(key(x.cal), key(y.cal)))
+  const mixed = new Set(used.map((t) => t.cal.system)).size > 1
+  const terms: Term[] = used.map(({ cal, courses: cs, units }) => {
+    const l = loadOf(cal)
+    const t: Term = { name: `${cal.season} ${cal.year}${mixed ? ` (${cal.system})` : ''}`, courses: cs, units: half(units), system: cal.system, season: cal.season, year: cal.year, span: [cal.start, cal.end], load: half(l) }
+    // Only a single course larger than the cap can overflow; flag it rather than hide it.
+    if (l > cap + EPS) t.overCap = true
+    return t
+  })
+  if (mixed) for (const t of terms) t.concurrent = terms.filter((o) => o !== t && o.span![0] <= t.span![1] && t.span![0] <= o.span![1]).map((o) => o.name)
   return terms.slice(0, Math.max(maxTerms, terms.length)) // never silently drop courses; UI flags > maxTerms
 }

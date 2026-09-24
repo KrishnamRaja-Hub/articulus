@@ -68,8 +68,16 @@ export interface ValidationResult {
   deferred: string[]
 }
 
-/** units: home-system units, nearest 0.5. overCap: one course alone exceeds the per-term unit cap. */
-export interface Term { name: string; courses: CourseId[]; units: number; overCap?: boolean }
+/** A calendar period at one kind of college (H-3). units: home-system units, nearest 0.5. span: the quarter periods
+ *  it covers on the shared timeline (see engine/calendar.ts); terms whose spans intersect run concurrently.
+ *  load: the heaviest combined units, across this term and every term overlapping it, in any quarter period it
+ *  covers. overCap: load exceeds the per-term unit cap (only when one course alone is bigger than the cap). */
+export interface Term {
+  name: string; courses: CourseId[]; units: number; overCap?: boolean
+  system?: 'quarter' | 'semester'; season?: 'Fall' | 'Winter' | 'Spring'; year?: number
+  span?: [number, number]; load?: number
+  concurrent?: string[]   // names of the other planned terms that overlap this one
+}
 
 export interface Plan {
   terms: Term[]
