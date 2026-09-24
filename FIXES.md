@@ -195,3 +195,28 @@ A wrong "you're fine" (false positive) can cost a student their admission. A wro
 ## Still open
 
 - **Old data files.** With the current fixtures, 14 of 22 majors can't turn green, because they depend on rows with no ASSIST record. `npm run fetch` with the fixed import code should resolve most of these.
+
+---
+
+# Round 4: fresh data, trust guard, schedule order, planner cost, permanent validation
+
+| Area | What was wrong | What changed |
+|---|---|---|
+| Data freshness | Data was refreshed only when someone ran `npm run fetch` by hand. The bundled files predate the import fixes. | A daily GitHub Actions refresh (`.github/workflows/data-refresh.yml`). It finds the academic year itself, retries, stages everything, validates, and then commits `data/`. If a gate fails, nothing is published, the last good data stays, and an issue is opened. Raw payloads are stored, so the data can be rebuilt offline (`npm run renormalize`). |
+| Validation | No checks on data. | `npm run validate:data` runs about 56,000 checks: schema, invariants, orphans, the calculus-marked-recommended heuristic, a diff guard against large drops, known-truth canaries, and the app's own suites run against the candidate data. CI mode reports legacy data without failing code changes. |
+| Trust | Stale data could show a green verdict (UCLA ME with no calculus). | `src/data-trust.ts` implements the policy in DATA_CONTRACT.md. **Untrusted** data never shows green; the page says "Can't confirm — data needs refresh" and shows a site-wide banner. **Aging** data (over 7 days) shows a caveat. |
+| Honors | De Anza MATH 1CH + 1D was rejected for UCSD MATH 20E with no explanation. | The verdict stays strict. A hint says "ASSIST lists MATH 1C, not MATH 1CH… confirm with a counselor before retaking" (`src/engine/hints.ts`). |
+| Schedule order | 57% of plans that include Calculus I put higher math in the same term or earlier. | Prerequisites are inferred from course titles and numbers (`src/engine/sequence.ts`). Plans that break a prerequisite went from 739/990 to 0. Labs share a term with their lecture. |
+| Planner cost | Minimizing units pulled students away from their home college and split math across colleges. | The cost is now units + 5 per extra college + 5 per subject chain split across colleges, and it stays exact and proven. Plans that leave home when home alone would do went from 162 to 66 of 204. Math split across colleges with an empty transcript went from 409 plans to 0. Units rose about 4%. |
+| Latent bugs | Planner and checker disagreed on "choose N" rows with no ASSIST record, and on nested UC-only slots. | The planner now uses the checker's own rules (`treeState`). Checked against 20,000 random trees. |
+| Determinism | Shuffling the input exposed three order dependencies. | Order-free keys for repeated rows, sorted messages, and choices crossed in an order fixed by their content. The same plan comes out under any permutation (5,490 of 5,490 checks). |
+| Permanent validation | Only our own tests checked the app. | `tests/independent/`: an oracle that shares no code with the app, 214 counselor scenarios, exhaustive and fuzz runs, and planner checks against brute force. It runs in CI (about 35 s) and nightly at full budget. |
+
+**Checks:**
+- `tsc`: clean.
+- 618 tests pass.
+- Full independent budget: green.
+- 20,000-case oracle stress: green.
+- Smoke: 95 of 95.
+- Build: clean.
+- `validate:data:ci`: passes, with legacy data reported rather than failed.
