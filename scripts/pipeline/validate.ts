@@ -362,13 +362,18 @@ export function validateData(dataDir: string, o: ValidateOptions): Report {
 
   // ---------- diff guard ----------
   const diff = o.prevDir ? diffGuard(o.prevDir, dataDir, index, agreements, dataVersion, meta?.academicYear?.code ?? null, o, check) : null
+  if (o.prevDir) checkInstitutionChanges(o.prevDir, institutions, o, check)
 
   // CI mode on legacy data: known legacy symptoms are reported, not failed.
   for (const x of findings as (Finding & { legacy?: boolean })[]) {
     if (x.legacy && o.mode === 'ci' && legacyData && x.severity === 'error') x.severity = 'legacy'
     delete x.legacy
     const ack = o.cfg.validate.acknowledged[`${x.check}|${x.file ?? ''}`]
-    if (ack && x.severity === 'error') { x.severity = 'warning'; x.message += ` (acknowledged: ${ack})` }
+    if (ack && x.severity === 'error') {
+      const why = ackRefusal(x, ack, o.now)
+      if (why) x.message += ` (acknowledgement ignored: ${why})`
+      else { x.severity = 'warning'; x.message += ` (acknowledged: ${ack})` }
+    }
   }
   for (const c of canaryResults) {
     const f = findings.find((x) => x.check === c.id && x.file === (c.file ?? undefined))
@@ -378,6 +383,44 @@ export function validateData(dataDir: string, o: ValidateOptions): Report {
   return {
     schema: 1, generatedAt: o.now.toISOString(), mode: o.mode, dataDir, normalizeVersion: NORMALIZE_VERSION, dataNormalizeVersion: dataVersion,
     legacyData, passed: counts.error === 0, checks, counts, findings, agreements: agreementsStats, canaries: canaryResults, diff, suites: [],
+  }
+}
+
+/** Checks an acknowledgement can never downgrade: the contract, canaries and payload identity (L-4). */
+const UNACKNOWLEDGEABLE = /^(canary\.|raw\.|files\.|meta\.schema|[a-z]+\.schema$|institutions\.changed-meaning$)/
+
+/**
+ * Why an acknowledgement does not apply (L-4), or null when it does. It must name a file, must not target a check in
+ * UNACKNOWLEDGEABLE, and its reason must carry an expiry, e.g. "reviewed by X; expires 2026-12-31", not yet passed.
+ */
+export function ackRefusal(f: Finding, reason: string, now: Date): string | null {
+  if (!f.file) return 'only findings about one agreement file can be acknowledged'
+  if (UNACKNOWLEDGEABLE.test(f.check)) return `${f.check} cannot be acknowledged`
+  const m = /expires (\d{4}-\d{2}-\d{2})/.exec(reason)
+  const until = m ? Date.parse(`${m[1]}T23:59:59Z`) : NaN
+  if (!m || Number.isNaN(until) || new Date(until).toISOString().slice(0, 10) !== m[1]) return 'the reason must include "expires YYYY-MM-DD"'
+  if (until < now.getTime()) return `expired ${m[1]}`
+  return null
+}
+
+/**
+ * M-7: institution fields the app computes with must not change silently. A changed `terms` (quarter/semester, which
+ * drives unit conversion and term caps) or `isCC` is an error until reviewed (DATA_ACCEPT_LARGE_CHANGE); a changed
+ * `name` or `short` is a warning. Removed institutions are reported by the diff guard.
+ */
+export function checkInstitutionChanges(prevDir: string, next: Institution[], o: Pick<ValidateOptions, 'acceptDiff' | 'cfg'>, check: Check) {
+  let prev: unknown
+  try { prev = JSON.parse(readFileSync(join(prevDir, 'institutions.json'), 'utf8')) } catch { return }
+  if (!Array.isArray(prev)) return
+  const note = o.acceptDiff ? ` [accepted by ${o.cfg.diff.overrideEnv}]` : ''
+  for (const p of prev as Partial<Institution>[]) {
+    const n = next.find((x) => x.id === p?.id)
+    if (!n) continue
+    const label = `institution ${n.id} (${n.short})`
+    for (const k of ['terms', 'isCC'] as const)
+      check(p[k] === n[k], 'institutions.changed-meaning', o.acceptDiff ? 'warning' : 'error', `${label}: ${k} changed ${JSON.stringify(p[k])} -> ${JSON.stringify(n[k])} since the last publish; review before publishing${note}`)
+    for (const k of ['name', 'short'] as const)
+      check(p[k] === n[k], 'institutions.renamed', 'warning', `${label}: ${k} changed ${JSON.stringify(p[k])} -> ${JSON.stringify(n[k])} since the last publish`)
   }
 }
 
