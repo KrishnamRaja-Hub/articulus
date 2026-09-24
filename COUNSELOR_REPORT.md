@@ -215,7 +215,7 @@ These were confirmed with independent code and measured.
 
 ## How to rerun
 
-All scripts are in `/tmp/claude-0/-home-user-articulus/7831a9bf-5b6f-5531-9068-823767bea7ba/scratchpad/counselor/`. Each suite writes a `*_result.json`. `./run_all.sh` runs every engine suite (about 12 minutes).
+All scripts are in the session's temporary workspace (not kept in the repo). Each suite writes a `*_result.json`. `./run_all.sh` runs every engine suite (about 12 minutes).
 
 | Script | What it does |
 |---|---|

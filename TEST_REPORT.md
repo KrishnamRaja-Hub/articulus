@@ -20,7 +20,7 @@ Tester: Claude (QA pass, no code changes). Date: 2026-09-24. Commit tested: `60a
 
 Some failed checks are really the same problem seen more than once. For example, all 316 `solve_matrix` failures are F-05. The distinct failures are listed below. A few failed checks are listed under "Questionable by design" instead of as bugs, because the code does what it says but conflicts with a README or Plan.md claim. These are V12–V15, U28, S01 and S19.
 
-**How to rerun.** Scripts are in `/tmp/claude-0/-home-user-articulus/7831a9bf-5b6f-5531-9068-823767bea7ba/scratchpad/tester/`.
+**How to rerun.** Scripts are in the session's temporary workspace (not kept in the repo).
 - `./run_all.sh` runs every engine and data suite. Each prints `<suite>: N pass, M fail`, and failures print as `FAIL <id> <detail>`.
 - UI suites: `npm run build`, then `npx vite preview --port 4173`, then `node ui.mjs` and `node ui2.mjs`. `devwarn.mjs` needs `npx vite --port 5174`.
 - Helpers: `dump_trees.mjs` prints every requirement tree (the output is saved in `trees.txt`). `orphans.mjs` lists articulated courses that no requirement uses. `realimpact.mjs` shows the real-data impact of F-02 and F-03. `minrepro.mjs` finds one-course repros for F-07.

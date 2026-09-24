@@ -428,7 +428,7 @@ Neither is a false green, but the site goes down. The gate catches both.
 ## 5. How to rerun
 
 The harness is outside the repo, in the session scratchpad:
-`/tmp/claude-0/-home-user-articulus/7831a9bf-5b6f-5531-9068-823767bea7ba/scratchpad/tester2/harness/`.
+the session's temporary workspace (not kept in the repo).
 It imports from a copy of the repo at `../repo`. To use it elsewhere, copy the repo (without `node_modules`), symlink
 `node_modules`, and set `REPO` in `common.ts`.
 

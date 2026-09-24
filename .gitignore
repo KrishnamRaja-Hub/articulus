@@ -9,3 +9,5 @@ tsconfig.tsbuildinfo
 .data.lock
 .data-next-*
 .data-prev-*
+# local agent worktrees
+.claude/worktrees/

@@ -4,7 +4,7 @@
 - **Date:** 2026-09-24.
 - **Commit tested:** `abf0759` (FIXES round 4).
 - **Repo changes:** none apart from this file. `dist/` was rebuilt by `npm run build`; it is git-ignored.
-- **Scripts and screenshots:** `/tmp/claude-0/-home-user-articulus/7831a9bf-5b6f-5531-9068-823767bea7ba/scratchpad/tester1/`.
+- **Scripts and screenshots:** the session's temporary workspace (not kept in the repo).
 
 ## Executive summary (plain language)
 
@@ -382,7 +382,7 @@ These are COUNSELOR_REPORT HIGH-1 to HIGH-4, confirmed in scenarios `H-BME-FH-fu
 
 ## How to rerun
 
-All scripts are in `/tmp/claude-0/-home-user-articulus/7831a9bf-5b6f-5531-9068-823767bea7ba/scratchpad/tester1/`. Run them with Node 22 as `node --import ./reg.mjs <script>`. `reg.mjs` registers a loader that resolves the app's extensionless imports.
+All scripts are in the session's temporary workspace (not kept in the repo). Run them with Node 22 as `node --import ./reg.mjs <script>`. `reg.mjs` registers a loader that resolves the app's extensionless imports.
 
 **Engine suites:** `./run_all.sh`, about 2 minutes.
 
