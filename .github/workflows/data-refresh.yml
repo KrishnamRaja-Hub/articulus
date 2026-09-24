@@ -1,0 +1,176 @@
+# Daily ASSIST data refresh for production.
+#
+# fetch (ASSIST) -> normalize -> staging -> validate:data gate (schema, invariants, canaries, diff guard)
+#   -> app suites against the staged data (tsc, vitest, smoke, build) -> publish to data/ -> commit to the default branch
+#
+# If any gate fails nothing is committed: the last good data stays live (the app's trust policy then shows it as
+# aging after 7 days and untrusted after 30), and an issue labeled `data-refresh-failure` is opened or updated.
+# A successful run closes that issue. Every successful run commits at least data/meta.json, because fetchedAt is what
+# keeps the app's verdicts "trusted" (DATA_CONTRACT.md).
+#
+# Repository settings this needs (see the pipeline notes in the commit that added it):
+#   - Settings > Actions > General > Workflow permissions: allow GITHUB_TOKEN "Read and write".
+#   - Optional secret DATA_REFRESH_TOKEN (fine-grained PAT or GitHub App token, contents:write): needed if the default
+#     branch is protected against direct pushes, and to make the pushed commit trigger other workflows (CI, deploy).
+#   - Optional variable DATA_REFRESH_MODE=pr: open an auto-merging PR instead of pushing (requires "Allow auto-merge").
+#   - Optional variable DEPLOY_WORKFLOW=<file.yml>: dispatched after a commit, since GITHUB_TOKEN pushes do not
+#     trigger push-based workflows.
+name: Data refresh
+
+on:
+  schedule:
+    - cron: '0 9 * * *' # daily, 09:00 UTC (01:00/02:00 Pacific)
+  workflow_dispatch:
+    inputs:
+      accept_large_change:
+        description: Accept a diff-guard failure for this run (only after reviewing the failure report)
+        type: boolean
+        default: false
+      dry_run:
+        description: Run every gate but do not commit
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: data-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write # commit data/
+      issues: write # failure issue
+      pull-requests: write # DATA_REFRESH_MODE=pr only
+      actions: write # DEPLOY_WORKFLOW dispatch only
+    env:
+      BRANCH: ${{ github.event.repository.default_branch }}
+      DATA_ACCEPT_LARGE_CHANGE: ${{ inputs.accept_large_change && '1' || '' }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0
+          token: ${{ secrets.DATA_REFRESH_TOKEN || github.token }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Fetch, validate and stage (data/ changes only if every gate passes)
+        id: pipeline
+        timeout-minutes: 45
+        run: npm run fetch -- ${{ inputs.dry_run && '--dry-run' || '' }}
+
+      - name: Re-check the published data with the strict gate
+        if: ${{ !inputs.dry_run }}
+        run: npm run validate:data -- --report .pipeline/published-report.json
+
+      - name: Commit data
+        id: commit
+        if: ${{ !inputs.dry_run }}
+        env:
+          CONTENT_CHANGED: ${{ steps.pipeline.outputs.content_changed }}
+          RAW_CHANGED: ${{ steps.pipeline.outputs.raw_changed }}
+          CHANGED: ${{ steps.pipeline.outputs.changed_agreements }}
+          MODE: ${{ vars.DATA_REFRESH_MODE }}
+        run: |
+          set -euo pipefail
+          git config user.name 'articulus-data-bot'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A data
+          if git diff --cached --quiet; then
+            echo "No change under data/."
+            echo "committed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          start=$(git rev-parse HEAD)
+          git fetch origin "$BRANCH"
+          # Data validated against this checkout's code must not land on top of different code.
+          if ! git diff --quiet "$start" "origin/$BRANCH" -- . ':(exclude)data'; then
+            echo "::error::Code on $BRANCH changed during the refresh; not publishing data validated against older code. Re-run the workflow."
+            exit 1
+          fi
+          day=$(date -u +%F)
+          year=$(node -p "require('./data/meta.json').academicYear.code")
+          if [ "$CONTENT_CHANGED" = "true" ]; then
+            subject="data: ASSIST refresh $day ($year), ${CHANGED:-some} agreement(s) changed"
+          elif [ "$RAW_CHANGED" = "true" ]; then
+            subject="data: ASSIST refresh $day ($year), raw payloads changed, normalized data unchanged"
+          else
+            subject="data: ASSIST revalidated $day ($year), no content change"
+          fi
+          {
+            echo "$subject"
+            echo
+            node -e "const r=require('./data/validation-report.json');console.log('Validation: '+r.checks+' checks, '+r.counts.warning+' warnings; suites: '+r.suites.map(s=>s.name+' '+(s.ok?'ok':'FAIL')).join(', '))"
+            echo "Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          } > .pipeline/commit-message.txt
+          git commit -q -F .pipeline/commit-message.txt
+          if [ "$MODE" = "pr" ]; then
+            head="data-refresh/$day-$GITHUB_RUN_ID"
+            git push origin "HEAD:refs/heads/$head"
+            url=$(gh pr create --base "$BRANCH" --head "$head" --title "$subject" --body-file .pipeline/report.md --label data-refresh 2>/dev/null \
+              || gh pr create --base "$BRANCH" --head "$head" --title "$subject" --body-file .pipeline/report.md)
+            gh pr merge "$url" --auto --squash --delete-branch
+            echo "Opened $url (auto-merge)."
+          else
+            git rebase "origin/$BRANCH"
+            git push origin "HEAD:$BRANCH"
+          fi
+          echo "committed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Dispatch deploy
+        if: ${{ steps.commit.outputs.committed == 'true' && vars.DEPLOY_WORKFLOW != '' && vars.DATA_REFRESH_MODE != 'pr' }}
+        run: gh workflow run "${{ vars.DEPLOY_WORKFLOW }}" --ref "$BRANCH"
+
+      - name: Close the failure issue after a good run
+        if: ${{ success() && !inputs.dry_run }}
+        run: |
+          for n in $(gh issue list --label data-refresh-failure --state open --json number --jq '.[].number'); do
+            gh issue close "$n" --comment "Recovered: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID published validated data."
+          done
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: data-refresh-${{ github.run_id }}
+          # On failure this includes staging/ with the raw payloads, for offline diagnosis.
+          path: .pipeline/
+          include-hidden-files: true
+          retention-days: 30
+          if-no-files-found: ignore
+
+      - name: Open or update the failure issue (last good data stays published)
+        if: failure()
+        run: |
+          set -u
+          mkdir -p .pipeline
+          {
+            echo "The daily ASSIST data refresh failed, so **nothing was published**. The site keeps serving the last good data (fetched $(node -p "require('./data/meta.json').fetchedAt" 2>/dev/null || echo unknown))."
+            echo "The app shows it as aging after 7 days and untrusted (no green verdicts) after 30."
+            echo
+            echo "Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID (artifact \`data-refresh-$GITHUB_RUN_ID\` has the full report and the raw payloads)."
+            echo
+            if [ -f .pipeline/failure.md ]; then cat .pipeline/failure.md; elif [ -f .pipeline/report.md ]; then cat .pipeline/report.md; else echo "Failed before the pipeline ran (install or checkout); see the run log."; fi
+            echo
+            echo "If the change is expected (for example ASSIST reorganized a major), re-run **Data refresh** with \`accept_large_change\` checked."
+          } > .pipeline/issue.md
+          head -c 60000 .pipeline/issue.md > .pipeline/issue-trimmed.md
+          gh label create data-refresh-failure --color B60205 --description "Daily ASSIST data refresh failed; last good data kept" --force || true
+          n=$(gh issue list --label data-refresh-failure --state open --json number --jq '.[0].number // empty')
+          if [ -n "$n" ]; then
+            gh issue comment "$n" --body-file .pipeline/issue-trimmed.md
+          else
+            gh issue create --title "Data refresh failed ($(date -u +%F))" --label data-refresh-failure --body-file .pipeline/issue-trimmed.md
+          fi

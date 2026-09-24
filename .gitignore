@@ -3,3 +3,5 @@ dist
 .DS_Store
 tsconfig.tsbuildinfo
 *.log
+# data pipeline scratch space (staging, reports)
+.pipeline
