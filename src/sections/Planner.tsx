@@ -6,17 +6,20 @@ import { byId, colleges, loadAgreement, majorsFor, unitSystems, universities, us
 import { formatDataDate } from '../data-trust'
 import { nextOpenTerm, termKey, termLabel, termsFrom, type StartTerm } from '../terms'
 import { has, honorsColleges, ucOnly, verifySchedule } from '../engine/verify'
-import { solve } from '../engine/solve'
+import { SolveClient, type WorkerLike } from '../engine/solveClient'
 import { honorsHints, honorsNote } from '../engine/hints'
 import type { Agreement, CourseGroup, CourseId, Plan, ReqNode, Requirement, ValidationResult } from '../engine/types'
 import Button from '../ui/Button'
 import { Check, Cross } from './Trap'
-import { badgeStatus, deferredOf, isBlocking, noMatchNote, optimalExplain, optimalNote, PREREQ_TAG, prereqOnlySet, scheduleCaveat, scheduleNote, splitUnsolvable, type ScheduleNote } from './plannerStatus'
+import { badgeStatus, PLANNING, deferredOf, isBlocking, noMatchNote, optimalExplain, optimalNote, PREREQ_TAG, prereqOnlySet, scheduleCaveat, scheduleNote, splitUnsolvable, type ScheduleNote } from './plannerStatus'
 import { DataBanner, Exclaim } from './DataStatus'
 
 const MAX_TERMS = 6
 const EMPTY_RESULT: ValidationResult = { isValid: false, satisfied: {}, missing: [], incomplete: {}, splitSeriesViolations: [], deferred: [] }
 const EMPTY_PLAN: Plan = { terms: [], chosen: {}, result: EMPTY_RESULT, totalUnits: 0, unsolvable: [] }
+// solve off the UI thread (TESTER2_REPORT M-4); no Worker (tests, old browsers): SolveClient solves on the main thread
+const makeWorker = typeof Worker === 'undefined' ? null
+  : () => new Worker(new URL('../engine/solve.worker.ts', import.meta.url), { type: 'module' }) as unknown as WorkerLike
 const capFor = (inst: number) => (byId[inst]?.terms === 'semester' ? 12 : 16)
 const START_OPTIONS = 6
 // one hue per selected college, assigned by position: home first
@@ -84,10 +87,20 @@ export default function Planner() {
   const toggleExtra = (id: number) => setExtra((xs) => (xs.includes(id) ? xs.filter((x) => x !== id) : [...xs, id]))
 
   const current = useMemo(() => (agreement ? verifySchedule(taken, agreement) : EMPTY_RESULT), [taken, agreement])
-  const plan = useMemo(
-    () => (agreement ? solve(taken, agreement, { allowed, home, unitCap: UNIT_CAP, maxTerms: MAX_TERMS, termSystem: terms, unitSystems, startTerm: start })
-      : EMPTY_PLAN),
-    [taken, agreement, allowed.join(), home, termKey(start)])
+  // the newest request's id; a plan is shown only for the agreement it was solved for, and while a newer request is
+  // out the badge says "Planning…" instead of a verdict on the old plan
+  const [solved, setSolved] = useState<{ id: number; agreement: Agreement; plan: Plan } | null>(null)
+  const [reqId, setReqId] = useState(0)
+  const reqAgreement = useRef<Agreement | null>(null)
+  const [client] = useState(() => new SolveClient(makeWorker, (id, plan) => setSolved({ id, agreement: reqAgreement.current!, plan })))
+  useEffect(() => () => client.dispose(), [client])
+  useEffect(() => {
+    if (!agreement) return
+    reqAgreement.current = agreement
+    setReqId(client.request({ taken, agreement, opts: { allowed, home, unitCap: UNIT_CAP, maxTerms: MAX_TERMS, termSystem: terms, unitSystems, startTerm: start } }))
+  }, [taken, agreement, allowed.join(), home, termKey(start)])
+  const plan = agreement && solved?.agreement === agreement ? solved.plan : EMPTY_PLAN
+  const planning = !!agreement && solved?.id !== reqId
   const rows = useMemo(() => (agreement ? flatten(agreement.root) : []), [agreement])
   // informational only: ASSIST lists the regular course where the student took the honors one (or the reverse)
   const hints = useMemo(() => honorsHints(rows.map((r) => r.req), taken), [rows, taken])
@@ -149,7 +162,7 @@ export default function Planner() {
   const ucShort = agreement ? byId[agreement.receivingId].short : ''
   // icon, color and title come from one status, so a red badge never claims coverage
   // untrusted data never shows green (DATA_CONTRACT.md); red verdicts still show, with a caveat
-  const status = badgeStatus(current, plan, ucShort, trust.level)
+  const status = planning ? PLANNING : badgeStatus(current, plan, ucShort, trust.level)
   const ok = status.ok, unconfirmed = status.tone === 'unconfirmed'
   const hintList = Object.values(hints).flat()
   const deferred = deferredOf(current, plan)
@@ -157,7 +170,7 @@ export default function Planner() {
   // a plan that leaves requirements unmet never gets an optimality label (TESTER1_REPORT C-1: "0 units · minimum units")
   const incomplete = plan.unsolvable.length > 0 || !plan.result.isValid
   const note = incomplete ? 'does not finish the plan' : optimalNote(plan)
-  const schedNote = scheduleNote(status, plan, trust.level)
+  const schedNote = planning ? null : scheduleNote(status, plan, trust.level)
   const caveat = scheduleCaveat(plan, trust.level, trust.fetchedAt ? formatDataDate(trust.fetchedAt) : null)
   const prereqOnly = prereqOnlySet(plan)
   const prereqWarnings = plan.prereqWarnings ?? []
@@ -247,12 +260,12 @@ export default function Planner() {
         </div>
 
         {/* ---- output ---- */}
-        {!agreement ? <div className="card mt-8 p-6 opacity-60">Loading agreement…</div> : <div ref={out} className="relative z-0 mt-8">
-          <div data-badge data-tone={status.tone} className={`card flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between md:p-6 ${ok ? '' : unconfirmed ? 'border-warn/40' : 'border-alert/30'}`}>
+        {!agreement ? <div className="card mt-8 p-6 opacity-60">Loading agreement…</div> : <div ref={out} aria-busy={planning} className="relative z-0 mt-8">
+          <div data-badge data-tone={status.tone} className={`card flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between md:p-6 ${ok || planning ? '' : unconfirmed ? 'border-warn/40' : 'border-alert/30'}`}>
             <div className="flex items-center gap-4">
-              <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-full text-white ${ok ? 'bg-accent' : unconfirmed ? 'bg-warn' : 'bg-alert'}`}>{ok ? <Check /> : unconfirmed ? <Exclaim /> : <Cross />}</span>
+              <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-full text-white ${ok ? 'bg-accent' : planning ? 'bg-ink-3' : unconfirmed ? 'bg-warn' : 'bg-alert'}`}>{ok ? <Check /> : planning ? <span aria-hidden className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" /> : unconfirmed ? <Exclaim /> : <Cross />}</span>
               <div>
-                <div className={`text-[17px] font-medium ${unconfirmed ? 'text-warn' : ''}`}>{status.title}</div>
+                <div role="status" className={`text-[17px] font-medium ${unconfirmed ? 'text-warn' : ''}`}>{status.title}</div>
                 <div className="text-[14px] text-ink-2">{agreement.major} · {ucShort} · {agreement.year} agreement</div>
                 {status.details.length > 0 && <div className="text-[14px] font-medium text-ink-2">{status.details.join(' · ')}</div>}
                 {status.caveat && <div data-caveat className={`mt-1 text-[13.5px] ${trust.level === 'aging' ? 'text-ink-3' : 'text-warn'}`}>{status.caveat}</div>}

@@ -16,6 +16,7 @@ export interface SolveOptions {
   termSystem?: TermSystem                     // home college's system; Plan units are reported in it
   unitSystems?: Record<number, TermSystem>    // institutionId -> native system; missing => assumed termSystem
   budget?: number                             // search nodes before falling back to greedy (optimal = false); default 200k
+  timeLimitMs?: number                        // wall-clock search limit; past it, the best plan so far (optimal = false)
   /** Cost of each college other than `home` that planned courses use, in quarter units (5 = about one course),
    *  converted to termSystem. Default 5. 0 (with chainPenalty 0) is pure minimum units. */
   collegePenalty?: number
@@ -114,7 +115,10 @@ const subjectOf = (id: string) => {
  * (optimal = false) past the search budget. Then quarter packing.
  */
 export function solve(taken: Set<CourseId>, a: Agreement, opts: SolveOptions): Plan {
-  const { allowed, home, termSystem = 'quarter', unitSystems = {}, maxTerms = 6, startTerm = nextOpenTerm(new Date(), termSystem), budget = 200_000 } = opts
+  const { allowed, home, termSystem = 'quarter', unitSystems = {}, maxTerms = 6, startTerm = nextOpenTerm(new Date(), termSystem), budget = 200_000, timeLimitMs } = opts
+  // past the deadline, nodes jumps to Infinity: every budget check fails and the search reports incomplete
+  const deadline = timeLimitMs === undefined ? Infinity : Date.now() + timeLimitMs
+  const late = () => deadline !== Infinity && Date.now() > deadline && (nodes = Infinity) > 0
   const unitCap = opts.unitCap ?? (termSystem === 'semester' ? 12 : 16)
   const unitsOf = (c: CourseId, exact = false) => {
     const k = a.catalog[c]
@@ -400,7 +404,7 @@ export function solve(taken: Set<CourseId>, a: Agreement, opts: SolveOptions): P
       if (better(s, best)) best = s
     }
     const dfs = (k: number): void => {
-      if (++nodes > budget) return
+      if (++nodes > budget || late()) return
       while (k < order.length && done(order[k])) k++
       if (k === order.length) return finish()
       if (best && lex(bound(k), best.v) > 0) return
@@ -622,7 +626,7 @@ export function solve(taken: Set<CourseId>, a: Agreement, opts: SolveOptions): P
     // chain terms in the bounds assume every row is completed; the guarded pass may give rows up instead
     const pCh = guarded ? 0 : pChain
     const node = (I: number[], D: number[]): void => {
-      if (++nodes > budget) return
+      if (++nodes > budget || late()) return
       const S = [...I, ...D].sort((p, q) => p - q), W = restrict(S)
       if (worse(dualBound(W, I, D, pCh))) return
       let r = solveAt(S, W, 0)

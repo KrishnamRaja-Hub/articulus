@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import me from '../../data/agreements/79-mechanical-engineering-b-s.json'
 import mae from '../../data/agreements/7-mae-mechanical-engineering-b-s.json'
 import institutions from '../../data/institutions.json'
@@ -267,6 +267,22 @@ describe('solve: exact minimum units', () => {
       expect(x.unsolvable.length).toBeLessThanOrEqual(g.unsolvable.length)
       const cost = (p: Plan) => p.totalUnits + (w === UNITS ? 0 : 5 * penalties(a, new Set(), plannedOf(p), DA))
       if (x.unsolvable.length === g.unsolvable.length) expect(cost(x)).toBeLessThanOrEqual(cost(g) + 0.5) // totals round to 0.5
+    }
+  })
+  it('time limit (M-4): past the deadline, returns the best plan found, never claimed optimal', () => {
+    for (const a of [ME, MAE]) for (const w of [UNITS, {}]) {
+      const o: SolveOptions = { allowed: [DA, FH, SM], home: DA, unitSystems, ...w }
+      const x = solve(new Set(), a, o)
+      expect(solve(new Set(), a, { ...o, timeLimitMs: 60_000 })).toEqual(x) // a generous limit changes nothing
+      // every clock read jumps 1 s: the deadline has passed at the first search node
+      let t = Date.now()
+      const clock = vi.spyOn(Date, 'now').mockImplementation(() => (t += 1000))
+      try {
+        const g = solve(new Set(), a, { ...o, timeLimitMs: 100 })
+        expect(g.optimal).toBe(false)
+        expect(x.unsolvable.length).toBeLessThanOrEqual(g.unsolvable.length)
+        expect(plannedOf(g).length).toBeGreaterThan(0)
+      } finally { clock.mockRestore() }
     }
   })
 })
