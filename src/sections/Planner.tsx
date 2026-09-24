@@ -3,7 +3,7 @@ import { gsap } from 'gsap'
 import { useGSAP } from '@gsap/react'
 import { useReveal } from '../motion/useReveal'
 import { byId, colleges, loadAgreement, majorsFor, unitSystems, universities } from '../data'
-import { verifySchedule } from '../engine/verify'
+import { has, honorsMix, verifySchedule } from '../engine/verify'
 import { solve } from '../engine/solve'
 import type { Agreement, CourseGroup, CourseId, Plan, ReqNode, Requirement, ValidationResult } from '../engine/types'
 import Button from '../ui/Button'
@@ -22,6 +22,15 @@ const PALETTE = [
   { chip: 'bg-[#fbecf0] text-[#b0284f] border-[#b0284f]/20', dot: 'bg-[#b0284f]', text: 'text-[#b0284f]' },
   { chip: 'bg-[#e6f2f6] text-[#1d6a7e] border-[#1d6a7e]/20', dot: 'bg-[#1d6a7e]', text: 'text-[#1d6a7e]' },
   { chip: 'bg-[#f4efe2] text-[#7a5b12] border-[#7a5b12]/20', dot: 'bg-[#7a5b12]', text: 'text-[#7a5b12]' },
+  // enough for every college at once (home + 14 extras), so no selected college falls back to grey
+  { chip: 'bg-[#ebe9fb] text-[#4a3fc4] border-[#4a3fc4]/20', dot: 'bg-[#4a3fc4]', text: 'text-[#4a3fc4]' },
+  { chip: 'bg-[#eef4de] text-[#56701a] border-[#56701a]/20', dot: 'bg-[#56701a]', text: 'text-[#56701a]' },
+  { chip: 'bg-[#f8e6f5] text-[#9c2f8f] border-[#9c2f8f]/20', dot: 'bg-[#9c2f8f]', text: 'text-[#9c2f8f]' },
+  { chip: 'bg-[#def3ef] text-[#0e7466] border-[#0e7466]/20', dot: 'bg-[#0e7466]', text: 'text-[#0e7466]' },
+  { chip: 'bg-[#f9e5e3] text-[#a3322a] border-[#a3322a]/20', dot: 'bg-[#a3322a]', text: 'text-[#a3322a]' },
+  { chip: 'bg-[#e5ebf3] text-[#34507a] border-[#34507a]/20', dot: 'bg-[#34507a]', text: 'text-[#34507a]' },
+  { chip: 'bg-[#f1e9e1] text-[#6e4a2e] border-[#6e4a2e]/20', dot: 'bg-[#6e4a2e]', text: 'text-[#6e4a2e]' },
+  { chip: 'bg-[#e8f2e1] text-[#3d6b24] border-[#3d6b24]/20', dot: 'bg-[#3d6b24]', text: 'text-[#3d6b24]' },
 ]
 const GREY = { chip: 'bg-bg text-ink-2 border-line', dot: 'bg-ink-3', text: 'text-ink-2' }
 const code = (id: CourseId) => id.slice(id.indexOf(':') + 1)
@@ -72,12 +81,15 @@ export default function Planner() {
   const results = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q || !agreement) return []
-    // rank: code prefix match ("phys 4") > number match ("4b") > title word match ("calculus"); tolerate missing space ("phys4b")
+    const words = q.split(/\s+/)
+    // rank: code prefix match ("phys 4") > number match ("4b") > title word match ("calculus iii": every query word
+    // starts some title word); tolerate missing space ("phys4b")
     const rank = (c: { prefix: string; number: string; title: string }) => {
       const code = `${c.prefix} ${c.number}`.toLowerCase()
       if (code.startsWith(q) || code.replace(/\s+/g, '').startsWith(q.replace(/\s+/g, ''))) return 0
       if (c.number.toLowerCase().startsWith(q)) return 1
-      if (c.title.toLowerCase().split(/[\s,&/-]+/).some((w) => w.startsWith(q))) return 2
+      const title = c.title.toLowerCase().split(/[\s,&/-]+/)
+      if (words.every((x) => title.some((w) => w.startsWith(x)))) return 2
       return 9
     }
     return Object.values(agreement.catalog)
@@ -120,7 +132,14 @@ export default function Planner() {
   }, { scope: map, dependencies: [rows.length, planKey], revertOnUpdate: true })
 
   const violations = current.splitSeriesViolations
-  const ok = violations.length === 0 && plan.result.isValid && plan.unsolvable.length === 0
+  // icon and title come from the same status, so a red badge never claims integrity
+  const planSplits = plan.result.splitSeriesViolations.map((v) => v.requirementId)
+  const status = violations.length ? `${violations.length} split-series violation${violations.length > 1 ? 's' : ''} in your completed courses`
+    : plan.unsolvable.length ? 'Some requirements cannot be met at the selected colleges'
+    : planSplits.length ? `The planned schedule still splits ${planSplits.join(', ')} across colleges`
+    : !plan.result.isValid ? 'The plan does not complete every requirement'
+    : null
+  const ok = status === null
 
   return (
     <section id="plan" ref={ref} className="px-6 py-32 md:py-48">
@@ -206,9 +225,7 @@ export default function Planner() {
               <span className={`grid h-11 w-11 place-items-center rounded-full text-white ${ok ? 'bg-accent' : 'bg-alert'}`}>{ok ? <Check /> : <Cross />}</span>
               <div>
                 <div className="text-[17px] font-medium">
-                  {violations.length ? `${violations.length} split-series violation${violations.length > 1 ? 's' : ''} in your completed courses`
-                    : plan.unsolvable.length ? 'Some requirements cannot be met at the selected colleges'
-                    : '100% articulation integrity'}
+                  {status ?? '100% articulation integrity'}
                 </div>
                 <div className="text-[14px] text-ink-2">{agreement.major} · {byId[agreement.receivingId].short} · {agreement.year} agreement</div>
               </div>
@@ -224,8 +241,12 @@ export default function Planner() {
             <div className="mt-4 grid gap-4">
               {violations.map((v) => {
                 const fix = plan.chosen[v.requirementId]
+                // honors twins count as the same course where the engine allows mixing (MATH 1BH stands in for MATH 1B)
+                const req = rows.find((r) => r.req.id === v.requirementId)?.req
+                const mix = !!req && honorsMix(req)
+                const todo = fix?.courses.filter((c) => !has(taken, c, mix)) ?? []
                 // this violation's own pieces that the repair does not reuse: they earn nothing toward it
-                const wasted = v.partials.flatMap((p) => p.have).filter((c) => !fix?.courses.includes(c))
+                const wasted = v.partials.flatMap((p) => p.have).filter((c) => !fix || !has(new Set(fix.courses), c, mix))
                 return (
                   <div key={v.requirementId} data-violation className="card border-alert/30 p-6 md:p-7">
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -245,7 +266,7 @@ export default function Planner() {
                     </div>
                     {fix && (
                       <p className="mt-5 rounded-2xl bg-accent-soft px-5 py-4 text-[15px] text-accent">
-                        <span className="font-semibold">Repair:</span> complete {fix.courses.filter((c) => !taken.has(c)).map(code).join(' and ')} at {byId[fix.institutionId].name}.
+                        <span className="font-semibold">Repair:</span> complete {todo.map(code).join(' and ')} at {byId[fix.institutionId].name}.
                         {wasted.length > 0 && <> {wasted.map((c) => `${code(c)} at ${byId[instOf(c)].short}`).join(', ')} earns no credit toward {v.requirementId}.</>}
                       </p>
                     )}
@@ -264,19 +285,19 @@ export default function Planner() {
 
           {/* ---- schedule ---- */}
           <div className="mt-12">
-            <div className="flex items-baseline justify-between">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
               <h3 className="h3">Your cross-enrollment schedule</h3>
               <span className="text-[14px] text-ink-3">{UNIT_CAP} units per term max</span>
             </div>
             {plan.terms.length === 0 ? (
               <p className="mt-4 text-ink-2">Everything required is already complete. Nothing left to schedule.</p>
             ) : (
-              <div className="mt-5 grid gap-4 md:grid-cols-3">
+              <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-3">
                 {plan.terms.map((t, i) => (
-                  <div key={t.name} data-term className={`card card-hover p-5 ${i >= MAX_TERMS ? 'border-alert/30' : ''}`}>
-                    <div className="flex items-baseline justify-between">
+                  <div key={t.name} data-term className={`card card-hover min-w-0 p-5 ${i >= MAX_TERMS ? 'border-alert/30' : ''}`}>
+                    <div className="flex items-baseline justify-between gap-3">
                       <div className="font-medium">{t.name}</div>
-                      <div className="text-[13px] text-ink-3">{t.units} units</div>
+                      <div className="shrink-0 text-[13px] text-ink-3">{t.units} units</div>
                     </div>
                     <ul className="mt-4 space-y-2">
                       {t.courses.map((c) => {
@@ -285,8 +306,8 @@ export default function Planner() {
                           <li key={c} onMouseEnter={() => setHover(c)} onMouseLeave={() => setHover(null)}
                             className={`flex items-center gap-3 rounded-xl border px-3 py-2 transition-all duration-300 ${chip(instOf(c))} ${hover === c ? 'scale-[1.02] shadow' : ''}`}>
                             <span className={`h-2 w-2 shrink-0 rounded-full ${dot(instOf(c))}`} />
-                            <span className="flex-1 truncate text-[14.5px]"><span className="font-semibold">{code(c)}</span> <span className="opacity-70">{course?.title}</span></span>
-                            <span className="text-[12px] opacity-70">{byId[instOf(c)].short}</span>
+                            <span className="min-w-0 flex-1 truncate text-[14.5px]"><span className="font-semibold">{code(c)}</span> <span className="opacity-70">{course?.title}</span></span>
+                            <span className="shrink-0 text-[12px] opacity-70">{byId[instOf(c)].short}</span>
                           </li>
                         )
                       })}
@@ -299,7 +320,7 @@ export default function Planner() {
           </div>
 
           {/* ---- requirement map ---- */}
-          <div ref={map} className="mt-24 grid gap-10 lg:grid-cols-12">
+          <div ref={map} className="mt-24 grid grid-cols-1 gap-10 lg:grid-cols-12">
             <div className="lg:col-span-4">
               <div data-pin>
                 <h3 className="h2">Every requirement, traced to a row on ASSIST.</h3>
@@ -339,7 +360,7 @@ export default function Planner() {
                           <span className="truncate text-[14px] text-ink-2">{r.req.label !== r.req.id ? r.req.label : ''}</span>
                         </div>
                       </div>
-                      <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
+                      <div className="flex max-w-[60%] shrink-0 flex-wrap justify-end gap-1.5">
                         {g ? g.courses.map((c) => (
                           <span key={c} className={`rounded-full border px-2.5 py-0.5 text-[12.5px] font-medium transition-all duration-300 ${chip(g.institutionId)} ${hover === c ? 'ring-2 ring-ink/20' : ''}`}>{code(c)}</span>
                         )) : noArt ? <span className="text-[13px] text-ink-3">{Object.values(r.req.noArticulation ?? {})[0] ?? 'Not articulated'}</span>
