@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import type { Plan, ValidationResult, Violation } from '../engine/types'
-import { badgeStatus, CAVEAT, COMPLETE_NOTE, deferredOf, noMatchNote, optimalExplain, optimalNote, PREREQ_TAG, prereqOnlySet, unmetNames, scheduleCaveat, scheduleNote, splitUnsolvable, UNCONFIRMED_TITLE } from './plannerStatus'
+import { badgeStatus, CAUTION_TITLE, CAVEAT, completedSplits, COMPLETE_NOTE, deferredOf, noMatchNote, optimalExplain, optimalNote, PREREQ_TAG, PLAN_FAILED_TITLE, prereqOnlySet, REVIEW_TITLE, unmetNames, scheduleCaveat, scheduleNote, splitUnsolvable, UNCONFIRMED_TITLE } from './plannerStatus'
 import type { TrustLevel } from '../data-trust'
 import { dataTrust } from '../data-trust'
+import { NORMALIZE_VERSION as NORMALIZE_VERSION_FOR_TEST } from '../engine/normalize'
 import { verifySchedule } from '../engine/verify'
 import { nextOpenTerm, termLabel } from '../terms'
 import { solve } from '../engine/solve'
@@ -11,6 +12,7 @@ import bundledMeta from '../../data/meta.json'
 import institutionsJson from '../../data/institutions.json'
 import uclaMe from '../../data/agreements/117-mechanical-engineering-b-s.json'
 import berkeleyMe from '../../data/agreements/79-mechanical-engineering-b-s.json'
+import berkeleyEecs from '../../data/agreements/79-electrical-engineering-computer-sciences-b-s.json'
 
 const result = (over: Partial<ValidationResult> = {}): ValidationResult =>
   ({ isValid: true, satisfied: {}, missing: [], incomplete: {}, splitSeriesViolations: [], deferred: [], ...over })
@@ -59,6 +61,81 @@ describe('badgeStatus', () => {
   it('ignores non-blocking splits in the plan and never lets deferred items turn it red', () => {
     const p = plan({}, { splitSeriesViolations: [split('PHYSICS 7C', false)], deferred: ['ENGIN 26'] })
     expect(badgeStatus(result(), p, 'UCLA').ok).toBe(true)
+  })
+})
+
+describe('H-1: completed-course splits are judged with the plan', () => {
+  it('a split the plan reports as not blocking is a warning, not red', () => {
+    const current = result({ isValid: false, splitSeriesViolations: [split('BIOLOGY 1B', true)] })
+    const p = plan({}, { splitSeriesViolations: [split('BIOLOGY 1B', false)] })
+    expect(completedSplits(current, p).map((v) => v.blocking)).toEqual([false])
+    expect(badgeStatus(current, p, 'UCB')).toEqual({ ok: true, tone: 'ok', title: 'Every requirement covered', details: ['1 warning'] })
+  })
+
+  it('stays red when the plan still reports it blocking, or the plan does not finish', () => {
+    const current = result({ isValid: false, splitSeriesViolations: [split('BIOLOGY 1B', true)] })
+    expect(badgeStatus(current, plan({}, { splitSeriesViolations: [split('BIOLOGY 1B', true)] }), 'UCB').tone).toBe('problem')
+    // the plan does not finish: nothing is relaxed
+    const unfinished = plan({}, { isValid: false, splitSeriesViolations: [split('BIOLOGY 1B', false)] })
+    expect(completedSplits(current, unfinished)[0].blocking).toBe(true)
+    expect(badgeStatus(current, unfinished, 'UCB')).toMatchObject({ ok: false, title: '1 split-series violation in your completed courses' })
+    const unsolvable = plan({ unsolvable: ['CHEM 1A'] }, { splitSeriesViolations: [split('BIOLOGY 1B', false)] })
+    expect(badgeStatus(current, unsolvable, 'UCB').ok).toBe(false)
+    // a plan that says nothing about the split (e.g. the empty plan) never relaxes it
+    expect(badgeStatus(current, plan(), 'UCB').tone).toBe('problem')
+  })
+
+  it('a relaxed split on untrusted or prior-year data is still not green', () => {
+    const current = result({ isValid: false, splitSeriesViolations: [split('BIOLOGY 1B', true)] })
+    const p = plan({}, { splitSeriesViolations: [split('BIOLOGY 1B', false)] })
+    expect(badgeStatus(current, p, 'UCB', 'untrusted').ok).toBe(false)
+    expect(badgeStatus(current, p, 'UCB', { level: 'aging', yearNote: 'x' }).ok).toBe(false)
+  })
+
+  it('real data: Berkeley EECS, De Anza + Foothill biology split, fixed by planned PHYS 4D, is not red', () => {
+    const a = berkeleyEecs as unknown as Agreement
+    const taken = new Set(['113:MATH 1A', '113:MATH 1B', '113:MATH 1C', '113:MATH 1D', '113:MATH 2A', '113:MATH 2B',
+      '113:PHYS 4A', '113:PHYS 4B', '113:PHYS 4C', '113:BIOL 6A', '51:BIOL 1B'])
+    const current = verifySchedule(taken, a)
+    const p = solve(taken, a, { allowed: [113, 51], home: 113, startTerm: { season: 'Fall', year: 2026 } })
+    // the completed courses alone show blocking splits; the plan, with its scheduled courses, finishes everything
+    expect(current.splitSeriesViolations.some((v) => v.blocking)).toBe(true)
+    expect(p.result.isValid).toBe(true)
+    expect(p.unsolvable).toEqual([])
+    const s = badgeStatus(current, p, 'UCB', 'trusted')
+    expect(s.tone).not.toBe('problem')
+    expect(s.title).not.toMatch(/split-series violation/)
+    expect(s).toMatchObject({ ok: true, tone: 'ok', title: 'Every requirement covered' })
+    // the splits are still reported, as warnings
+    expect(completedSplits(current, p).length).toBe(current.splitSeriesViolations.length)
+    expect(completedSplits(current, p).some((v) => v.blocking)).toBe(false)
+    // and never green on untrusted or prior-year data
+    expect(badgeStatus(current, p, 'UCB', 'untrusted').ok).toBe(false)
+    expect(badgeStatus(current, p, 'UCB', { level: 'aging', yearNote: "2026-27 agreements aren't published on ASSIST yet" }).tone).toBe('caution')
+  })
+})
+
+describe('L-1: prior-year (carried-over) data is amber, never green', () => {
+  const carried = { schema: 1, fetchedAt: '2026-09-23T00:00:00Z', academicYear: { code: '2025-2026' }, carriedOver: true, validation: { passed: true }, agreements: 22 }
+
+  it('a would-be green on carried-over data is caution, not ok', () => {
+    const t = dataTrust({ ...carried, normalizeVersion: NORMALIZE_VERSION_FOR_TEST }, new Date('2026-09-24T00:00:00Z'), NORMALIZE_VERSION_FOR_TEST, 22, Array(22).fill('2025-2026'))
+    expect(t.level).toBe('aging')
+    expect(t.yearNote).not.toBeNull()
+    const s = badgeStatus(result(), plan(), 'UCB', t)
+    expect(s).toEqual({ ok: false, tone: 'caution', title: CAUTION_TITLE, details: [], caveat: CAVEAT.priorYear })
+    expect(s.title).not.toMatch(/^Every requirement covered/)
+    // the schedule note never says "complete" either
+    const n = scheduleNote(s, plan(), t.level)
+    expect(n?.tone).toBe('warn')
+    expect(n?.text).not.toBe(COMPLETE_NOTE)
+  })
+
+  it('red stays red on carried-over data; plain aging (no year note) is unchanged', () => {
+    const t = { level: 'aging' as const, yearNote: "2026-27 agreements aren't published on ASSIST yet" }
+    expect(badgeStatus(result(), plan({}, { isValid: false }), 'UCB', t).tone).toBe('problem')
+    expect(badgeStatus(result(), plan(), 'UCB', { level: 'aging', yearNote: null })).toEqual(badgeStatus(result(), plan(), 'UCB', 'aging'))
+    expect(badgeStatus(result(), plan(), 'UCB', { level: 'trusted', yearNote: null })).toEqual(badgeStatus(result(), plan(), 'UCB'))
   })
 })
 
@@ -296,5 +373,69 @@ describe('start term (M-5)', () => {
     expect(p.terms.length).toBeGreaterThan(0)
     expect(p.terms[0].name).toBe(termLabel(start))
     expect(p.terms[0].name).not.toBe('Fall 2026')
+  })
+})
+
+describe('M-4 safety net: a "choose several" group is never green', () => {
+  it('turns a would-be green amber with the counselor caveat and names the group', () => {
+    const s = badgeStatus(result({ review: ['"Choose 2"'] }), plan({}, { review: ['"Choose 2"'] }), 'UCLA')
+    expect(s).toMatchObject({ ok: false, tone: 'caution', title: REVIEW_TITLE, caveat: CAVEAT.review })
+    expect(s.details).toContain('Check: "Choose 2"')
+  })
+  it('is amber when only the plan result carries the flag', () => {
+    expect(badgeStatus(result(), plan({}, { review: ['x'] }), 'UCLA').tone).toBe('caution')
+  })
+  it('red stays red, and untrusted stays unconfirmed', () => {
+    expect(badgeStatus(result({ isValid: false }), plan({}, { isValid: false, review: ['x'] }), 'UCLA').tone).toBe('problem')
+    expect(badgeStatus(result({ review: ['x'] }), plan({}, { review: ['x'] }), 'UCLA', 'untrusted').tone).toBe('unconfirmed')
+  })
+  it('with prior-year data too, the caveat keeps both the review and the prior-year sentences (round 7 L-5)', () => {
+    const t = { level: 'aging' as const, yearNote: "2026-27 agreements aren't published on ASSIST yet" }
+    const s = badgeStatus(result({ review: ['"Choose 2"'] }), plan({}, { review: ['"Choose 2"'] }), 'UCLA', t)
+    expect(s).toMatchObject({ ok: false, tone: 'caution', title: REVIEW_TITLE, caveat: CAVEAT.reviewPriorYear })
+    expect(s.caveat).toMatch(/choose several of these/)
+    expect(s.caveat).toMatch(/prior academic year's agreements/)
+    expect(s.caveat?.match(/Confirm with a counselor/g)).toHaveLength(1)
+    expect(s.details).toContain('Check: "Choose 2"')
+    // without a year note, the review caveat alone, as before
+    expect(badgeStatus(result({ review: ['x'] }), plan({}, { review: ['x'] }), 'UCLA', { level: 'aging', yearNote: null }).caveat).toBe(CAVEAT.review)
+    // a failed plan still wins over both
+    const failed = { ...plan({}, { review: ['x'] }), error: 'timed out' } as Plan
+    expect(badgeStatus(result({ review: ['x'] }), failed, 'UCLA', t)).toMatchObject({ tone: 'problem', title: PLAN_FAILED_TITLE })
+  })
+  it('the schedule note never says complete, and names the choose-several reason', () => {
+    const p = plan({}, { review: ['x'] })
+    const note = scheduleNote(badgeStatus(result({ review: ['x'] }), p, 'UCLA'), p)
+    expect(note?.tone).toBe('warn')
+    expect(note?.text).toMatch(/choose several/)
+    expect(note?.text).not.toBe(COMPLETE_NOTE)
+  })
+})
+
+describe('round 7: only exactly "trusted" or "aging" may be green', () => {
+  const invalid: unknown[] = ['Untrusted', 'TRUSTED', '', ' trusted', 0, null, { level: undefined }, { level: 'Trusted', yearNote: null }, {}, { level: null }]
+  for (const t of invalid) it(`${JSON.stringify(t) ?? 'undefined'} is untrusted, and does not throw`, () => {
+    const s = badgeStatus(result(), plan(), 'UCLA', t as TrustLevel)
+    expect(s).toEqual({ ok: false, tone: 'unconfirmed', title: UNCONFIRMED_TITLE, details: [], caveat: CAVEAT.unconfirmed })
+    const red = badgeStatus(result(), plan({}, { isValid: false }), 'UCLA', t as TrustLevel)
+    expect(red).toMatchObject({ ok: false, tone: 'problem', caveat: CAVEAT.problem })
+  })
+  it('an omitted trust keeps the "trusted" default; valid levels are unchanged', () => {
+    expect(badgeStatus(result(), plan(), 'UCLA').tone).toBe('ok')
+    expect(badgeStatus(result(), plan(), 'UCLA', { level: 'aging', yearNote: null }).caveat).toBe(CAVEAT.aging)
+  })
+  it('scheduleNote and scheduleCaveat read an invalid level as untrusted', () => {
+    const s = badgeStatus(result(), plan(), 'UCLA')
+    expect(scheduleNote(s, plan(), 'Trusted' as TrustLevel)?.text).not.toBe(COMPLETE_NOTE)
+    const withTerms = plan({ terms: [{} as Plan['terms'][number]] })
+    expect(scheduleCaveat(withTerms, '' as TrustLevel)?.tone).toBe('alert')
+  })
+})
+
+describe('N-2: a failed plan is reported, never a verdict', () => {
+  it('shows "Couldn\'t build a plan" with the error, even on trusted data with a valid completed-course check', () => {
+    const failed = { ...plan({}, { isValid: false }), unsolvable: ['Planning failed: boom'], error: 'boom' }
+    const s = badgeStatus(result(), failed, 'UCLA', 'trusted')
+    expect(s).toMatchObject({ ok: false, tone: 'problem', title: PLAN_FAILED_TITLE, details: ['boom'], caveat: CAVEAT.planFailed })
   })
 })

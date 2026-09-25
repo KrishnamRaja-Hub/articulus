@@ -43,7 +43,7 @@ ASSIST often publishes a new year's agreements weeks after July 1. A hard cutoff
 
 | Workflow | When | What it does |
 |---|---|---|
-| `data-refresh.yml` | daily 09:00 UTC, manual | `refresh` job (read-only token): fetch, normalize, gate, app suites, strict re-check and the diff decision. `publish` job (write token, no `npm`): commits `data/` or opens a PR. `notify` job: opens or updates the `data-refresh-failure` issue when any job failed, timed out or was cancelled. `keepalive` job (scheduled runs): re-enables both schedules. |
+| `data-refresh.yml` | daily 09:23 UTC, manual | `refresh` job (read-only token): fetch, normalize, gate, app suites, strict re-check and the diff decision. `publish` job (write token, no `npm`): commits `data/` or opens a PR. `notify` job: opens or updates the `data-refresh-failure` issue when any job failed, timed out or was cancelled. `keepalive` job (scheduled runs): re-enables both schedules. |
 | `freshness.yml` | every 6 h, manual | Independent monitor. Fails and opens or updates a `data-stale` issue when `fetchedAt` in `data/meta.json` on the default branch (and at `LIVE_META_URL`, if set) is older than `FRESHNESS_MAX_HOURS` (default 36). Closes the issue when data is fresh again. |
 | `ci.yml` | push, PR, nightly, manual | Code and committed-data checks, actionlint (checksum-verified binary), nightly oracle stress. A manual run with `stress=false` skips the stress job; the refresh uses that. |
 
@@ -53,6 +53,12 @@ Concurrency: one `data-refresh` run at a time, queued and never cancelled; one f
 
 The pipeline step (`npm run fetch`, `scripts/pipeline/run.ts` with `scripts/pipeline/diff.ts`) makes the release decision after every gate passes. It emits the step output `decision=publish|review`, writes `.pipeline/decision.json` (its `decision` field), `.pipeline/diff-report.md`, and appends the decision to `.pipeline/report.md`, which becomes the PR and commit body. The workflow sets `DATA_REFRESH_ON_REVIEW=pr`, so a `review` decision still stages `data/` together with a new `data/baseline-manifest.json` (the reviewed baseline) for the review PR. Without that variable, as in a local run, a `review` decision fails the run and publishes nothing. The workflow then re-checks `data/` with `npm run validate:data -- --report … --prev-dir .pipeline/prev/data` (the previous data is `data/` at the refreshed commit). A missing or invalid decision counts as `review`.
 
+The refresh runs `npm run fetch -- --no-auto-renormalize`: data built by an older `NORMALIZE_VERSION` is not rebuilt and published automatically; the fetch's own normalize-version check sends the rebuilt data to review.
+
+The app unit tests are a data gate too: the pipeline runs the app suites against the staged `data/` before any publish, and CI runs `npx vitest run` against the committed data, so a data change that breaks an app test fails the refresh or CI instead of shipping.
+
+Before refreshing, the `refresh` job checks the latest completed CI run (any event except `schedule`) for the default branch's HEAD, else the latest on the branch. The bot's data commits get CI through `workflow_dispatch`, not `push`, so the check is not limited to push runs. A failed or timed-out run stops the refresh; an unknown status only logs a notice, because the refresh runs the app suites itself.
+
 The first run after this change goes to review, because no `data/baseline-manifest.json` exists yet. A person merging that PR creates the baseline, and later runs judge looser changes against it.
 
 | Decision | `DATA_REFRESH_MODE` | Result |
@@ -61,7 +67,7 @@ The first run after this change goes to review, because no `data/baseline-manife
 | `publish` | `pr` | Force-push `data-refresh/<YYYY-MM-DD>`, open or update its PR with the report as body, and enable auto-merge (squash). This needs `DATA_REFRESH_TOKEN`; without it the job fails (a PR opened by `GITHUB_TOKEN` gets no CI run, so auto-merge would stall). |
 | `review` (or `accept_large_change`) | any | The same branch and PR, labeled `data-refresh-review`. No auto-merge, and nothing goes live until a person merges. |
 
-The route is always a PR in these cases: a newer refresh PR closes older open `data-refresh/*` PRs as superseded. Only a direct publish to the default branch closes the failure issue. After a merged PR, the freshness monitor confirms the data landed.
+The route is always a PR in these cases. A newer refresh PR, a direct publish, and a direct-publish run that finds `data/` already current all close older open `data-refresh/*` PRs from this repository as superseded, so a stale PR cannot later be merged and roll the data back (a failed close only warns). Only a direct publish to the default branch closes the failure issue. After a merged PR, the freshness monitor confirms the data landed.
 
 ### `accept_large_change`
 
@@ -75,11 +81,13 @@ This is a manual input only; scheduled runs never set it. It needs `accept_reaso
 4. **Variables** (Settings → Secrets and variables → Actions → Variables):
    - `DEPLOY_WORKFLOW`: the file name of the deploy workflow (it must have `workflow_dispatch`). Leave it unset if the host deploys on push (Netlify, Vercel, Pages git integration) and `DATA_REFRESH_TOKEN` is set.
    - `DATA_REFRESH_MODE`: `pr` to always go through auto-merging PRs. Leave it unset to push directly.
-   - `LIVE_META_URL`: optional URL of the deployed `meta.json`. It lets the monitor catch a stalled deploy, not just a stalled commit.
-   - `FRESHNESS_MAX_HOURS`: optional, default `36`.
+   - `LIVE_META_URL`: URL of the deployed `meta.json`. It lets the monitor catch a stalled deploy, not just a stalled commit, and the external monitor (item 8) watches the same URL.
+   - `FRESHNESS_MAX_HOURS`: optional, default `36`. Must be a positive whole number; anything else fails the monitor run loudly.
 5. **Branch ruleset on the default branch:** require the `CI / test` status check and pull requests for humans. Allow the `DATA_REFRESH_TOKEN` identity (or the GitHub App) to bypass for direct data pushes, or use `DATA_REFRESH_MODE=pr`. Add a CODEOWNERS entry or path rule so that only the data bot changes `data/**`.
 6. **Notifications:** watch the repository for issues labeled `data-refresh-failure` and `data-stale`.
+7. **With `DATA_REFRESH_MODE=pr`: a deploy workflow triggered by `push` on `data/**` of the default branch (required).** A merged data PR is a push by whoever merged it; the refresh workflow neither dispatches `DEPLOY_WORKFLOW` for it nor closes the `data-refresh-failure` issue (only a direct publish does). Without a push-triggered deploy the merged data never goes live, and the failure issue stays open until closed by hand or by a later direct publish.
+8. **External uptime / JSON-age monitor on `LIVE_META_URL` (required).** Configure a monitor outside GitHub (any uptime service that can assert on a JSON field) that alerts when the live `meta.json` is unreachable or its `fetchedAt` is older than about 36 h. The in-repository monitor and keepalive depend on GitHub Actions schedules, which are best-effort (see below), so they cannot be the only alarm.
 
 ### Inactivity disablement (public repositories)
 
-GitHub disables scheduled workflows after 60 days without repository activity. Both scheduled workflows call the documented REST endpoint `PUT /repos/{owner}/{repo}/actions/workflows/{file}/enable` for `data-refresh.yml` and `freshness.yml`. This makes no commits and needs `actions: write`. The monitor also warns if a workflow was not `active`. This is best-effort: if GitHub disables both at once, neither runs. For a fully independent check, also point an external uptime monitor at `LIVE_META_URL`.
+GitHub disables scheduled workflows after 60 days without repository activity. Both scheduled workflows call the documented REST endpoint `PUT /repos/{owner}/{repo}/actions/workflows/{file}/enable` for `data-refresh.yml` and `freshness.yml`. This makes no commits and needs `actions: write`. The monitor also warns if a workflow was not `active`. This is best-effort: if GitHub disables both at once, neither runs, and scheduled runs can be delayed or dropped. That is why the external monitor on `LIVE_META_URL` (settings item 8) is a required setup step, not an option.

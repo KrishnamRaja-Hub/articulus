@@ -1,8 +1,8 @@
 /* The validation gate: each invariant fires on a targeted corruption of good (mock-built) data. */
 import { cpSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { NORMALIZE_VERSION } from '../../src/engine/normalize.ts'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
+import { normalize, NORMALIZE_VERSION } from '../../src/engine/normalize.ts'
 import type { Agreement, ReqNode, Requirement } from '../../src/engine/types.ts'
 import { rows } from './canaries.ts'
 import { PIPELINE } from './config.ts'
@@ -98,6 +98,26 @@ describe('invariants (errors)', () => {
     expect(e).toContain('tree.no-required')
     expect(e).not.toContain('canary.all.empty-transcript-invalid')
   })
+  it('an ASSIST articulation with no courses and no reason is an error (H-2), from the note normalize emits', () => {
+    const uc = { prefix: 'PHYSICS', courseNumber: '7B', courseTitle: 'P', minUnits: 4, maxUnits: 4 }
+    const payload = (sa: unknown) => ({ result: { name: 'T', academicYear: '{"code":"2025-2026"}', receivingInstitution: '{"id":79}', sendingInstitution: '{"id":113}',
+      templateAssets: JSON.stringify([{ type: 'RequirementGroup', position: 0, sections: [{ type: 'Section', position: 0, rows: [{ cells: [{ type: 'Course', id: 'x', course: uc }] }] }] }]),
+      articulations: JSON.stringify([{ templateCellId: 'x', articulation: { type: 'Course', course: uc, sendingArticulation: sa } }]) } })
+    const notesOf = (sa: unknown) => {
+      const spy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      try { normalize([payload(sa)]); return spy.mock.calls.map((c) => String(c[0])) } finally { spy.mockRestore() }
+    }
+    for (const sa of [null, { noArticulationReason: null, items: [] }, { noArticulationReason: ' ', items: [{ courseConjunction: 'And', items: [] }] }]) {
+      const notes = notesOf(sa)
+      expect(notes.join(' ')).toMatch(/no courses and no ASSIST reason/)
+      expect(errors(validate(good, 'publish', { notes: { [BME]: notes } }))).toContain('normalize.no-articulation-record')
+    }
+    // An explicit reason (even "Course(s) Denied", which normalize treats as NOT_LISTED) is a record, not this error.
+    for (const why of ['No Course Articulated', 'Course(s) Denied']) {
+      const notes = notesOf({ noArticulationReason: why, items: [] })
+      expect(errors(validate(good, 'publish', { notes: { [BME]: notes } }))).not.toContain('normalize.no-articulation-record')
+    }
+  })
   it('hand edits are caught by raw reproducibility', () => {
     const d = copy()
     agreement(d, (a) => { req(a, 'PHYSICS 7B').groups.pop() })
@@ -123,6 +143,60 @@ describe('warnings', () => {
     const d2 = copy()
     agreement(d2, (a) => { const r = req(a, 'MATH 51'); r.groups = []; r.noArticulation = { 113: 'No articulation listed' } })
     expect(warnings(validate(d2))).toContain('rows.placeholder-only')
+  })
+})
+
+describe('round 7 M-1: noArticulation reasons', () => {
+  it('a reason that is neither NOT_LISTED nor an allowlisted proof warns (never blocks) and is not counted UC-only', () => {
+    const d = copy()
+    agreement(d, (a) => {
+      req(a, 'ENGIN 7').noArticulation = { 113: 'Course(s) Denied' } // has groups, like the bundled data
+      const r = req(a, 'MATH 51'); r.groups = []; r.noArticulation = { 113: 'Pending', 51: '' }
+    })
+    const r = validate(d)
+    expect(errors(r)).not.toContain('tree.no-articulation-reason')
+    expect(errors(r)).not.toContain('tree.schema')
+    const odd = r.findings.filter((f) => f.check === 'tree.no-articulation-reason')
+    expect(odd.every((f) => f.severity === 'warning')).toBe(true)
+    expect(odd.map((f) => f.message.split(':')[0]).sort()).toEqual(['ENGIN 7', 'MATH 51'])
+    expect(warnings(r)).toContain('rows.placeholder-only') // MATH 51 has no proof: it cannot show green
+    expect(r.agreements.find((x) => x.file === BME)?.ucOnlyRows).toBe(0)
+  })
+  it('allowlisted reasons and NOT_LISTED do not warn, and a proven row counts as UC-only', () => {
+    const d = copy()
+    agreement(d, (a) => { const r = req(a, 'MATH 51'); r.groups = []; r.noArticulation = { 113: ' no course  ARTICULATED ', 51: 'No articulation listed' } })
+    const r = validate(d)
+    expect(r.findings.filter((f) => f.check === 'tree.no-articulation-reason')).toEqual([])
+    expect(r.agreements.find((x) => x.file === BME)?.ucOnlyRows).toBe(1)
+  })
+})
+
+describe('M-4 safety net', () => {
+  it('warns on a required "choose 2+ of" group, and not on a choose-1 group', () => {
+    const d = copy()
+    agreement(d, (a) => {
+      const base = req(a, 'MATH 51')
+      const row = (id: string): Requirement => ({ ...base, id, label: id })
+      a.root.children.push({ kind: 'node', type: 'N_OF', n: 2, required: true, title: 'PICK TWO', children: [row('P1'), row('P2'), row('P3')] })
+    })
+    const w = validate(d).findings.filter((f) => f.check === 'tree.choose-n-review')
+    expect(w).toHaveLength(1)
+    expect(w[0].severity).toBe('warning')
+    expect(w[0].message).toContain('"PICK TWO"')
+    expect(warnings(validate(good))).not.toContain('tree.choose-n-review')
+  })
+})
+
+describe('round 7: unmodelled normalize content is a warning', () => {
+  it('maps conjunction and unmodelled-template notes to warnings, never info', () => {
+    const notes = { [BME]: [
+      'normalize: X: sending course-group conjunctions not applied, kept as "No articulation listed": MATH 51 @113',
+      'normalize: X: template cell not modelled (not a UC course or series), kept as "No articulation listed" at every college: GE-1',
+      'normalize: X: NFollowingUnits not modelled, every course in the section kept required: "S"',
+    ] }
+    const w = warnings(validate(good, 'publish', { notes }))
+    expect(w).toContain('normalize.conjunctions')
+    expect(w.filter((c) => c === 'normalize.unmodelled')).toHaveLength(2)
   })
 })
 

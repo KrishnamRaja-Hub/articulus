@@ -1,5 +1,5 @@
 import type { CourseId, Plan, ValidationResult, Violation } from '../engine/types'
-import type { TrustLevel } from '../data-trust'
+import type { DataTrust, TrustLevel } from '../data-trust'
 
 /** Pure verdict logic for the Planner, kept out of the component so it can be tested without a DOM. */
 
@@ -8,13 +8,40 @@ export const isBlocking = (v: Violation) => v.blocking !== false
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
 
+/** Only exactly 'trusted' or 'aging' may be trusted; anything else ('Untrusted', '', undefined, null) is untrusted. */
+const trustLevel = (t: unknown): TrustLevel => (t === 'trusted' || t === 'aging' ? t : 'untrusted')
+
 /** Required requirements finished at the university after transfer, from the plan and the completed courses. */
 export const deferredOf = (current: ValidationResult, plan: Plan) =>
   [...new Set([...(plan.result.deferred ?? []), ...(current.deferred ?? [])])]
 
+/** Whether a plan was solved and finishes every requirement: only then may it relax a completed-course verdict. */
+const planFinishes = (plan: Plan) => plan.result.isValid && plan.unsolvable.length === 0
+
+/**
+ * The split series in the completed courses, each marked blocking the way the plan sees it (H-1). Checked on the
+ * completed courses alone, a split in a "choose one" option is blocking until another option is done; the plan's own
+ * check covers the courses it schedules, so a split its scheduled courses make unnecessary is only a warning there.
+ * The plan's flag is used only when the plan finishes every requirement (a plan still being solved, EMPTY or
+ * incomplete never relaxes anything). A split the plan does not mention stays as the completed courses show it unless
+ * the plan reports that requirement satisfied.
+ */
+export function completedSplits(current: ValidationResult, plan: Plan): Violation[] {
+  if (!planFinishes(plan)) return current.splitSeriesViolations
+  const inPlan = new Map(plan.result.splitSeriesViolations.map((v) => [v.requirementId, v]))
+  return current.splitSeriesViolations.map((v) => {
+    if (!isBlocking(v)) return v
+    const p = inPlan.get(v.requirementId)
+    // relaxed only on the plan's word: it reports the split as not blocking, or the requirement as satisfied
+    const relaxed = p ? !isBlocking(p) : !!plan.result.satisfied[v.requirementId]
+    return relaxed ? { ...v, blocking: false } : v
+  })
+}
+
 /** `ok`: green, every requirement covered. `problem`: red, grounded in ASSIST rows that exist. `unconfirmed`: would be
- *  green, but the data cannot be trusted (DATA_CONTRACT.md), so it is never shown as covered. */
-export type Tone = 'ok' | 'problem' | 'unconfirmed' | 'pending'
+ *  green, but the data cannot be trusted (DATA_CONTRACT.md), so it is never shown as covered. `caution`: amber, would be
+ *  green, but on the prior academic year's agreements (carried over, TESTER L-1), so it is never shown as certain. */
+export type Tone = 'ok' | 'problem' | 'unconfirmed' | 'caution' | 'pending'
 /** `caveat`: a line about the data behind the verdict, shown under the title. */
 export interface Status { ok: boolean; tone: Tone; title: string; details: string[]; caveat?: string }
 
@@ -22,18 +49,37 @@ export interface Status { ok: boolean; tone: Tone; title: string; details: strin
 export const PLANNING: Status = { ok: false, tone: 'pending', title: 'Planning…', details: [] }
 
 export const UNCONFIRMED_TITLE = "Can't confirm — data needs refresh"
+export const CAUTION_TITLE = "Covered under last year's agreement — confirm with a counselor"
+export const REVIEW_TITLE = 'Looks covered — confirm the "choose several" requirement with a counselor'
+export const PLAN_FAILED_TITLE = "Couldn't build a plan"
 export const CAVEAT = {
+  planFailed: 'Something went wrong while planning. Change an input to try again, or confirm your plan with a counselor.',
   unconfirmed: 'The ASSIST data behind this check is out of date or unchecked, so it cannot say you are done. Confirm with a counselor.',
   problem: 'The ASSIST data behind this check needs a refresh. Confirm with a counselor.',
   aging: 'The ASSIST data behind this check is more than a week old. Confirm with a counselor before enrolling.',
+  review: 'This major has a "choose several of these" requirement, and this check cannot yet guarantee one course is not counted twice in it. Confirm with a counselor before enrolling.',
+  priorYear: "This check uses the prior academic year's agreements, and articulation can change between years. Confirm with a counselor before enrolling.",
+  // both caveats at once (round 7 L-5): the review sentence, then the prior-year one, with a single "confirm" ending
+  reviewPriorYear: 'This major has a "choose several of these" requirement, and this check cannot yet guarantee one course is not counted twice in it. It also uses the prior academic year\'s agreements, and articulation can change between years. Confirm with a counselor before enrolling.',
 } as const
 
 /** One status drives the badge's color, icon and title, so a red badge never claims coverage and a green one
  *  never hides a blocking problem. Deferred requirements and non-blocking splits never turn it red. Untrusted data
- *  never turns it green: a would-be green becomes `unconfirmed`; red stays red with a caveat. `trust` defaults to
- *  'trusted' for callers that predate the data-trust check. */
-export function badgeStatus(current: ValidationResult, plan: Plan, uc: string, trust: TrustLevel = 'trusted'): Status {
-  const blocking = current.splitSeriesViolations.filter(isBlocking)
+ *  never turns it green: a would-be green becomes `unconfirmed`; red stays red with a caveat. Prior-year data (a
+ *  DataTrust with a yearNote) turns a would-be green amber (`caution`, L-1). Completed-course splits are judged with
+ *  the plan (completedSplits, H-1). `trust` defaults to 'trusted' for callers that predate the data-trust check. */
+export function badgeStatus(current: ValidationResult, plan: Plan, uc: string,
+  trustIn: TrustLevel | Pick<DataTrust, 'level' | 'yearNote'> = 'trusted'): Status {
+  // the planner threw or timed out (solveClient errorPlan): say so, never a coverage verdict (round 7 N-2)
+  const failed = (plan as Plan & { error?: string }).error
+  if (failed) return { ok: false, tone: 'problem', title: PLAN_FAILED_TITLE, details: [failed], caveat: CAVEAT.planFailed }
+  // the default covers callers that omit trust; an invalid value, null or an object without a valid level is untrusted
+  const obj = typeof trustIn === 'object' && trustIn !== null ? trustIn : null
+  const trust = trustLevel(obj ? obj.level : trustIn)
+  // prior-year data (DataTrust.yearNote, set only when not untrusted): would-be green is amber, never green (L-1)
+  const priorYear = !!obj?.yearNote
+  const splits = completedSplits(current, plan)
+  const blocking = splits.filter(isBlocking)
   const planSplits = plan.result.splitSeriesViolations.filter(isBlocking).map((v) => v.requirementId)
   const problem = blocking.length ? `${plural(blocking.length, 'split-series violation')} in your completed courses`
     : plan.unsolvable.length ? 'Some requirements cannot be met at the selected colleges'
@@ -41,7 +87,7 @@ export function badgeStatus(current: ValidationResult, plan: Plan, uc: string, t
     : !plan.result.isValid ? 'The plan does not complete every requirement'
     : null
   const deferred = deferredOf(current, plan).length
-  const warnings = current.splitSeriesViolations.length - blocking.length
+  const warnings = splits.length - blocking.length
   const details = [
     ...(deferred ? [`${deferred} to complete at ${uc} after transfer`] : []),
     ...(warnings ? [plural(warnings, 'warning')] : []),
@@ -50,6 +96,12 @@ export function badgeStatus(current: ValidationResult, plan: Plan, uc: string, t
     ? { ok: false, tone: 'problem', title: problem, details, caveat: CAVEAT.problem }
     : { ok: false, tone: 'problem', title: problem, details }
   if (trust === 'untrusted') return { ok: false, tone: 'unconfirmed', title: UNCONFIRMED_TITLE, details, caveat: CAVEAT.unconfirmed }
+  // a "choose 2+ of" group: one course may still fill two slots (M-4), so a would-be green is amber, never green
+  const review = [...new Set([...(current.review ?? []), ...(plan.result.review ?? [])])]
+  // with prior-year data too, the caveat says both, never only the review one (round 7 L-5)
+  if (review.length) return { ok: false, tone: 'caution', title: REVIEW_TITLE, details: [...details, `Check: ${review.join(', ')}`],
+    caveat: priorYear ? CAVEAT.reviewPriorYear : CAVEAT.review }
+  if (priorYear) return { ok: false, tone: 'caution', title: CAUTION_TITLE, details, caveat: CAVEAT.priorYear }
   if (trust === 'aging') return { ok: true, tone: 'ok', title: 'Every requirement covered', details, caveat: CAVEAT.aging }
   return { ok: true, tone: 'ok', title: 'Every requirement covered', details }
 }
@@ -81,10 +133,17 @@ export const COMPLETE_NOTE = 'Everything required is already complete. Nothing l
  * appears only when the verdict is complete on data that may be trusted.
  * null: terms are scheduled and they finish the plan, or the data caveat above the terms already says enough.
  */
-export function scheduleNote(status: Status, plan: Plan, trust: TrustLevel = 'trusted'): ScheduleNote | null {
+export function scheduleNote(status: Status, plan: Plan, trustIn: TrustLevel = 'trusted'): ScheduleNote | null {
+  const trust = trustLevel(trustIn)
   const empty = plan.terms.length === 0
   const complete = planComplete(status, plan)
   if (complete && trust !== 'untrusted') return empty ? { tone: 'ok', text: COMPLETE_NOTE } : null
+  // would be complete on prior-year agreements (badgeStatus gives this the 'caution' tone, L-1)
+  if (status.tone === 'caution' && plan.unsolvable.length === 0 && plan.result.isValid) return empty
+    ? { tone: 'warn', text: status.title === REVIEW_TITLE
+      ? 'Nothing more to schedule, but a "choose several" requirement may be counting one course twice, so we can\'t confirm you are done. Confirm with a counselor before you stop taking courses.'
+      : "Nothing more to schedule under the prior year's agreements, but articulation can change between years, so we can't confirm you are done. Confirm with a counselor before you stop taking courses." }
+    : null
   // would be complete, but the data cannot be trusted (badgeStatus gives this the 'unconfirmed' tone)
   if (complete || (status.tone === 'unconfirmed' && plan.unsolvable.length === 0 && plan.result.isValid)) return empty
     ? { tone: 'warn', text: "Nothing more to schedule, but the data needs a refresh, so we can't confirm you are done. Confirm with a counselor before you stop taking courses." }
@@ -100,7 +159,8 @@ export function scheduleNote(status: Status, plan: Plan, trust: TrustLevel = 'tr
 }
 
 /** Caveat on the schedule itself (TESTER1_REPORT M-3); null when the data is trusted or nothing is scheduled. */
-export function scheduleCaveat(plan: Plan, trust: TrustLevel, dataDate?: string | null): ScheduleNote | null {
+export function scheduleCaveat(plan: Plan, trustIn: TrustLevel, dataDate?: string | null): ScheduleNote | null {
+  const trust = trustLevel(trustIn)
   if (plan.terms.length === 0 || trust === 'trusted') return null
   if (trust === 'untrusted') return { tone: 'alert', text: 'This schedule is built from ASSIST data that needs a refresh, so courses may be missing or wrong. Check every course with a counselor before you enroll.' }
   return { tone: 'warn', text: `This schedule is built from ASSIST data downloaded ${dataDate ?? 'more than a week ago'}. Check it with a counselor before you enroll.` }

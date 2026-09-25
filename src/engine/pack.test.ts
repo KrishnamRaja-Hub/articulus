@@ -241,3 +241,33 @@ describe('start term', () => {
     expect(p.terms.map((t) => t.name)).toEqual(['Fall 2027'])
   })
 })
+
+describe('pack / solve: bad inputs (N-3)', () => {
+  const two = () => agreement([['1:A 1'], ['1:B 1']], [['1:A 1', 4], ['1:B 1', 4]])
+  const start = { season: 'Fall' as const, year: 2026 }
+  it('a course with NaN, missing, string or negative units is not planned; its requirement is unsolvable', () => {
+    for (const bad of [NaN, undefined, '5', -4, Infinity, null]) {
+      const a = two(); (a.catalog['1:A 1'] as { units: unknown }).units = bad
+      const p = run(a, { startTerm: start })
+      expect(p.terms.flatMap((t) => t.courses), String(bad)).toEqual(['1:B 1'])
+      expect(p.totalUnits).toBe(4)
+      expect(p.unsolvable.map((u) => u.split(' ')[0])).toEqual(['R0'])
+      expect(p.prereqWarnings?.some((w) => w.includes('1:A 1'))).toBe(true)
+    }
+  })
+  it('units 0 are valid', () => {
+    const a = two(); a.catalog['1:A 1'].units = 0
+    expect(run(a, { startTerm: start }).terms.flatMap((t) => t.courses).sort()).toEqual(['1:A 1', '1:B 1'])
+  })
+  it('a start year that is not a whole number, or an unknown season, throws a clear error', () => {
+    for (const st of [{ season: 'Fall', year: NaN }, { season: 'Fall', year: 2026.5 }, { season: 'Fall', year: '2026' }, { season: 'Summer', year: 2026 }, { season: 'Autumn', year: 2026 }])
+      expect(() => run(two(), { startTerm: st as never }), JSON.stringify(st)).toThrow(/start term/i)
+  })
+  it('seasons in any letter case', () => {
+    expect(run(two(), { startTerm: { season: 'fall' as never, year: 2026 } }).terms[0].name).toBe('Fall 2026')
+    expect(run(two(), { startTerm: { season: 'SPRING' as never, year: 2027 }, unitCap: 4 }).terms.map((t) => t.name)).toEqual(['Spring 2027', 'Fall 2027'])
+  })
+  it('maxTerms NaN / 0 never drops courses', () => {
+    for (const maxTerms of [NaN, 0, -1]) expect(run(two(), { startTerm: start, maxTerms, unitCap: 4 }).terms).toHaveLength(2)
+  })
+})

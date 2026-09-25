@@ -92,8 +92,18 @@ export async function fetchRaw(client: AssistClient, cfg: PipelineConfig, opts: 
           throw e
         })
         if (!listing || !Array.isArray(listing.reports)) throw new Error(`/api/agreements ${uc}<-${cc}: expected { reports: [] }, got ${JSON.stringify(listing).slice(0, 200)}`)
+        // L2: one report per major per college. An exact repeat (same label and key) is dropped with a log line; the
+        // same label under a different key is ambiguous (which one is the agreement?), so the fetch fails.
+        const keyOf = new Map<string, string>()
         for (const m of listing.reports.filter((r) => typeof r?.label === 'string' && cfg.majorFilter(r.label))) {
           if (typeof m.key !== 'string' || !m.key) throw new Error(`/api/agreements ${uc}<-${cc}: report "${m.label}" has no key`)
+          const seenKey = keyOf.get(m.label)
+          if (seenKey !== undefined) {
+            if (seenKey !== m.key) throw new Error(`/api/agreements ${uc}<-${cc}: report "${m.label}" listed twice with different keys (${seenKey}, ${m.key}); refusing to guess which is the agreement`)
+            log(`duplicate listing entry ignored: ${uc} <- ${cc} ${m.label} (key ${m.key})`)
+            continue
+          }
+          keyOf.set(m.label, m.key)
           const p = await client.get<RawPayload>(`/api/articulation/Agreements?key=${m.key}`)
           const r = p?.result
           if (!r || ['templateAssets', 'articulations', 'academicYear', 'sendingInstitution', 'receivingInstitution'].some((f) => typeof (r as Record<string, unknown>)[f] !== 'string'))

@@ -2,7 +2,7 @@ import type { Agreement, CourseGroup, CourseId, Institution, Partial, Plan, ReqN
 import { canRoute, has, honorsColleges, isDeferrable, reqStatus, ucOnly, verifySchedule, type ReqStatus } from './verify.ts'
 import institutions from '../../data/institutions.json' with { type: 'json' }
 import { prereqs } from './sequence.ts'
-import { nextOpenTerm, nthTerm, startSlot, type CalendarTerm } from './calendar.ts'
+import { checkStartTerm, nextOpenTerm, nthTerm, startSlot, type CalendarTerm } from './calendar.ts'
 import { prereqClosure, prereqGraph } from './prereq.ts'
 
 export type TermSystem = 'quarter' | 'semester'
@@ -11,7 +11,7 @@ export interface SolveOptions {
   allowed: number[]       // institutions the student can enroll at
   home?: number           // the student's college: no college penalty there; also a tie-break
   unitCap?: number        // per term, in the home (termSystem) unit system; default 16 quarter / 12 semester
-  maxTerms?: number
+  maxTerms?: number       // unused by the solver: every course is packed (the UI flags plans past its limit)
   /** first term of the plan, read in the home calendar; default nextOpenTerm(today) (calendar.ts) */
   startTerm?: { season: 'Fall' | 'Winter' | 'Spring'; year: number }
   termSystem?: TermSystem                     // home college's system; Plan units are reported in it
@@ -115,8 +115,24 @@ const subjectOf = (id: string) => {
  * groups. An outer branch-and-bound over the colleges charges each one used. Falls back to the greedy set cover
  * (optimal = false) past the search budget. Then quarter packing.
  */
-export function solve(taken: Set<CourseId>, a: Agreement, opts: SolveOptions): Plan {
-  const { allowed, home, termSystem = 'quarter', unitSystems = {}, maxTerms = 6, startTerm = nextOpenTerm(new Date(), termSystem), budget = 200_000, timeLimitMs } = opts
+/** A tree the planner cannot walk (a row without a groups list, a node without a children list): verify fails closed
+ *  on it (malformed); the planner returns no schedule instead of throwing (round 8 N-1). */
+const unwalkable = (n: unknown): boolean => {
+  if (!n || typeof n !== 'object') return true
+  const x = n as { kind?: unknown; groups?: unknown; children?: unknown }
+  if (x.kind === 'req') return !Array.isArray(x.groups) || x.groups.some((g) => !g || typeof g !== 'object' || !Array.isArray((g as CourseGroup).courses))
+  return !Array.isArray(x.children) || x.children.some(unwalkable)
+}
+
+export function solve(taken: Set<CourseId>, a0: Agreement, opts: SolveOptions): Plan {
+  if (unwalkable(a0.root)) return { terms: [], chosen: {}, result: verifySchedule(taken, a0), totalUnits: 0,
+    unsolvable: ['Agreement data is malformed; confirm with a counselor'] }
+  const { allowed, home, termSystem = 'quarter', unitSystems = {}, budget = 200_000, timeLimitMs } = opts
+  // N-3: a bad start term is the caller's error: say so instead of planning Summer as Spring or looping on a NaN year
+  const startTerm = checkStartTerm(opts.startTerm ?? nextOpenTerm(new Date(), termSystem))
+  // N-3: a course whose units are not a finite number >= 0 (NaN, missing, "5", negative) is not plannable, like a course
+  // missing from the catalog; a requirement it alone could complete lands in `unsolvable`
+  const { a, badUnits } = withValidUnits(a0)
   // past the deadline, nodes jumps to Infinity: every budget check fails and the search reports incomplete
   const deadline = timeLimitMs === undefined ? Infinity : Date.now() + timeLimitMs
   const late = () => deadline !== Infinity && Date.now() > deadline && (nodes = Infinity) > 0
@@ -687,10 +703,16 @@ export function solve(taken: Set<CourseId>, a: Agreement, opts: SolveOptions): P
     for (let i = 0; i < x.length; i++) if (x[i] !== y[i]) return x[i] < y[i] ? -1 : 1
     return 0
   }
-  /** The best group the plan completes for a requirement (reported as `chosen`). */
-  const completed = (r: Requirement, h: Set<CourseId>) => {
+  /** The best group the plan completes for a requirement (reported as `chosen`): the listing closest to the courses
+   *  actually taken or planned (fewest honors swaps, as verify reports `satisfied`), each course named as planned (N-4:
+   *  CHEM 1AH + 1BH in the plan is reported as 1AH + 1BH, not as the agreement's CHEM 1A + 1B). */
+  const completed = (r: Requirement, h: Set<CourseId>): CourseGroup | undefined => {
     const mix = honorsColleges(r)
-    return r.groups.filter((g) => g.courses.every((c) => has(h, c, mix))).map((g) => ({ g, cost: 0 })).sort((x, y) => cmp(rank(x), rank(y)))[0]?.g
+    const as = (c: CourseId) => (h.has(c) ? c : h.has(`${c}H`) ? `${c}H` : stripH(c)) // only called when has(h, c, mix)
+    const swaps = (g: CourseGroup) => g.courses.filter((c) => !h.has(c)).length
+    const g = r.groups.filter((g) => g.courses.every((c) => has(h, c, mix))).map((g) => ({ g, cost: 0 }))
+      .sort((x, y) => swaps(x.g) - swaps(y.g) || cmp(rank(x), rank(y)))[0]?.g
+    return g && swaps(g) ? { ...g, courses: g.courses.map(as) } : g
   }
 
   /** Greedy set cover over the tree; `banned` groups (they would open a blocking split) are never picked. */
@@ -879,9 +901,11 @@ export function solve(taken: Set<CourseId>, a: Agreement, opts: SolveOptions): P
   } else ({ planned, chosen, unsolvable } = g!)
   let prereqOnly: CourseId[] = [], prereqWarnings: string[] = []
   ;({ planned, chosen, prereqOnly, prereqWarnings, optimal } = withPrereqs(planned, chosen, optimal))
-  const terms = pack([...planned], (c) => unitsOf(c, true), unitCap, maxTerms, startTerm, termSystem, (c) => a.catalog[c]?.title ?? '',
+  const terms = pack([...planned], (c) => unitsOf(c, true), unitCap, startTerm, termSystem, (c) => a.catalog[c]?.title ?? '',
     (c) => (a.catalog[c] ? unitSystems[a.catalog[c].institutionId] : undefined) ?? termSystem)
-  const result = verifySchedule(withTaken(planned), a)
+  const result = verifySchedule(withTaken(planned), a0)
+  for (const c of badUnits) if (L.some((r) => r.groups.some((g) => allowed.includes(g.institutionId) && g.courses.includes(c))))
+    prereqWarnings.push(`${c} has no valid unit count in the agreement data; it is not planned.`)
   // unsolvable in a fixed order (tree order would follow the input)
   return {
     terms, chosen, result, totalUnits: half(planned.reduce((s, c) => s + unitsOf(c, true), 0)), unsolvable: [...unsolvable].sort(), optimal,
@@ -921,11 +945,25 @@ export function solve(taken: Set<CourseId>, a: Agreement, opts: SolveOptions): P
   }
 }
 
+/* ---- input checks (N-3) ---- */
+
+const validUnits = (u: unknown): u is number => typeof u === 'number' && Number.isFinite(u) && u >= 0
+
+/** The agreement with every catalog course of invalid units removed (the same object when there are none, so
+ *  per-catalog caches keep working), and the removed ids, sorted. */
+function withValidUnits(a: Agreement): { a: Agreement; badUnits: CourseId[] } {
+  const bad = Object.keys(a.catalog).filter((c) => !validUnits(a.catalog[c]?.units)).sort()
+  if (!bad.length) return { a, badUnits: bad }
+  const catalog = { ...a.catalog }
+  for (const c of bad) delete catalog[c]
+  return { a: { ...a, catalog }, badUnits: bad }
+}
+
 /* ---- term packing ---- */
 
 // ponytail: prerequisite order is inferred from ids and titles (sequence.ts); swap for real requisite data if ASSIST
 // ever populates `requisites`.
-function pack(courses: CourseId[], unitsOf: (c: CourseId) => number, cap: number, maxTerms: number, start: NonNullable<SolveOptions['startTerm']>, system: TermSystem, titleOf: (c: CourseId) => string = () => '', systemOf: (c: CourseId) => TermSystem = () => system): Term[] {
+function pack(courses: CourseId[], unitsOf: (c: CourseId) => number, cap: number, start: NonNullable<SolveOptions['startTerm']>, system: TermSystem, titleOf: (c: CourseId) => string = () => '', systemOf: (c: CourseId) => TermSystem = () => system): Term[] {
   if (!(cap > 0 && Number.isFinite(cap))) cap = system === 'semester' ? 12 : 16 // NaN / <=0 / Infinity -> default
   // preds: [course, gap]: gap 1 = strictly later term, 0 = same term or later (a lab after its lecture)
   const preds = new Map<CourseId, [CourseId, number][]>(courses.map((c) => [c, []]))
@@ -969,6 +1007,8 @@ function pack(courses: CourseId[], unitsOf: (c: CourseId) => number, cap: number
     // alone goes to a term with nothing running alongside it
     let j = 0
     for (;; j++) {
+      // N-3: with finite units and cap a course always fits within a few terms of its last prerequisite; never spin
+      if (j > 4 * (courses.length + 4)) throw new Error(`Could not place ${c} in any term (units ${unitsOf(c)}, cap ${cap}).`)
       const t = termAt(sys, j).cal
       if (!ok(t, c) || !go.every((l) => ok(t, l, c))) continue
       if (units > cap + EPS ? loadOf(t) === 0 : loadOf(t) + units <= cap + EPS) break
@@ -988,5 +1028,5 @@ function pack(courses: CourseId[], unitsOf: (c: CourseId) => number, cap: number
     return t
   })
   if (mixed) for (const t of terms) t.concurrent = terms.filter((o) => o !== t && o.span![0] <= t.span![1] && t.span![0] <= o.span![1]).map((o) => o.name)
-  return terms.slice(0, Math.max(maxTerms, terms.length)) // never silently drop courses; UI flags > maxTerms
+  return terms // never drop courses (maxTerms NaN once returned []); UI flags > maxTerms
 }

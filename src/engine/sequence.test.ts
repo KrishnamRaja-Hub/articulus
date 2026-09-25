@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
+import institutions from '../../data/institutions.json'
 import { prereqs, topic, type Edge } from './sequence'
+import { solve } from './solve'
+import type { Agreement, Institution } from './types'
 
 const T: Record<string, string> = {}
 const run = (list: [string, string][]) => { list.forEach(([c, t]) => (T[c] = t)); return prereqs(list.map(([c]) => c), (c) => T[c] ?? '') }
@@ -36,7 +39,9 @@ describe('prereqs: topic ladders', () => {
   it('applied, generic and unknown titles get no topic', () => {
     for (const [c, t] of [['1:MATH 16A', 'Calculus for Business and the Life and Social Sciences'], ['33:MATH 100A', 'Short Calculus I'],
       ['51:PHYS 4C', 'General Physics (Calculus)'], ['124:PHYS 4B', 'General Physics'], ['137:PHYS 3', 'Human Physiology'], ['1:MATH 4A', 'Intermediate Calculus'],
-      ['1:CS 55', 'JAVA Programming'], ['1:ENGR 16', 'Dynamics'], ['1:MATH 9', 'Calculus']]) expect(topic(c, t), t).toBeUndefined()
+      ['1:CS 55', 'JAVA Programming'], ['1:ENGR 16', 'Engineering Graphics'], ['1:ENGR 31', 'Introduction to Digital Systems'],
+      ['1:ENGR 54', 'Principles of Materials Science and Engineering'], ['1:ENGR 7', 'Introduction to Engineering Methods'],
+      ['1:ENGR 11', 'Programming & Problem-Solving in MATLAB'], ['1:ENGL 16', 'Dynamics'], ['1:MATH 9', 'Calculus']]) expect(topic(c, t), t).toBeUndefined()
   })
 })
 
@@ -77,6 +82,32 @@ describe('prereqs: Linear Algebra / Differential Equations (L-6)', () => {
   })
 })
 
+describe('prereqs: engineering (N-1)', () => {
+  const has = (es: Edge[], a: string, b: string) => es.some((e) => e.from === a && e.to === b)
+  it('statics / dynamics / circuits after Calculus II and calculus-based mechanics; circuits after E&M; dynamics after statics', () => {
+    const { edges, dropped } = run([['51:MATH 1A', 'Calculus'], ['51:MATH 1B', 'Calculus'], ['51:MATH 1C', 'Calculus'],
+      ['51:PHYS 4A', 'Physics for Scientists and Engineers: Mechanics'], ['51:PHYS 4B', 'Physics for Scientists and Engineers: Electricity and Magnetism'],
+      ['51:ENGR 35', 'Statics'], ['51:ENGR 47', 'Dynamics'], ['51:ENGR 37', 'Introduction to Circuit Analysis'], ['51:ENGR 37L', 'Circuit Analysis Laboratory'],
+      ['51:ENGR 45', 'Properties of Materials'], ['51:ENGR 6', 'Engineering Graphics'], ['51:MATH 2A', 'Differential Equations']])
+    expect(dropped).toEqual([])
+    for (const [a, b] of [['51:MATH 1B', '51:ENGR 35'], ['51:PHYS 4A', '51:ENGR 35'], ['51:ENGR 35', '51:ENGR 47'], ['51:PHYS 4A', '51:ENGR 47'],
+      ['51:PHYS 4B', '51:ENGR 37'], ['51:MATH 1B', '51:ENGR 37'], ['51:MATH 1B', '51:MATH 2A']]) expect(has(edges, a, b), `${a} > ${b}`).toBe(true)
+    // Calculus III is not required; materials, graphics: no order; the lab rides with its lecture
+    expect(edges.some((e) => e.from === '51:MATH 1C' && /ENGR/.test(e.to))).toBe(false)
+    expect(edges.some((e) => /ENGR (45|6)$/.test(e.from) || /ENGR (45|6)$/.test(e.to))).toBe(false)
+    expect(edges.filter((e) => e.rule === 'engr' && (e.from === '51:ENGR 37' || e.to === '51:ENGR 37L') && e.from.includes('ENGR'))).toEqual([])
+  })
+  it('across colleges, algebra physics never gates, and nothing without the prerequisite in the list', () => {
+    expect(pairs(run([['113:PHYS 4A', 'Physics for Scientists and Engineers: Mechanics'], ['32:EGR 023', 'Mechanics - Statics'],
+      ['33:ENGN 37', 'Engineering Mechanics - Dynamics']]).edges)).toEqual(['engr 113:PHYS 4A > 32:EGR 023', 'engr 113:PHYS 4A > 33:ENGN 37', 'engr 32:EGR 023 > 33:ENGN 37'])
+    expect(run([['9:PHYS 2A', 'Algebra-Based Physics: Mechanics'], ['9:ENGR 12', 'Statics']]).edges).toEqual([])
+    expect(run([['124:ENGR 80', 'Engineering Dynamics'], ['124:ENGR 70', 'Introduction to Network Analysis']]).edges).toEqual([])
+    expect(topic('92:ENGR 115', 'Statics and Strength of Materials')?.kind).toBe('statics')
+    expect(topic('49:ENGR 013', 'Strength of Materials')?.kind).toBe('mat')
+    expect(topic('114:ENGIN 230', 'Introduction to Circuits and Devices')?.kind).toBe('circ')
+  })
+})
+
 describe('prereqs: labs, colleges, cycles', () => {
   it('a lab pairs with its lecture (co), never strictly after it', () => {
     const { edges } = run([['137:ENGR 21', 'Circuit Analysis'], ['137:ENGR 22', 'Circuit Analysis Lab'],
@@ -97,5 +128,26 @@ describe('prereqs: labs, colleges, cycles', () => {
     expect(pairs(one.edges)).toEqual(['letter 9:PHYS 1A > 9:PHYS 1B'])
     expect(pairs(one.dropped)).toEqual(['physics 9:PHYS 1B > 9:PHYS 1A'])
     expect(pairs(two.edges)).toEqual(pairs(one.edges))
+  })
+})
+
+describe('pack: engineering after calculus and physics (N-1 repros)', () => {
+  const files = import.meta.glob('../../data/agreements/{117,120}-*.json', { eager: true, import: 'default' }) as Record<string, Agreement>
+  const systems = Object.fromEntries((institutions as Institution[]).map((i) => [i.id, i.terms]))
+  const cases: [string, number][] = [['120-mechanical-engineering-b-s', 51], ['117-mechanical-engineering-b-s', 51], ['120-electrical-engineering-b-s', 51],
+    ['120-computer-science-and-engineering-b-s', 113], ['120-computer-science-and-engineering-b-s', 136], ['120-computer-science-and-engineering-b-s', 32]]
+  it.each(cases)('%s @%i', (name, home) => {
+    const a = Object.entries(files).find(([f]) => f.includes(`/${name}.json`))![1]
+    const plan = solve(new Set(), a, { allowed: [home], home, termSystem: systems[home], unitSystems: systems, startTerm: { season: 'Fall', year: 2026 } })
+    const T = (c: string) => a.catalog[c]?.title ?? ''
+    const at = new Map<string, number>(); plan.terms.forEach((t) => t.courses.forEach((c) => at.set(c, t.span?.[0] ?? 0)))
+    const firstCalc = Math.min(...[...at.keys()].filter((c) => /calculus|analytic geometry/i.test(T(c))).map((c) => at.get(c)!))
+    const adv = [...at.keys()].filter((c) => /\b(statics|dynamics|circuit analysis)\b/i.test(T(c)))
+    expect(adv.length).toBeGreaterThan(0)
+    for (const c of adv) expect(at.get(c)!, `${c} ${T(c)}`).toBeGreaterThan(firstCalc)
+    // every inferred edge among the planned courses holds (a lab may share its lecture's term); nothing lost from the plan
+    for (const e of prereqs([...at.keys()], T).edges) expect(at.get(e.to)! - at.get(e.from)!, `${e.rule} ${e.from} > ${e.to}`).toBeGreaterThanOrEqual(e.rule === 'co' ? 0 : 1)
+    expect(plan.terms.flatMap((t) => t.courses).length).toBe(at.size)
+    expect(Object.keys(plan.result.satisfied).length).toBeGreaterThan(0)
   })
 })

@@ -11,7 +11,7 @@ import { NORMALIZE_VERSION } from '../../src/engine/normalize.ts'
 import { assistClient } from './assist-client.ts'
 import { PIPELINE, httpConfig, type PipelineConfig } from './config.ts'
 import { fetchRaw, type RawBundle } from './fetch.ts'
-import { LockError, acquireLock, dataLockPath, recoverPublish, swapIn, treeHash, type Lock, type SwapHook } from './publish.ts'
+import { LockError, StagedChangedError, acquireLock, dataLockPath, recoverPublish, swapIn, treeHash, type Lock, type SwapHook } from './publish.ts'
 import { summaryMarkdown, summaryText } from './report.ts'
 import { BASELINE_FILE, decideDirs, decisionMarkdown, makeBaseline, readDataSet, writeBaseline, type Decision } from './diff.ts'
 import { build, hasRaw, readRaw, writeBuilt, writeRaw, type RawManifest } from './store.ts'
@@ -121,14 +121,26 @@ export async function runPipeline(o: RunOptions): Promise<RunResult> {
     for (const f of readdirSync(workDir)) if (f.startsWith('staging')) rmSync(join(workDir, f), { recursive: true, force: true })
 
     let renormalized = false
+    let prior: PriorReview | undefined
     const stale = o.source === 'assist' && o.autoRenormalize !== false && !o.dryRun ? staleVersion(dataDir, cfg) : null
     if (stale !== null) {
       log(`published data was built by normalize v${stale} (code is v${NORMALIZE_VERSION}): renormalizing from the raw store before fetching`)
-      const r = await runLocked({ ...o, source: 'raw' }, dataDir, workDir, env, log)
+      // A renormalize that needs review is never published (not even staged for a PR) and never becomes the reviewed
+      // baseline: the fetch pass below is then judged against the real reviewed baseline and forced to review, carrying
+      // the renormalize pass's reasons and report.
+      const r = await runLocked({ ...o, source: 'raw', onReview: 'fail' }, dataDir, workDir, env, log)
       renormalized = r.published
-      log(r.published ? 'renormalize published; continuing with the fetch' : `renormalize did not publish (failed at ${r.stage}); continuing with the fetch`)
+      if (r.decision === 'review') {
+        const read = (f: string) => { try { return readFileSync(join(workDir, f), 'utf8') } catch { return undefined } }
+        const d = read('decision.json'), md = read('diff-report.md')
+        // Kept for the workflow's artifacts (the fetch pass clears the regular report files).
+        if (d) writeFileSync(join(workDir, 'renormalize-decision.json'), d)
+        if (md) writeFileSync(join(workDir, 'renormalize-diff-report.md'), md)
+        prior = { from: stale, reasons: d ? (JSON.parse(d) as Decision).reasons : ['renormalize pass decided review'], markdown: md ?? '' }
+        log(`renormalize needs review, not published: ${prior.reasons.join('; ')}; the fetch pass will go to review too`)
+      } else log(r.published ? 'renormalize published; continuing with the fetch' : `renormalize did not publish (failed at ${r.stage}); continuing with the fetch`)
     }
-    const r = await runLocked(o, dataDir, workDir, env, log)
+    const r = await runLocked(o, dataDir, workDir, env, log, prior)
     return stale !== null ? { ...r, renormalized } : r
   } finally {
     for (const l of locks.reverse()) l.release()
@@ -147,7 +159,10 @@ export function staleVersion(dataDir: string, cfg: PipelineConfig = PIPELINE): n
 /** Files rewritten at publish time (the validation stamp), so excluded from the validated-tree hash. */
 const STAMPED = ['meta.json', 'validation-report.json', BASELINE_FILE] // the baseline is written from the validated tree
 
-async function runLocked(o: RunOptions, dataDir: string, workDir: string, env: NodeJS.ProcessEnv, log: (m: string) => void): Promise<RunResult> {
+/** A review decision of the automatic renormalize pass, which the fetch pass that follows must not override. */
+interface PriorReview { from: number; reasons: string[]; markdown: string }
+
+async function runLocked(o: RunOptions, dataDir: string, workDir: string, env: NodeJS.ProcessEnv, log: (m: string) => void, prior?: PriorReview): Promise<RunResult> {
   const cfg = o.cfg ?? PIPELINE
   const now = o.now ?? new Date()
   for (const f of ['validation-report.json', 'report.md', 'failure.md', 'decision.json', 'diff-report.md']) rmSync(join(workDir, f), { force: true })
@@ -221,7 +236,13 @@ async function runLocked(o: RunOptions, dataDir: string, workDir: string, env: N
     const decision = decideDirs(prevDir, staging)
     // A human who re-ran with the override after reading the report has reviewed it: publish, with the new baseline.
     if (decision.decision === 'review' && acceptDiff) { decision.decision = 'publish'; decision.reasons.push(`accepted by ${cfg.diff.overrideEnv}; this data becomes the reviewed baseline`) }
-    const decisionMd = decisionMarkdown(decision)
+    // The renormalize pass before this one needed review (runPipeline): so does this run, whatever this diff says.
+    if (prior) {
+      decision.reasons.push(...prior.reasons.map((x) => `automatic renormalize (normalize v${prior.from} -> v${NORMALIZE_VERSION}), not published: ${x}`))
+      if (decision.decision === 'publish' && !acceptDiff) decision.decision = 'review'
+      if (decision.decision === 'review') decision.updateBaseline = true
+    }
+    const decisionMd = decisionMarkdown(decision) + (prior?.markdown ? `\n\n#### Automatic renormalize pass (normalize v${prior.from} -> v${NORMALIZE_VERSION}; needs review, not published)\n\n${prior.markdown.replace(/^### /gm, '##### ')}` : '')
     writeJson(join(workDir, 'decision.json'), decision)
     writeFileSync(join(workDir, 'diff-report.md'), decisionMd + '\n')
     appendFileSync(join(workDir, 'report.md'), '\n' + decisionMd + '\n')
@@ -243,7 +264,14 @@ async function runLocked(o: RunOptions, dataDir: string, workDir: string, env: N
     const published: Report = { ...report, dataDir: 'data' }
     writeJson(join(staging, 'validation-report.json'), published, 1)
     writeJson(join(staging, 'meta.json'), { ...meta, validation: { passed: true, at: now.toISOString(), checks: report.checks, report: 'data/validation-report.json' } })
-    swapIn(staging, dataDir, o.hooks?.swap)
+    // Re-checked on the copy that is renamed into place: a change after the check above (the hook, or anything else
+    // touching staging) must not publish under validation.passed=true.
+    try { swapIn(staging, dataDir, o.hooks?.swap, { hash: validated, exclude: STAMPED }) } catch (e) {
+      if (e instanceof StagedChangedError) return fail(e.message, report)
+      throw e
+    }
+    // Leftover sidecars kept by recovery (e.g. an unrestorable .data-prev-*) are disposable once a publish succeeded.
+    for (const m of recoverPublish(dataDir)) log(`cleanup after publish: ${m}`)
     const contentChanged = report.diff?.contentChanged ?? true
     log(`published ${built.index.length} agreements to ${dataDir} (${contentChanged ? 'content changed' : 'content unchanged; meta refreshed'})`)
     return { ok: true, published: true, contentChanged, rawChanged, report, decision: decision.decision, stage: 'done' }

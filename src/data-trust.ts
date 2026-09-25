@@ -122,7 +122,10 @@ export function dataTrust(meta: unknown, now: Date, normalizeVersion: number = N
     else if (academicYear !== expected) reasons.push(`Data is for ${academicYear} but ${expected} agreements are in effect`)
   }
 
-  if (agreementYears?.length) {
+  // L-2: an empty list (no agreement year known at all) is an unknown year, never a pass; undefined is a caller that
+  // predates the per-agreement check
+  if (agreementYears && !agreementYears.length) reasons.push('The academic year of the agreements is not recorded')
+  else if (agreementYears) {
     const recorded = agreementYears.filter((y): y is string => typeof y === 'string' && YEAR.test(y))
     if (recorded.length < agreementYears.length) reasons.push('The academic year of some agreements is not recorded')
     const other = [...new Set(recorded.filter((y) => y !== academicYear))].sort()

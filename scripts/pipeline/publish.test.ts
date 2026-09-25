@@ -6,7 +6,8 @@ import { dirname, join } from 'node:path'
 import { afterAll, afterEach, describe, expect, it } from 'vitest'
 import { NORMALIZE_VERSION } from '../../src/engine/normalize.ts'
 import { startMockAssist, type MockAssist } from './mock-assist.ts'
-import { LockError, acquireLock, dataLockPath, recoverPublish, swapIn, treeHash, type SwapHook } from './publish.ts'
+import { LockError, StagedChangedError, acquireLock, dataLockPath, recoverPublish, swapIn, treeHash, type SwapHook } from './publish.ts'
+import { BASELINE_FILE } from './diff.ts'
 import { fenced, redact } from './run.ts'
 import { cleanupTmp, readJson, run, snapshot, tmp } from './test-helpers.ts'
 
@@ -135,6 +136,59 @@ describe('crash safety', () => {
     expect(existsSync(data)).toBe(false)
   })
 
+  it('M2: staged data changed after validation (in beforePublish) is not published; data/ untouched', async () => {
+    const { m, data } = await published()
+    const before = snapshot(data), work = join(data, '..', 'work'), file = 'agreements/79-mechanical-engineering-b-s.json'
+    const r = await run(m.url, data, { workDir: work, hooks: { beforePublish: () => {
+      const p = join(work, readdirSync(work).find((f) => f.startsWith('staging-'))!, 'data', file)
+      const a = readJson(p); a.root.required = false; writeFileSync(p, JSON.stringify(a))
+    } } })
+    expect(r.ok).toBe(false)
+    expect(r.published).toBe(false)
+    expect(r.stage).toBe('publish')
+    expect(r.error).toMatch(/changed after validation/)
+    expect(snapshot(data)).toEqual(before)
+    expect(siblings(data)).toEqual([])
+  })
+
+  it('M2: swapIn with an expected hash refuses a copy that differs, before touching the target', () => {
+    const dir = tmp('swaphash'), data = join(dir, 'data'), staging = join(dir, 'staging')
+    mkdirSync(data); mkdirSync(staging)
+    writeFileSync(join(data, 'index.json'), 'old'); writeFileSync(join(staging, 'index.json'), 'new'); writeFileSync(join(staging, 'meta.json'), 'm')
+    const h = treeHash(staging, ['meta.json'])
+    expect(() => swapIn(staging, data, (s) => { if (s === 'copied') writeFileSync(join(staging, 'index.json'), 'late') }, { hash: h, exclude: ['meta.json'] })).not.toThrow() // the copy was taken first
+    expect(readFileSync(join(data, 'index.json'), 'utf8')).toBe('new')
+    writeFileSync(join(data, 'index.json'), 'old')
+    const old = snapshot(data)
+    expect(() => swapIn(staging, data, () => {}, { hash: h, exclude: ['meta.json'] })).toThrow(StagedChangedError)
+    expect(snapshot(data)).toEqual(old)
+    expect(readdirSync(dir).filter((f) => f.startsWith('.data'))).toEqual([])
+    writeFileSync(join(staging, 'index.json'), 'new'); writeFileSync(join(staging, 'meta.json'), 'stamped later')
+    swapIn(staging, data, () => {}, { hash: h, exclude: ['meta.json'] }) // excluded (stamped) files may differ
+    expect(readFileSync(join(data, 'index.json'), 'utf8')).toBe('new')
+  })
+
+  it('L1: recovery restores the newest prev that has index.json, and keeps the other prevs', () => {
+    const dir = tmp('prevs'), data = join(dir, 'data')
+    const good = join(dir, '.data-prev-1-1000'), junk = join(dir, '.data-prev-2-2000'), older = join(dir, '.data-prev-3-500')
+    mkdirSync(good); writeFileSync(join(good, 'index.json'), '[]')
+    mkdirSync(older); writeFileSync(join(older, 'index.json'), '["older"]')
+    mkdirSync(junk); writeFileSync(join(junk, 'junk'), 'x')
+    mkdirSync(join(dir, '.data-next-2-2000'))
+    const done = recoverPublish(data)
+    expect(done[0]).toMatch(/restored data\/ from \.data-prev-1-1000/)
+    expect(readFileSync(join(data, 'index.json'), 'utf8')).toBe('[]')
+    expect(existsSync(junk)).toBe(true)
+    expect(existsSync(older)).toBe(true)
+    expect(existsSync(join(dir, '.data-next-2-2000'))).toBe(false)
+    // no restorable prev: nothing is restored and nothing is deleted
+    const dir2 = tmp('prevs2'), junk2 = join(dir2, '.data-prev-2-2000')
+    mkdirSync(junk2); writeFileSync(join(junk2, 'junk'), 'x')
+    recoverPublish(join(dir2, 'data'))
+    expect(existsSync(join(dir2, 'data'))).toBe(false)
+    expect(existsSync(junk2)).toBe(true)
+  })
+
   it('treeHash sees content and path changes and honours exclusions', () => {
     const d = tmp('hash')
     mkdirSync(join(d, 'a')); writeFileSync(join(d, 'a', 'x'), '1'); writeFileSync(join(d, 'meta.json'), 'm')
@@ -161,6 +215,42 @@ describe('M-6: NORMALIZE_VERSION bump', () => {
     expect(after.fetchedAt).toBe(meta.fetchedAt)
     expect(after.validation.passed).toBe(true)
     expect(logs.join('\n')).toMatch(/renormalizing from the raw store/)
+  })
+  it('a renormalize that needs review is not published, and forces the fetch pass to review with its reasons (no auto-publish of a version bump)', async () => {
+    const { m, data } = await published()
+    // Published data and its reviewed baseline were built by the previous normalize version.
+    const metaPath = join(data, 'meta.json'), basePath = join(data, BASELINE_FILE)
+    writeFileSync(metaPath, JSON.stringify({ ...readJson(metaPath), normalizeVersion: NORMALIZE_VERSION - 1 }))
+    const reviewed = { ...readJson(basePath), normalizeVersion: NORMALIZE_VERSION - 1 }
+    writeFileSync(basePath, JSON.stringify(reviewed))
+    const work = join(data, '..', 'work'), logs: string[] = []
+    const r = await run(m.url, data, { workDir: work, onReview: 'stage', log: (x) => logs.push(x) })
+    expect(r.ok, r.error).toBe(true)
+    expect(r.renormalized).toBe(false)
+    expect(r.decision).toBe('review')
+    expect(logs.join('\n')).toMatch(/renormalize needs review, not published/)
+    const decision = readJson(join(work, 'decision.json'))
+    expect(decision.decision).toBe('review')
+    expect(decision.reasons.join('\n')).toMatch(/automatic renormalize .*normalize v\d+ -> v\d+ since the reviewed baseline/)
+    expect(readFileSync(join(work, 'report.md'), 'utf8')).toMatch(/Automatic renormalize pass/)
+    expect(readJson(join(work, 'renormalize-decision.json')).decision).toBe('review')
+    // The staged baseline is the fetch pass's data (for the review PR), never the unreviewed renormalize output
+    // judged as if reviewed: the fetch pass was compared with the real reviewed baseline.
+    expect(decision.reference).toBe('baseline')
+    expect(decision.baseline.normalizeVersion).toBe(NORMALIZE_VERSION - 1)
+
+  })
+  it('by default (review fails the run) a renormalize that needs review publishes nothing, and neither does the fetch', async () => {
+    const { m, data } = await published()
+    const metaPath = join(data, 'meta.json'), basePath = join(data, BASELINE_FILE)
+    writeFileSync(metaPath, JSON.stringify({ ...readJson(metaPath), normalizeVersion: NORMALIZE_VERSION - 1 }))
+    writeFileSync(basePath, JSON.stringify({ ...readJson(basePath), normalizeVersion: NORMALIZE_VERSION - 1 }))
+    const before = snapshot(data)
+    const r = await run(m.url, data)
+    expect(r.ok).toBe(false)
+    expect(r.decision).toBe('review')
+    expect(r.renormalized).toBe(false)
+    expect(snapshot(data)).toEqual(before)
   })
   it('autoRenormalize: false leaves it alone', async () => {
     const { m, data } = await published()

@@ -25,7 +25,7 @@ name: Data refresh
 
 on:
   schedule:
-    - cron: '0 9 * * *' # daily, 09:00 UTC (01:00/02:00 Pacific)
+    - cron: '23 9 * * *' # daily, 09:23 UTC (01:23/02:23 Pacific); off the hour, when GitHub delays scheduled runs least
   workflow_dispatch:
     inputs:
       accept_large_change:
@@ -96,20 +96,34 @@ jobs:
         id: head
         env:
           GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           set -euo pipefail
           sha=$(git rev-parse HEAD)
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
-          concl=$(gh run list --workflow ci.yml --commit "$sha" --event push --limit 1 --json conclusion --jq '.[0].conclusion // ""' || echo unknown)
-          case "$concl" in
-            failure|timed_out) echo "::error::CI failed for $sha on the default branch; not refreshing data against broken code."; exit 1 ;;
-            success) echo "CI passed for $sha." ;;
-            *) echo "::notice::CI status for $sha is '${concl:-none}'; the refresh runs the app suites itself." ;;
+          # Any event counts, not only push: the bot's own data commits are pushed with GITHUB_TOKEN (which triggers
+          # nothing) and get CI through workflow_dispatch, so a push-only lookup finds no run and the gate never fires.
+          # Scheduled CI runs are skipped (they run only the oracle stress job, not the test job). Prefer the latest
+          # completed run for HEAD itself, else the latest completed run on the branch (the last code CI actually
+          # judged). A failed lookup is 'unknown': the refresh still runs the app suites itself (fail-safe either way).
+          runs=$(gh run list --workflow ci.yml --branch "$BRANCH" --status completed --limit 30 \
+            --json headSha,event,conclusion 2>/dev/null || echo unknown)
+          if [ "$runs" = "unknown" ]; then concl=unknown
+          else
+            concl=$(printf '%s' "$runs" | jq -r --arg sha "$sha" '[.[] | select(.event != "schedule")] as $r
+              | (([$r[] | select(.headSha == $sha)] | .[0]) // ($r | .[0]) // {})
+              | if .conclusion then "\(.conclusion) \(.event) \(.headSha)" else "" end' || echo unknown)
+          fi
+          read -r c ev rsha <<< "${concl:-none}" || true
+          case "$c" in
+            failure|timed_out|startup_failure) echo "::error::The latest CI run on $BRANCH ($ev, ${rsha:-?}) concluded '$c'; not refreshing data against broken code."; exit 1 ;;
+            success) echo "CI passed on $BRANCH ($ev, $rsha; HEAD is $sha)." ;;
+            *) echo "::notice::CI status on $BRANCH is '${c:-none}'; the refresh runs the app suites itself." ;;
           esac
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: npm
 
       - name: Install
@@ -127,7 +141,9 @@ jobs:
         env:
           # A review decision stages data/ (with a new reviewed baseline) for a PR instead of failing the run.
           DATA_REFRESH_ON_REVIEW: pr
-        run: npm run fetch -- ${{ inputs.dry_run && '--dry-run' || '' }}
+        # --no-auto-renormalize: a NORMALIZE_VERSION bump must not be rebuilt and published without a person looking
+        # at it. With it, the fetch's own normalize-version check routes the rebuilt data to review.
+        run: npm run fetch -- --no-auto-renormalize ${{ inputs.dry_run && '--dry-run' || '' }}
 
       - name: Re-check the published data with the strict gate and read the release decision
         id: decision
@@ -244,6 +260,18 @@ jobs:
           auth=$(printf 'x-access-token:%s' "$PUSH_TOKEN" | base64 -w0)
           echo "::add-mask::$auth"
           g() { git -c "http.$GITHUB_SERVER_URL/.extraheader=AUTHORIZATION: basic $auth" "$@"; }
+          # Close open data-refresh/* PRs other than $1 (from this repository only): once newer data is published or
+          # proposed, merging an older one would roll the data back. A failed close only warns, because by then the
+          # data has already been pushed or the new PR opened.
+          supersede() { # $1 head branch to keep (may be empty), $2 what supersedes them
+            local prs
+            prs=$(gh pr list --state open --json number,headRefName,isCrossRepository --limit 100 \
+              | jq -r --arg h "$1" '.[] | select(.isCrossRepository == false) | select(.headRefName | startswith("data-refresh/")) | select(.headRefName != $h) | .number') \
+              || { echo "::warning::Could not list open data-refresh PRs; close superseded ones by hand."; return 0; }
+            for n in $prs; do
+              gh pr close "$n" --delete-branch --comment "Superseded by $2." || echo "::warning::Could not close superseded PR #$n; close it by hand (merging it would roll data back)."
+            done
+          }
           g fetch -q origin "$BRANCH"
           # Data validated against this commit's code must not land on top of different code.
           if ! git diff --quiet "$SHA" "origin/$BRANCH" -- . ':(exclude)data'; then
@@ -257,6 +285,8 @@ jobs:
           git add -A data
           if git diff --cached --quiet; then
             echo "No change under data/."
+            # The default branch already holds this run's validated data, so older review PRs are stale.
+            if [ "$ROUTE" = "push" ]; then supersede "" "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID (validated data already on $BRANCH)"; fi
             echo "committed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -283,6 +313,7 @@ jobs:
           if [ "$ROUTE" = "push" ]; then
             g push origin "HEAD:refs/heads/$BRANCH"
             echo "committed=true" >> "$GITHUB_OUTPUT"
+            supersede "" "the direct publish $(git rev-parse HEAD) on $BRANCH ($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)"
             exit 0
           fi
 
@@ -303,7 +334,8 @@ jobs:
             echo
             sed 's/@/@\xe2\x80\x8b/g' "$REPORTS/pr-body.md" 2>/dev/null || echo "(no report)"
           } > "$RUNNER_TEMP/pr-body-full.md"
-          head -c 60000 "$RUNNER_TEMP/pr-body-full.md" > "$RUNNER_TEMP/pr-body.md"
+          # Byte cut, then drop a UTF-8 sequence split at the end (iconv -c still exits 1 on it, hence || true).
+          head -c 60000 "$RUNNER_TEMP/pr-body-full.md" | { iconv -c -f utf-8 -t utf-8 || true; } > "$RUNNER_TEMP/pr-body.md"
           label=data-refresh; [ "$ROUTE" = "review" ] && label=data-refresh-review
           gh label create "$label" --color FBCA04 --description "Automated ASSIST data refresh" --force >/dev/null || true
           url=$(gh pr list --head "$head" --state open --json url --jq '.[0].url // empty')
@@ -313,9 +345,7 @@ jobs:
             url=$(gh pr create --base "$BRANCH" --head "$head" --title "$subject" --body-file "$RUNNER_TEMP/pr-body.md" --label "$label")
           fi
           # Older refresh PRs are superseded by this one.
-          gh pr list --state open --json number,headRefName --limit 100 \
-            | jq -r --arg h "$head" '.[] | select(.headRefName | startswith("data-refresh/")) | select(.headRefName != $h) | .number' \
-            | while read -r n; do gh pr close "$n" --delete-branch --comment "Superseded by $url."; done
+          supersede "$head" "$url"
           if [ "$ROUTE" = "automerge" ]; then gh pr merge "$url" --auto --squash --delete-branch; fi
           echo "::notice title=Data refresh PR::$url ($ROUTE)"
           echo "PR: $url" >> "$GITHUB_STEP_SUMMARY"
@@ -396,7 +426,8 @@ jobs:
             echo
             echo "If the change is expected (for example ASSIST reorganized a major), re-run **Data refresh** with \`accept_large_change\` and an \`accept_reason\`; the result goes to a review PR."
           } > .pipeline/issue.md
-          head -c 60000 .pipeline/issue.md > .pipeline/issue-trimmed.md
+          # Byte cut, then drop a UTF-8 sequence split at the end (iconv -c still exits 1 on it, hence || true).
+          head -c 60000 .pipeline/issue.md | { iconv -c -f utf-8 -t utf-8 || true; } > .pipeline/issue-trimmed.md
           gh label create data-refresh-failure --color B60205 --description "Daily ASSIST data refresh failed; last good data kept" --force || true
           n=$(gh issue list --label data-refresh-failure --state open --json number --jq '.[0].number // empty')
           if [ -n "$n" ]; then

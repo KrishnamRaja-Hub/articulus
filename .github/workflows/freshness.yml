@@ -50,8 +50,17 @@ jobs:
 
       - name: Check fetchedAt
         id: age
+        # GitHub's default shell is `bash -e`; a failed live-site fetch must be collected as a problem, not end the
+        # step before `stale=` is written (then the stale-data issue would never be opened)
+        shell: bash --noprofile --norc {0}
         run: |
           set -uo pipefail
+          # No -e here (a failed check is collected, not fatal), so validate the limit explicitly: a non-numeric
+          # FRESHNESS_MAX_HOURS would make every `-gt` test error out as false and silently disable the monitor.
+          if ! [[ "$MAX_HOURS" =~ ^[0-9]{1,6}$ ]] || [ "$MAX_HOURS" -lt 1 ]; then
+            echo "::error title=FRESHNESS_MAX_HOURS::'$MAX_HOURS' is not a positive whole number of hours; fix the repository variable."
+            exit 1
+          fi
           now=$(date -u +%s)
           problems=()
           check() { # $1 label, $2 fetchedAt

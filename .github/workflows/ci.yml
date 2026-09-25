@@ -11,7 +11,7 @@ on:
   push:
   pull_request:
   schedule:
-    - cron: '30 10 * * *' # nightly stress, after the 09:00 UTC data refresh
+    - cron: '30 10 * * *' # nightly stress, after the 09:23 UTC data refresh
   workflow_dispatch:
     inputs:
       stress:
@@ -37,7 +37,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: npm
       - name: Install
         run: npm ci
@@ -56,7 +56,9 @@ jobs:
         run: npm run validate:data:ci
       - name: Flag legacy data
         if: ${{ steps.data.outputs.legacy != '' && steps.data.outputs.legacy != '0' }}
-        run: echo "::notice title=Legacy data::${{ steps.data.outputs.legacy }} legacy-data findings (data predates NORMALIZE_VERSION); code checks passed. Run the Data refresh workflow or npm run renormalize."
+        env:
+          LEGACY: ${{ steps.data.outputs.legacy }}
+        run: echo "::notice title=Legacy data::$LEGACY legacy-data findings (data predates NORMALIZE_VERSION); code checks passed. Run the Data refresh workflow or npm run renormalize."
       - name: Upload validation report
         if: always()
         uses: actions/upload-artifact@v4
@@ -99,7 +101,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: npm
       - name: Install
         run: npm ci

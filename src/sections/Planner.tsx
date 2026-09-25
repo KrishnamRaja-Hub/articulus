@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { gsap } from 'gsap'
 import { useGSAP } from '@gsap/react'
 import { useReveal } from '../motion/useReveal'
@@ -8,15 +8,16 @@ import { nextOpenTerm, termKey, termLabel, termsFrom, type StartTerm } from '../
 import { has, honorsColleges, ucOnly, verifySchedule } from '../engine/verify'
 import { SolveClient, type WorkerLike } from '../engine/solveClient'
 import { honorsHints, honorsNote } from '../engine/hints'
-import type { Agreement, CourseGroup, CourseId, Plan, ReqNode, Requirement, ValidationResult } from '../engine/types'
+import type { Agreement, CourseGroup, CourseId, ReqNode, Requirement, ValidationResult } from '../engine/types'
 import Button from '../ui/Button'
+import Select from '../ui/Select'
 import { Check, Cross } from './Trap'
-import { badgeStatus, PLANNING, deferredOf, isBlocking, noMatchNote, optimalExplain, optimalNote, PREREQ_TAG, prereqOnlySet, scheduleCaveat, scheduleNote, splitUnsolvable, type ScheduleNote } from './plannerStatus'
+import { badgeStatus, completedSplits, PLANNING, deferredOf, isBlocking, noMatchNote, optimalExplain, optimalNote, PREREQ_TAG, prereqOnlySet, scheduleCaveat, scheduleNote, splitUnsolvable, type ScheduleNote } from './plannerStatus'
 import { DataBanner, Exclaim } from './DataStatus'
+import { inputsKey, planView, type Solved } from './planState'
 
 const MAX_TERMS = 6
 const EMPTY_RESULT: ValidationResult = { isValid: false, satisfied: {}, missing: [], incomplete: {}, splitSeriesViolations: [], deferred: [] }
-const EMPTY_PLAN: Plan = { terms: [], chosen: {}, result: EMPTY_RESULT, totalUnits: 0, unsolvable: [] }
 // solve off the UI thread (TESTER2_REPORT M-4); no Worker (tests, old browsers): SolveClient solves on the main thread
 const makeWorker = typeof Worker === 'undefined' ? null
   : () => new Worker(new URL('../engine/solve.worker.ts', import.meta.url), { type: 'module' }) as unknown as WorkerLike
@@ -67,15 +68,18 @@ export default function Planner() {
   const [today] = useState(() => new Date())
   const trust = useTrust()
 
-  const [agreement, setAgreement] = useState<Agreement | null>(null)
+  const [loaded, setLoaded] = useState<{ file: string; agreement: Agreement } | null>(null)
   const [loadError, setLoadError] = useState<unknown>(null)
   const majors = majorsFor(uc)
   const entry = majors.find((m) => m.major === majorName) ?? majors[0]
+  // derived on every render: the agreement is shown only while it is the selected one, so no frame pairs a newly
+  // selected UC or major with the previous agreement's verdict (it would otherwise last until the effect below runs)
+  const agreement = loaded?.file === entry.file ? loaded.agreement : null
   const load = useRef(0)
   useEffect(() => {
     const id = ++load.current
-    setAgreement(null)
-    loadAgreement(entry.file).then((a) => { if (load.current === id) setAgreement(a) },
+    const file = entry.file
+    loadAgreement(file).then((a) => { if (load.current === id) setLoaded({ file, agreement: a }) },
       (e) => { if (load.current === id) setLoadError(e ?? new Error('Agreement failed to load')) })
   }, [entry.file])
   // a missing or unreadable agreement goes to the section's error boundary (TESTER2_REPORT M-8)
@@ -91,20 +95,24 @@ export default function Planner() {
   const toggleExtra = (id: number) => setExtra((xs) => (xs.includes(id) ? xs.filter((x) => x !== id) : [...xs, id]))
 
   const current = useMemo(() => (agreement ? verifySchedule(taken, agreement) : EMPTY_RESULT), [taken, agreement])
-  // the newest request's id; a plan is shown only for the agreement it was solved for, and while a newer request is
-  // out the badge says "Planning…" instead of a verdict on the old plan
-  const [solved, setSolved] = useState<{ id: number; agreement: Agreement; plan: Plan } | null>(null)
-  const [reqId, setReqId] = useState(0)
-  const reqAgreement = useRef<Agreement | null>(null)
-  const [client] = useState(() => new SolveClient(makeWorker, (id, plan) => setSolved({ id, agreement: reqAgreement.current!, plan })))
+  // each plan is kept with the exact inputs it was solved for; `planning` is derived on every render by comparing them
+  // with the current inputs, so no frame pairs the current selection with another input's verdict (r7 M-1, M-2)
+  const key = inputsKey({ taken, allowed, home, unitCap: UNIT_CAP, maxTerms: MAX_TERMS, start: termKey(start) })
+  const [solved, setSolved] = useState<Solved | null>(null)
+  // the inputs of the newest request; SolveClient delivers only the newest request's plan (it may do so synchronously)
+  const requested = useRef<Omit<Solved, 'plan'> | null>(null)
+  const [client] = useState(() => new SolveClient(makeWorker, (_id, plan) => { if (requested.current) setSolved({ ...requested.current, plan }) }))
   useEffect(() => () => client.dispose(), [client])
   useEffect(() => {
     if (!agreement) return
-    reqAgreement.current = agreement
-    setReqId(client.request({ taken, agreement, opts: { allowed, home, unitCap: UNIT_CAP, maxTerms: MAX_TERMS, termSystem: terms, unitSystems, startTerm: start } }))
-  }, [taken, agreement, allowed.join(), home, termKey(start)])
-  const plan = agreement && solved?.agreement === agreement ? solved.plan : EMPTY_PLAN
-  const planning = !!agreement && solved?.id !== reqId
+    requested.current = { agreement, key }
+    client.request({ taken, agreement, opts: { allowed, home, unitCap: UNIT_CAP, maxTerms: MAX_TERMS, termSystem: terms, unitSystems, startTerm: start } })
+  }, [agreement, key])
+  const view = planView(solved, agreement, key)
+  // while planning, `plan` is the previous plan for this agreement (shown dimmed, never as a verdict) or empty
+  const { plan, planning, stale, failed } = view
+  // plan-derived claims (stats, "not needed", repairs) only for a plan solved for these inputs that did not fail
+  const settled = !planning && !failed
   const rows = useMemo(() => (agreement ? flatten(agreement.root) : []), [agreement])
   // informational only: ASSIST lists the regular course where the student took the honors one (or the reverse)
   const hints = useMemo(() => honorsHints(rows.map((r) => r.req), taken), [rows, taken])
@@ -133,7 +141,23 @@ export default function Planner() {
   }, [query, agreement, allowed.join(), taken])
 
   const add = (id: CourseId) => { setTaken((s) => new Set([...s, id])); setQuery('') }
-  const remove = (id: CourseId) => setTaken((s) => { const n = new Set(s); n.delete(id); return n })
+  // after removing a chip, focus the next chip (or the previous one, or the search box) instead of <body> (r7 L-2)
+  const chipsRef = useRef<HTMLDivElement>(null)
+  const searchRef = useRef<HTMLInputElement>(null)
+  const refocus = useRef<number | null>(null)
+  const remove = (id: CourseId, index?: number) => {
+    if (index !== undefined) refocus.current = index
+    setTaken((s) => { const n = new Set(s); n.delete(id); return n })
+  }
+  useEffect(() => {
+    const i = refocus.current
+    if (i === null) return
+    refocus.current = null
+    const chips = chipsRef.current?.querySelectorAll<HTMLButtonElement>('[data-chip]') ?? []
+    const next = chips[Math.min(i, chips.length - 1)]
+    if (next) next.focus()
+    else searchRef.current?.focus()
+  }, [taken])
   const loadScenario2 = () => {
     setUc(79); setMajorName(majorsFor(79).find((m) => /Mechanical/.test(m.major))?.major ?? majorsFor(79)[0]?.major ?? '')
     setHome(113); setExtra([51]); setTaken(new Set(['113:PHYS 4A', '113:PHYS 4B', '51:PHYS 4C']))
@@ -162,19 +186,23 @@ export default function Planner() {
     })
   }, { scope: map, dependencies: [rows.length, planKey], revertOnUpdate: true })
 
-  const violations = current.splitSeriesViolations
+  // blocking as the plan sees it (H-1): a split the scheduled courses make unnecessary is a warning, not red
+  // while a newer plan is out, the old plan says nothing about the current courses: show the completed-course check
+  const violations = useMemo(() => (planning ? current.splitSeriesViolations : completedSplits(current, plan)), [planning, current, plan])
   const ucShort = agreement ? byId[agreement.receivingId].short : ''
   // icon, color and title come from one status, so a red badge never claims coverage
   // untrusted data never shows green (DATA_CONTRACT.md); red verdicts still show, with a caveat
-  const status = planning ? PLANNING : badgeStatus(current, plan, ucShort, trust.level)
-  const ok = status.ok, unconfirmed = status.tone === 'unconfirmed'
+  const status = planning ? PLANNING : badgeStatus(current, plan, ucShort, trust)
+  // amber: would be green, but the data cannot be trusted or is the prior year's (never green unless certain)
+  const ok = status.ok, unconfirmed = status.tone === 'unconfirmed' || status.tone === 'caution'
   const hintList = Object.values(hints).flat()
   const deferred = deferredOf(current, plan)
   const reqOf = (id: string) => rows.find((r) => r.req.id === id)?.req
   // a plan that leaves requirements unmet never gets an optimality label (TESTER1_REPORT C-1: "0 units · minimum units")
   const incomplete = plan.unsolvable.length > 0 || !plan.result.isValid
   const note = incomplete ? 'does not finish the plan' : optimalNote(plan)
-  const schedNote = planning ? null : scheduleNote(status, plan, trust.level)
+  // an error plan has no schedule to describe; the badge already says planning failed
+  const schedNote = settled ? scheduleNote(status, plan, trust.level) : null
   const caveat = scheduleCaveat(plan, trust.level, trust.fetchedAt ? formatDataDate(trust.fetchedAt) : null)
   const prereqOnly = prereqOnlySet(plan)
   const prereqWarnings = plan.prereqWarnings ?? []
@@ -191,10 +219,10 @@ export default function Planner() {
         {/* ---- inputs ---- */}
         <div data-reveal={0.15} className="card relative z-30 mt-14 grid grid-cols-1 gap-8 p-6 md:grid-cols-3 md:p-8">
           <Field label="Target">
-            <Select value={uc} onChange={(v) => { const id = Number(v); setUc(id); setMajorName(majorsFor(id)[0]?.major ?? '') }}>
+            <Select value={uc} label="Target university" onChange={(v) => { const id = Number(v); setUc(id); setMajorName(majorsFor(id)[0]?.major ?? '') }}>
               {universities.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
             </Select>
-            <Select value={entry.major} onChange={setMajorName}>
+            <Select value={entry.major} label="Major" onChange={setMajorName}>
               {majors.map((m) => <option key={m.major} value={m.major}>{m.major}</option>)}
             </Select>
           </Field>
@@ -227,7 +255,7 @@ export default function Planner() {
 
           <Field label="Completed courses">
             <div className="relative">
-              <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search PHYS 4B, MATH 1A, chemistry…"
+              <input ref={searchRef} value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search PHYS 4B, MATH 1A, chemistry…"
                 aria-label="Search completed courses" autoComplete="off"
                 onKeyDown={(e) => { if (e.key === 'Enter' && results[0]) add(results[0].id); if (e.key === 'Escape') setQuery('') }}
                 className="h-12 w-full rounded-xl border border-line bg-bg px-4 text-[15px] placeholder:text-ink-3 transition-colors focus:border-ink/40" />
@@ -250,9 +278,9 @@ export default function Planner() {
               )}
             </div>
             {results.length > 0 && <div className="-mt-1 text-[12.5px] text-ink-3">Enter adds the top result. Only courses that articulate for this major are listed.</div>}
-            <div className="flex flex-wrap gap-2">
-              {[...taken].map((id) => (
-                <button key={id} onClick={() => remove(id)} title="Remove"
+            <div ref={chipsRef} className="flex flex-wrap gap-2">
+              {[...taken].map((id, i) => (
+                <button key={id} data-chip onClick={() => remove(id, i)} title="Remove" aria-label={`Remove ${code(id)} (${byId[instOf(id)]?.short ?? instOf(id)})`}
                   className={`group inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[13.5px] font-medium transition-all hover:opacity-70 ${chip(instOf(id))}`}>
                   {code(id)} <span className="opacity-60">· {byId[instOf(id)]?.short}</span><span className="ml-0.5 opacity-50 group-hover:opacity-100">×</span>
                 </button>
@@ -272,20 +300,27 @@ export default function Planner() {
                 <div role="status" className={`text-[17px] font-medium ${unconfirmed ? 'text-warn' : ''}`}>{status.title}</div>
                 <div data-year className="text-[14px] text-ink-2">{agreement.major} · {ucShort} · {agreementYearLabel(agreement.year, trust)}</div>
                 {status.details.length > 0 && <div className="text-[14px] font-medium text-ink-2">{status.details.join(' · ')}</div>}
-                {status.caveat && <div data-caveat className={`mt-1 text-[13.5px] ${trust.level === 'aging' ? 'text-ink-3' : 'text-warn'}`}>{status.caveat}</div>}
+                {status.caveat && <div data-caveat className={`mt-1 text-[13.5px] ${trust.level === 'aging' && status.tone !== 'caution' ? 'text-ink-3' : 'text-warn'}`}>{status.caveat}</div>}
               </div>
             </div>
-            <dl className="grid grid-cols-3 gap-6 text-[14px] text-ink-2 md:text-right">
+            {/* a failed plan has nothing to count; a stale one is dimmed while the new plan is computed (r7 M-3, N-2) */}
+            {!failed && <dl data-stats data-stale={planning || undefined} aria-hidden={planning || undefined}
+              className={`grid grid-cols-3 gap-6 text-[14px] text-ink-2 transition-opacity md:text-right ${planning ? 'opacity-40' : ''}`}>
               <Stat n={plan.terms.length} l={plan.terms.length === 1 ? terms : `${terms}s`} />
               <Stat n={plan.totalUnits} l={incomplete ? 'units scheduled' : 'units to go'} note={note} title={incomplete ? undefined : optimalExplain(plan)} />
               <Stat n={Object.keys(plan.result.satisfied).length} l="requirements" />
-            </dl>
+            </dl>}
           </div>
 
+          {planning && <p data-updating className="mt-4 text-[14px] text-ink-3">{stale ? 'Updating the plan for your changes… The schedule below is the previous plan.' : 'Building your plan…'}</p>}
+          {/* everything below comes from the plan: while planning it is the previous plan (or none), dimmed and inert,
+              so it never reads as the answer for the current selection (r7 M-3) */}
+          <div data-plan-body data-stale={planning || undefined} inert={planning} className={`transition-opacity ${planning ? 'opacity-40' : ''}`}>
           {violations.length > 0 && (
             <div className="mt-4 grid gap-4">
               {violations.map((v) => {
-                const fix = plan.chosen[v.requirementId]
+                // a repair comes only from a plan solved for these inputs
+                const fix = settled ? plan.chosen[v.requirementId] : undefined
                 // honors twins count as the same course where the engine allows mixing (MATH 1BH stands in for MATH 1B)
                 const req = reqOf(v.requirementId)
                 const mix = req ? honorsColleges(req) : false
@@ -345,7 +380,7 @@ export default function Planner() {
             </div>
           )}
 
-          {plan.unsolvable.length > 0 && (
+          {plan.unsolvable.length > 0 && !plan.error && (
             <div className="card mt-4 border-alert/30 p-6 text-[15px]">
               <div className="font-medium text-alert">Not coverable at {allowed.map((i) => byId[i].short).join(' + ')}</div>
               <ul className="mt-3">
@@ -503,13 +538,14 @@ export default function Planner() {
                           : warn ? <span className="text-[13px] text-warn">split, not needed</span>
                           : noArt ? (ucOnly(r.req) ? <span className="text-[13px] text-ink-3">{Object.values(r.req.noArticulation ?? {})[0]}</span>
                             : <span className={`text-[13px] ${r.optional ? 'text-ink-3' : 'text-alert'}`}>No ASSIST record · confirm with a counselor</span>)
-                          : <span className={`text-[13px] ${viol || offered || !needed ? 'text-ink-3' : 'text-alert'}`}>{viol ? 'split' : offered ? 'not needed for the cheapest path' : 'not articulated at the selected colleges'}</span>}
+                          : <span className={`text-[13px] ${viol || offered || !needed || !settled ? 'text-ink-3' : 'text-alert'}`}>{viol ? 'split' : !settled && offered ? (planning ? 'planning…' : 'not planned') : offered ? 'not needed for the cheapest path' : 'not articulated at the selected colleges'}</span>}
                       </div>
                     </div>
                   </li>
                 )
               })}
             </ul>
+          </div>
           </div>
         </div>}
       </div>
@@ -524,22 +560,11 @@ function HintNotes({ hints }: { hints?: ReturnType<typeof honorsHints>[string] }
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  const id = useId()
   return (
-    <div className="flex flex-col gap-3">
-      <div className="text-[13px] font-semibold uppercase tracking-wider text-ink-2">{label}</div>
+    <div role="group" aria-labelledby={id} className="flex flex-col gap-3">
+      <div id={id} className="text-[13px] font-semibold uppercase tracking-wider text-ink-2">{label}</div>
       {children}
-    </div>
-  )
-}
-
-function Select<T extends string | number>({ value, onChange, children, label }: { value: T; onChange: (v: string) => void; children: React.ReactNode; label?: string }) {
-  return (
-    <div className="relative">
-      <select value={value} onChange={(e) => onChange(e.target.value)} aria-label={label}
-        className="h-12 w-full appearance-none rounded-xl border border-line bg-bg pr-10 pl-4 text-[15px] transition-colors hover:border-ink/30 focus:border-ink/40">
-        {children}
-      </select>
-      <svg viewBox="0 0 16 16" className="pointer-events-none absolute top-1/2 right-4 h-3.5 w-3.5 -translate-y-1/2 text-ink-3" fill="none" aria-hidden><path d="m3 6 5 5 5-5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" /></svg>
     </div>
   )
 }

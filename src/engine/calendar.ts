@@ -15,8 +15,21 @@ export function nextOpenTerm(now: Date = new Date(), system: TermSystem = 'quart
   return openTerm(now, system) ?? { season: 'Fall', year: new Date().getUTCFullYear() }
 }
 
+const SEASONS: Record<string, Season> = { fall: 'Fall', winter: 'Winter', spring: 'Spring' }
+
+/** A start term as the planner reads it (N-3): the season in any letter case ('fall' -> 'Fall'), an integer year.
+ *  Throws a RangeError for anything else, Summer included (Summer is not planned, and must not become Spring). */
+export function checkStartTerm(start: StartTerm): StartTerm {
+  const raw = (start as { season?: unknown } | null | undefined)?.season, year = (start as { year?: unknown } | null | undefined)?.year
+  const season = typeof raw === 'string' ? SEASONS[raw.trim().toLowerCase()] : undefined
+  if (!season) throw new RangeError(`Unknown start term season ${JSON.stringify(raw)}: expected Fall, Winter or Spring.`)
+  if (typeof year !== 'number' || !Number.isInteger(year)) throw new RangeError(`Start term year must be a whole number, got ${typeof year === 'number' || year === undefined ? String(year) : JSON.stringify(year)}.`)
+  return season === start.season ? start : { season, year }
+}
+
 /** First timeline slot of a start term, read in the home calendar (semester Winter/Spring = the January term). */
-export function startSlot(start: StartTerm, home: TermSystem): number {
+export function startSlot(start0: StartTerm, home: TermSystem): number {
+  const start = checkStartTerm(start0)
   if (start.season === 'Fall') return 3 * start.year
   if (home === 'semester' || start.season === 'Winter') return 3 * (start.year - 1) + 1
   return 3 * (start.year - 1) + 2

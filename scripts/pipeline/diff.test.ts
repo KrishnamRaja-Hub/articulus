@@ -2,7 +2,7 @@
 import { cpSync, existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import type { Agreement, ReqNode } from '../../src/engine/types.ts'
+import type { Agreement, ReqNode, Requirement } from '../../src/engine/types.ts'
 import { rows } from './canaries.ts'
 import { BASELINE_FILE, decide, decideDirs, decisionMarkdown, esc, makeBaseline, readBaseline, readDataSet, semanticDiff, type DataSet } from './diff.ts'
 import { startMockAssist } from './mock-assist.ts'
@@ -63,6 +63,31 @@ describe('decide', () => {
     const d = mutate((a) => { const g = reqRow(a, 'PHYSICS 7B').req.groups[0]; g.courses.push(`${g.institutionId}:ZZZ 2`) })
     expect(d.decision).toBe('publish')
     expect(d.counts.stricter).toBeGreaterThan(0)
+  })
+  describe('M1: a required choice that disappears is looser, even with a new required row alongside', () => {
+    const req = (id: string): Requirement => ({ kind: 'req', id, label: id, units: 4, groups: [{ institutionId: 1, courses: [`1:${id}`] }] })
+    const node = (type: ReqNode['type'], children: ReqNode['children'], n?: number): ReqNode => ({ kind: 'node', type, required: true, children, ...(n ? { n } : {}) })
+    const ag = (root: ReqNode) => ({ receivingId: 79, major: 'x', year: '2026-2027', sendingIds: [1], root })
+    const diff = (a: ReqNode, b: ReqNode) => semanticDiff('x.json', ag(a), ag(b)).map((c) => [c.direction, c.code])
+    it('an N_OF under an AND replaced by a new required row goes to review (choice-removed)', () => {
+      const d = diff(node('AND', [node('N_OF', [req('A'), req('B')], 1), node('OR', [req('E'), req('F')]), req('C')]), node('AND', [node('OR', [req('E'), req('F')]), req('C'), req('D')]))
+      expect(d).toContainEqual(['looser', 'choice-removed'])
+      expect(d).toContainEqual(['stricter', 'row-added'])
+      expect(d).not.toContainEqual(['stricter', 'alternative-removed'])
+      // and through decide(): same group count per college (no per-college drop), so only the diff can send it to review
+      const set = (root: ReqNode): DataSet => ({ agreements: new Map([['x.json', ag(root)]]), academicYear: '2026-2027', normalizeVersion: 1, fetchedAt: null })
+      const prev = set(node('AND', [node('N_OF', [req('A'), req('B')], 1), req('C')]))
+      const dec = decide({ prev, next: set(node('AND', [req('C'), req('D'), req('G')])), baseline: makeBaseline(prev, NOW), behavioral: false })
+      expect(dec.drops).toEqual([])
+      expect(dec.decision).toBe('review')
+      expect(codes(dec)).toEqual(['choice-removed'])
+    })
+    it('one alternative fewer in a surviving choice, or a whole alternative of a surviving choice, stays stricter', () => {
+      expect(diff(node('AND', [node('OR', [req('A'), req('B')]), req('C')]), node('AND', [node('OR', [req('A')]), req('C')])))
+        .toEqual([['stricter', 'alternative-removed']])
+      const d = diff(node('AND', [node('OR', [node('OR', [req('A'), req('B')]), req('C')])]), node('AND', [node('OR', [req('C')])]))
+      expect(d.filter(([dir]) => dir === 'looser')).toEqual([])
+    })
   })
   it('a title-only change is neutral', () => {
     const d = mutate((a) => { nodes(a.root).forEach((n) => { n.title = (n.title ?? '') + ' (2026)' }) })

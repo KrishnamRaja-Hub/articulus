@@ -344,6 +344,14 @@ describe('dataTrust: agreements cross-checked against meta (TESTER2_REPORT M-2)'
     ])
   })
 
+  it('treats an empty agreement-year list as an unknown year, never trusted (L-2)', () => {
+    const t = dataTrust(good(), NOW, NORMALIZE_VERSION, 22, [])
+    expect(t.level).toBe('untrusted')
+    expect(t.reasons).toEqual(['The academic year of the agreements is not recorded'])
+    // omitted entirely: a caller that predates the per-agreement check, unchanged
+    expect(dataTrust(good(), NOW, NORMALIZE_VERSION, 22).level).toBe('trusted')
+  })
+
   it('still checks the agreement count alongside the year', () => {
     const t = dataTrust(good(), NOW, NORMALIZE_VERSION, 21, ['2025-2026'])
     expect(t.reasons).toEqual([

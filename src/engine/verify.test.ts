@@ -435,3 +435,97 @@ describe('degenerate trees fail closed (TESTER2 M-3)', () => {
     for (const a of [ME, MAE, MCS, CSE]) expect(malformed(a.root)).toBeNull()
   })
 })
+
+describe('M-4 safety net: "choose 2+ of" groups are flagged for review', () => {
+  // X is one course that articulates to both rows A and B: today it fills two slots, so the result must carry `review`
+  const X = (id: string): Requirement => ({ kind: 'req', id, label: id, units: 4, groups: [{ institutionId: 1, courses: ['1:X'] }] })
+  it('flags a required choose-2 group, even when one course fills both slots', () => {
+    const a = ag({ ...NOF(2, X('A'), X('B'), C('D')), title: 'Choose 2' })
+    const r = v(a, 'X')
+    expect(r.review).toEqual(['"Choose 2"'])
+  })
+  it('flags an untitled choose-2 group and one nested under a required AND', () => {
+    expect(v(ag(AND(NOF(2, C('A'), C('B'), C('D')))), 'A', 'B').review).toEqual(['choose 2 of 3'])
+  })
+  it('does not flag choose-1 groups, OR groups, or choose-2 groups inside optional sections', () => {
+    expect(v(ag(NOF(1, C('A'), C('B')), OR(C('D'), C('E'))), 'A', 'D').review).toBeUndefined()
+    expect(v(ag(C('Z'), opt(NOF(2, C('A'), C('B'), C('D')))), 'Z').review).toBeUndefined()
+  })
+  it('no bundled agreement has a required choose-2+ group today (the net is dormant on current data)', () => {
+    for (const a of [me, mae, mcs, cse, cs, ime, ece, dme] as unknown as Agreement[]) expect(verifySchedule(new Set(), a).review).toBeUndefined()
+  })
+})
+
+describe('round 7 M-1: only an allowlisted ASSIST reason makes a row UC-only', () => {
+  const row = (noArticulation: Record<number, unknown>): Requirement =>
+    ({ kind: 'req', id: 'D', label: 'D', units: 4, groups: [], noArticulation: noArticulation as Record<number, string> })
+  const bad: [string, unknown][] = [['blank', ''], ['spaces', '   '], ['null', null], ['denied', 'Course(s) Denied'], ['pending', 'Pending'],
+    ['NOT_LISTED', 'No articulation listed'], ['new wording', 'Articulation under review']]
+  for (const [name, why] of bad) it(`${name}: not UC-only, stays open (counselor), never deferred or green`, () => {
+    const d = row({ 1: why, 2: why })
+    expect(ucOnly(d)).toBe(false)
+    expect(isDeferrable(d)).toBe(false)
+    expect(v(ag(C('A'), d), 'A')).toMatchObject({ isValid: false, missing: ['D'], deferred: [] })
+  })
+  it('an allowlisted reason (any case / spacing) at one college is proof, even beside other values', () => {
+    for (const why of ['No Course Articulated', '  this course must be taken at the university  after transfer ', 'THIS COURSE IS NEVER ARTICULATED']) {
+      const d = row({ 1: 'Course(s) Denied', 2: why })
+      expect(ucOnly(d)).toBe(true)
+      expect(v(ag(C('A'), d), 'A')).toMatchObject({ isValid: true, deferred: ['D'] })
+    }
+  })
+  it('a row with groups is never UC-only, whatever the reason', () => {
+    expect(ucOnly({ ...C('A'), noArticulation: { 2: 'No Course Articulated' } })).toBe(false)
+  })
+})
+
+describe('round 7 M-2: schema errors the fold would read loosely fail closed, without throwing', () => {
+  const A = C('A'), B = C('B')
+  const raw = (n: unknown) => n as ReqNode
+  const cases: [string, unknown][] = [
+    ['lowercase "and" (was choose-1)', { kind: 'node', type: 'and', required: true, children: [A, B] }],
+    ['type undefined', { kind: 'node', required: true, children: [A, B] }],
+    ['lowercase "n_of"', { kind: 'node', type: 'n_of', n: 1, required: true, children: [A, B] }],
+    ['required missing (was optional)', { kind: 'node', type: 'AND', children: [B] }],
+    ['required a string', { kind: 'node', type: 'AND', required: 'true', children: [B] }],
+    ['kind typo', { kind: 'Req', id: 'Q', groups: [] }],
+    ['children missing', { kind: 'node', type: 'OR', required: true }],
+    ['row groups missing', { kind: 'req', id: 'Q', label: 'Q', units: 4 }],
+    ['row group with courses []', { kind: 'req', id: 'E', label: 'E', units: 4, groups: [{ institutionId: 1, courses: [] }] }],
+    ['null child', null],
+  ]
+  for (const [name, bad] of cases) it(`${name}: malformed, never valid`, () => {
+    const a = ag(A, raw(bad))
+    expect(malformed(a.root)).not.toBeNull()
+    const r = v(a, 'A', 'B')
+    expect(r.isValid).toBe(false)
+    expect(r.missing.join(' ')).toMatch(/malformed/)
+  })
+  it('the same shapes in an optional subtree are still flagged (the gate rejects them anywhere)', () => {
+    const a = ag(A, opt(AND(raw({ kind: 'node', type: 'and', required: true, children: [B] }))))
+    expect(malformed(a.root)).toMatch(/unknown type/)
+    expect(v(a, 'A', 'B').isValid).toBe(false)
+  })
+  it('a missing root or a root without children does not throw', () => {
+    for (const root of [undefined, null, { kind: 'node', type: 'AND', required: true }]) {
+      const a = { ...ME, root: raw(root) } as Agreement
+      expect(malformed(a.root)).not.toBeNull()
+      expect(v(a).isValid).toBe(false)
+    }
+  })
+  it('reqStatus never satisfies a row from an empty group, and tolerates missing groups', () => {
+    expect(reqStatus({ ...C('E'), groups: [{ institutionId: 1, courses: [] }] }, new Set()).satisfied).toBeUndefined()
+    expect(reqStatus(raw({ kind: 'req', id: 'Q' }) as unknown as Requirement, new Set(['1:A'])).satisfied).toBeUndefined()
+    expect(isDeferrable(raw({ kind: 'req', id: 'Q', noArticulation: { 1: 'No Course Articulated' } }))).toBe(false)
+  })
+})
+
+describe('UC-only proof ignores a trailing period', () => {
+  it('accepts "…after transfer." and still rejects other wording', async () => {
+    const { isUcOnlyProof } = await import('./normalize')
+    expect(isUcOnlyProof('This course must be taken at the university after transfer.')).toBe(true)
+    expect(isUcOnlyProof('No Course Articulated.')).toBe(true)
+    expect(isUcOnlyProof('Pending.')).toBe(false)
+    expect(isUcOnlyProof('Course(s) Denied.')).toBe(false)
+  })
+})

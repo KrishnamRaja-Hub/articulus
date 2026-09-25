@@ -168,7 +168,7 @@ Fixtures on disk (`data/index.json`): 22 agreements, each merged across all 15 c
 | UC Davis | Computer Science & Engineering B.S. |
 | UC Davis | Mechanical Engineering B.S. |
 
-Run `npm run fetch` to regenerate. The major filter is a substring match, so a few adjacent programs (Linguistics and Computer Science, Bioinformatics, Electrical Engineering and Society) are included as well.
+Production data refreshes itself daily through `.github/workflows/data-refresh.yml` (validation gates, then publish or a review PR; see `DATA_CONTRACT.md` "Operations"). `npm run fetch` is for local or manual runs only. The major filter is a substring match, so a few adjacent programs (Linguistics and Computer Science, Bioinformatics, Electrical Engineering and Society) are included as well.
 
 ## Tech stack, in plain language
 
@@ -199,10 +199,10 @@ npm install
 npm run dev      # Vite dev server
 npm test         # vitest: split-series detection, solver ordering, repair, template drift
 npm run build    # tsc -b && vite build
-npm run fetch    # re-pull ASSIST and rewrite data/
+npm run fetch    # local/manual only: re-pull ASSIST and rewrite data/ (production refreshes daily via .github/workflows/data-refresh.yml)
 ```
 
-The fetch script is TypeScript executed directly by Node, so Node 22 or newer is required for `npm run fetch`. The rest works on any Node that runs Vite 8.
+The fetch script is TypeScript executed directly by Node, so Node 22.18 or newer is required for `npm run fetch` (`engines` in `package.json`; `.nvmrc` pins 22 for CI). The rest works on any Node that runs Vite 8.
 
 ## Project layout
 

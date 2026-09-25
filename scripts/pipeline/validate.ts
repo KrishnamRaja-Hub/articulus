@@ -8,7 +8,7 @@
  */
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { classifyTitle, NORMALIZE_VERSION, NOT_LISTED } from '../../src/engine/normalize.ts'
+import { classifyTitle, isUcOnlyProof, NORMALIZE_VERSION, NOT_LISTED } from '../../src/engine/normalize.ts'
 import type { Agreement, Course, Institution, ReqNode, Requirement } from '../../src/engine/types.ts'
 import { codeFor, codeInEffect, fallYearInEffect } from './academic-year.ts'
 import { CANARIES, rows, sections } from './canaries.ts'
@@ -76,7 +76,7 @@ export interface ValidateOptions {
 }
 
 const SEVERITIES: Severity[] = ['error', 'warning', 'info', 'legacy']
-/** Title suffix normalize gives requirements only other colleges' templates list (always optional). */
+/** Title suffix normalize gives requirements only other colleges' templates list (required-ness from that template since v4). */
 const ONLY_SOME = /only in some colleges/i
 const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v)
 const isInt = (v: unknown): v is number => Number.isInteger(v)
@@ -272,7 +272,12 @@ export function validateData(dataDir: string, o: ValidateOptions): Report {
         if (prev) err(JSON.stringify(prev) === JSON.stringify(r), 'tree.req-consistent', `requirement ${r.id} appears twice with different content (the engine keys rows by id)`)
         else reqById.set(r.id, r)
         err(r.groups.length > 0 || (isObj(r.noArticulation) && Object.keys(r.noArticulation).length > 0), 'tree.req-empty', `${r.id}: no groups and no noArticulation reason`)
-        if (r.noArticulation !== undefined) err(isObj(r.noArticulation) && Object.entries(r.noArticulation).every(([k, v]) => isInt(Number(k)) && typeof v === 'string'), 'tree.schema', `${r.id}: noArticulation must map college id -> reason`)
+        if (r.noArticulation !== undefined && err(isObj(r.noArticulation) && Object.entries(r.noArticulation).every(([k, v]) => isInt(Number(k)) && typeof v === 'string'), 'tree.schema', `${r.id}: noArticulation must map college id -> reason`)) {
+          // Round 7 M-1: only the allowlisted ASSIST reasons prove a row UC-only; the engine reads any other value as
+          // NOT_LISTED (counselor). Not blocking, but a changed ASSIST wording must be visible.
+          const odd = Object.entries(r.noArticulation).filter(([, v]) => v !== NOT_LISTED && !isUcOnlyProof(v))
+          warn(!odd.length, 'tree.no-articulation-reason', `${r.id}: reason ${odd.map(([k, v]) => `${JSON.stringify(v)} at ${k}`).join(', ')} is neither "${NOT_LISTED}" nor an accepted UC-only reason; the engine treats it as "${NOT_LISTED}" (counselor)`)
+        }
         for (const [gi, g] of r.groups.entries()) {
           if (!err(isObj(g) && isInt(g.institutionId) && Array.isArray(g.courses) && g.courses.length > 0 && g.courses.every((c) => typeof c === 'string'),
             'group.schema', `${r.id} group ${gi}: must be { institutionId, courses: [≥1 id] }`)) { treeOk = false; continue }
@@ -324,6 +329,8 @@ export function validateData(dataDir: string, o: ValidateOptions): Report {
       const req = n.children.filter((c) => c.kind === 'req' || c.required).length
       err(req > 0, 'tree.no-required-children', `${n.title ? `"${n.title}"` : `${n.type} node`}: required, but none of its ${n.children.length} children is`)
       if (n.type === 'N_OF') err(isInt(n.n) && n.n! >= 1 && n.n! <= req, 'tree.n-of-required', `${n.title ? `"${n.title}"` : 'N_OF node'}: choose ${n.n} of ${req} required children`)
+      // M-4 safety net: the engine may still count one course in two slots here, so the page sends students to a counselor
+      if (n.type === 'N_OF') warn(!(isInt(n.n) && n.n! >= 2), 'tree.choose-n-review', `${n.title ? `"${n.title}"` : 'N_OF node'}: choose ${n.n} of ${req}; one course may fill two slots (M-4), so a complete verdict shows "confirm with a counselor"`)
     }
     const secs = new Map(sections(a.root))
     for (const [n, r] of secs) {
@@ -347,9 +354,11 @@ export function validateData(dataDir: string, o: ValidateOptions): Report {
     if (err(orphanFrac <= o.cfg.validate.maxOrphanFraction, 'catalog.orphans',
       `${orphans.length}/${catalogSize} catalog courses (${(orphanFrac * 100).toFixed(1)}%) count toward no requirement (F-01), e.g. ${orphans.slice(0, 3).join(', ')}`, true))
       warn(!orphans.length, 'catalog.orphans', `${orphans.length} catalog courses count toward no requirement: ${orphans.slice(0, 5).join(', ')}${orphans.length > 5 ? ', ...' : ''}`)
-    const placeholder = required.filter((r) => !r.req.groups.length && Object.values(r.req.noArticulation ?? {}).every((v) => v === NOT_LISTED))
-    warn(!placeholder.length, 'rows.placeholder-only', `${placeholder.length} required rows have no ASSIST record at any college ("${NOT_LISTED}"); wherever the major needs one it cannot show green: ${placeholder.map((r) => r.req.id).join('; ')}`)
-    const ucOnly = required.filter((r) => !r.req.groups.length && Object.values(r.req.noArticulation ?? {}).some((v) => v !== NOT_LISTED))
+    // UC-only exactly as the engine reads it (verify.ucOnly, round 7 M-1): an allowlisted reason at some college.
+    const proof = (r: Requirement) => Object.values(r.noArticulation ?? {}).some(isUcOnlyProof)
+    const placeholder = required.filter((r) => !r.req.groups.length && !proof(r.req))
+    warn(!placeholder.length, 'rows.placeholder-only', `${placeholder.length} required rows have no ASSIST record at any college ("${NOT_LISTED}" or an unaccepted reason); wherever the major needs one it cannot show green: ${placeholder.map((r) => r.req.id).join('; ')}`)
+    const ucOnly = required.filter((r) => !r.req.groups.length && proof(r.req))
 
     // Heuristics for the CRITICAL-1 shape: calculus under a recommended title while upper-division UC courses are required.
     const optionalMath = all.filter((r) => !r.required && isLowerMath(r.req.id) && r.titles.some((t) => /RECOMMEND/i.test(t)))
@@ -363,8 +372,14 @@ export function validateData(dataDir: string, o: ValidateOptions): Report {
     const mism = o.templateMismatches?.[f] ?? null
     if (mism?.length) warn(false, 'normalize.template-mismatch', `template differs from the first college's at colleges ${mism.join(', ')}; their rows were matched by UC course`)
     for (const note of o.notes?.[f] ?? []) {
-      if (/in no template, not added/.test(note)) warn(false, 'normalize.dropped', note)
+      // An ASSIST articulation with neither courses nor a reason is a broken record, not an answer (H-2): never publish it silently.
+      if (/articulation with no courses and no ASSIST reason/.test(note)) err(false, 'normalize.no-articulation-record', note)
+      else if (/unreadable sending course/.test(note)) warn(false, 'normalize.unreadable-course', note)
+      else if (/in no template, not added/.test(note)) warn(false, 'normalize.dropped', note)
       else if (/ambiguous section title/.test(note)) warn(false, 'normalize.ambiguous-title', note)
+      // round 7: content normalize could not read as ASSIST meant it is kept for a counselor, but must be visible
+      else if (/sending course-group conjunctions not applied/.test(note)) warn(false, 'normalize.conjunctions', note)
+      else if (/template cell not modelled|template section type is not|NFollowingUnits not modelled|unknown group instruction/.test(note)) warn(false, 'normalize.unmodelled', note)
       else info('normalize.note', note, f)
     }
     agreementsStats.push({

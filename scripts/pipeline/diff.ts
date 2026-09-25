@@ -111,19 +111,20 @@ export const writeBaseline = (dataDir: string, b: Baseline) => writeFileSync(joi
 /* ------------------------------------------------------------------ semantic diff */
 
 type Node = ReqNode | Requirement
-interface Level { need: number; slack: number; required: boolean; type: string; path: string }
+interface Level { need: number; slack: number; required: boolean; type: string; path: string; /** Unique per node within one tree. */ id: number }
 interface Row { key: string; req: Requirement; chain: Level[]; parentType: string; required: boolean }
 
 /** How many children a node needs, and how many it can skip. Optional children are not counted. */
-const levelOf = (n: ReqNode, path: string): Level => {
+const levelOf = (n: ReqNode, path: string, id: number): Level => {
   const m = n.children.filter((c) => c.kind === 'req' || c.required).length
   const need = n.type === 'AND' ? m : n.type === 'OR' ? Math.min(1, m) : Math.min(n.n ?? 1, m)
-  return { need, slack: m - need, required: n.required, type: n.type, path }
+  return { need, slack: m - need, required: n.required, type: n.type, path, id }
 }
 
 /** Rows keyed by id (#k for a repeated id), with the ancestor chain and whether every ancestor is required. */
 function rowsOf(root: ReqNode): Map<string, Row> {
   const out = new Map<string, Row>(), seen = new Map<string, number>()
+  let ids = 0
   const walk = (n: Node, chain: Level[], parent: ReqNode | null, path: string) => {
     if (n.kind === 'req') {
       const k = seen.get(n.id) ?? 0; seen.set(n.id, k + 1)
@@ -131,7 +132,7 @@ function rowsOf(root: ReqNode): Map<string, Row> {
       return
     }
     const p = `${path}/${n.title ?? n.type}`
-    const next = [...chain, levelOf(n, p)]
+    const next = [...chain, levelOf(n, p, ids++)]
     for (const c of n.children) walk(c, next, n, p)
   }
   walk(root, [], null, '')
@@ -147,6 +148,18 @@ export function semanticDiff(file: string, old: BaselineAgreement, neu: Baseline
   const add = (direction: Direction, code: string, where: string, detail: string) => out.push({ file, direction, code, where, detail })
   const R0 = rowsOf(old.root), R1 = rowsOf(neu.root)
   const reportedNodes = new Set<string>()
+  // Old nodes none of whose rows survive: the node itself is gone (matched by its set of row ids, not its path, since
+  // untitled siblings share a path).
+  const alive = new Set<number>()
+  for (const [k, r0] of R0) if (R1.has(k)) for (const l of r0.chain) alive.add(l.id)
+  /** The outermost gone ancestor of a removed row, if dropping it removes a required unit (its parent is an AND, or it
+   *  is the root) rather than one alternative of a surviving choice. */
+  const goneUnit = (r0: Row) => {
+    const i = r0.chain.findIndex((l) => !alive.has(l.id))
+    if (i < 0) return undefined
+    const l = r0.chain[i]
+    return (i === 0 || r0.chain[i - 1].type === 'AND') && l.need > 0 ? l : undefined
+  }
 
   for (const [k, r0] of R0) {
     const r1 = R1.get(k)
@@ -154,7 +167,13 @@ export function semanticDiff(file: string, old: BaselineAgreement, neu: Baseline
       // A row the student needed is gone: looser. Gone from an OR/N_OF: one alternative fewer (stricter).
       if (!r0.required) add('neutral', 'row-removed-optional', k, 'optional row removed')
       else if (r0.parentType === 'AND') add('looser', 'row-removed', k, 'required row removed')
-      else add('stricter', 'alternative-removed', k, `row removed from a ${r0.parentType} choice`)
+      else {
+        // A required OR/N_OF that disappears whole is a requirement the student no longer has to meet: looser, even
+        // when a new required row appears elsewhere (M1). Only a removal inside a surviving choice is stricter.
+        const g = goneUnit(r0)
+        if (g) { if (!reportedNodes.has(`gone|${g.id}`)) { reportedNodes.add(`gone|${g.id}`); add('looser', 'choice-removed', g.path, `required ${g.type} choice removed (needed ${g.need})`) } }
+        else add('stricter', 'alternative-removed', k, `row removed from a ${r0.parentType} choice`)
+      }
       continue
     }
     // The ancestor chain: required flags, how many children each node needs and how many it can skip.

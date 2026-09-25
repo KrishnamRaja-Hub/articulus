@@ -63,8 +63,10 @@ h1, h2, h3 { letter-spacing: -0.03em; text-wrap: balance; }
 
 .glass { background: rgba(255, 255, 255, 0.72); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); }
 
-[data-reveal] { visibility: hidden; }
-.no-js [data-reveal] { visibility: visible; }
+/* opacity only (never visibility): unrevealed blocks stay focusable and in the accessibility tree (round 7 H-1) */
+[data-reveal] { opacity: 0; }
+.no-js [data-reveal] { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { [data-reveal] { opacity: 1; } }
 
 select, input { @apply outline-none; }
 select:focus-visible, input:focus-visible, button:focus-visible { box-shadow: 0 0 0 3px rgba(47, 91, 234, 0.25); }

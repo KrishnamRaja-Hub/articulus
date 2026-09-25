@@ -21,7 +21,15 @@ const sidecars = (target: string) => {
   return { parent: dirname(t), re: new RegExp(`^\\.${basename(t).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}-(next|prev)-(\\d+)-(\\d+)$`) }
 }
 
-export function swapIn(stagingDir: string, targetDir: string, hook: SwapHook = () => {}) {
+/** Thrown by swapIn when the copy about to be published is not the tree that was validated. */
+export class StagedChangedError extends Error {}
+
+/**
+ * Swap stagingDir in as targetDir. With `expect`, the copy made next to the target is hashed (treeHash, with the same
+ * exclusions) before anything is renamed; a mismatch with the validated hash throws StagedChangedError and leaves
+ * targetDir untouched, so a tree changed after validation can never be published.
+ */
+export function swapIn(stagingDir: string, targetDir: string, hook: SwapHook = () => {}, expect?: { hash: string; exclude: string[] }) {
   const target = resolve(targetDir), parent = dirname(target), tag = `${process.pid}-${Date.now()}`
   const next = join(parent, `.${basename(target)}-next-${tag}`), prev = join(parent, `.${basename(target)}-prev-${tag}`)
   try {
@@ -29,6 +37,9 @@ export function swapIn(stagingDir: string, targetDir: string, hook: SwapHook = (
     //    the old data/ that staging does not produce (so a file another tool keeps in data/ is never lost).
     cpSync(stagingDir, next, { recursive: true })
     hook('copied')
+    // What is renamed into place is this copy: prove it is what was validated (before old entries are merged in,
+    // which were never part of the staged tree).
+    if (expect && treeHash(next, expect.exclude) !== expect.hash) throw new StagedChangedError('staged data changed after validation (hash of the copy to publish differs); refusing to publish')
     if (existsSync(target)) for (const e of readdirSync(target)) if (!existsSync(join(next, e))) cpSync(join(target, e), join(next, e), { recursive: true })
     hook('merged')
     // 2. data -> .data-prev-*, .data-next-* -> data. On failure between them, the previous directory is renamed back.
@@ -51,9 +62,10 @@ export function swapIn(stagingDir: string, targetDir: string, hook: SwapHook = (
 
 /**
  * Undo what a crashed swap left behind. Call only while holding the lock.
- * - data/ missing and a .data-prev-* exists: the crash hit between the two renames; the newest prev is the last good
- *   data (complete: it was renamed whole), so it is renamed back.
- * - Every other .data-next-* (possibly a partial copy) and .data-prev-* is deleted.
+ * - data/ missing and a .data-prev-* exists: the crash hit between the two renames; the newest prev that contains
+ *   index.json is the last good data (complete: it was renamed whole), so it is renamed back. Other prevs are kept
+ *   in that case (and when none is restorable); they are deleted by a later run that finds data/ in place.
+ * - Every .data-next-* (possibly a partial copy) is deleted, and every .data-prev-* when data/ exists.
  * Returns what it did (for the log).
  */
 export function recoverPublish(targetDir: string): string[] {
@@ -63,11 +75,19 @@ export function recoverPublish(targetDir: string): string[] {
     .map((x) => ({ path: join(parent, x.f), kind: x.m![1] as 'next' | 'prev', at: Number(x.m![3]) }))
     .sort((a, b) => b.at - a.at)
   if (!existsSync(target)) {
-    const prev = found.find((x) => x.kind === 'prev')
+    // The newest prev that is a complete data directory (has index.json); a junk or partial prev is never restored.
+    const prev = found.find((x) => x.kind === 'prev' && existsSync(join(x.path, 'index.json')))
     if (prev) {
       renameSync(prev.path, target)
       done.push(`restored ${basename(target)}/ from ${basename(prev.path)} (a previous publish crashed between renames)`)
       found.splice(found.indexOf(prev), 1)
+      // Other prevs are kept until a later run finds data/ in place (i.e. after this restore is known good).
+      for (const x of found) if (x.kind === 'prev') done.push(`kept ${basename(x.path)} (cleaned up by a later run)`)
+      found.splice(0, found.length, ...found.filter((x) => x.kind !== 'prev'))
+    } else if (found.some((x) => x.kind === 'prev')) {
+      // Nothing restorable: keep every prev for a human to inspect.
+      for (const x of found) if (x.kind === 'prev') done.push(`kept ${basename(x.path)} (no index.json; not restored)`)
+      found.splice(0, found.length, ...found.filter((x) => x.kind !== 'prev'))
     }
   }
   for (const x of found) {

@@ -286,3 +286,97 @@ The work was split into 14 short, file-scoped agents, then merged and checked to
 - The committed data predates `NORMALIZE_VERSION` 3. The first refresh will go to review because no baseline exists yet, and merging that PR creates the baseline.
 - The advisory-section rule is based on titles. Check UC Irvine CS, CSE and EE, and UC Davis EE and ME, on ASSIST after the refresh.
 - Large synthetic "choose 20 of 40" trees take 1–2 s outside the search loop. They run in the worker, so the page doesn't freeze.
+
+---
+
+## Rounds 6–8: wrong verdicts, import gaps, planner robustness, accessibility
+
+Testers covered verdicts, the planner, the data pipeline, the GitHub workflows and the browser UI. Fixers each owned separate files, then a final round re-ran every earlier repro against the finished code.
+
+**Round 6 checks:** 8 false "complete" and 3 false "incomplete" out of 621. All fixed except the "choose several" case, which is covered by the safety net below.
+
+| Finding | Fix |
+|---|---|
+| H-2: a missing ASSIST reason fell back to "No Course Articulated" | Falls back to `NOT_LISTED` (counselor). A record with no courses and no reason is the validator error `normalize.no-articulation-record`. |
+| "Course(s) Denied" read as UC-only | UC-only only for an allowlist of ASSIST reasons (`UC_ONLY_REASONS`: No Course Articulated, must be taken at the university after transfer, Never Articulated). Anything else sends the student to a counselor, in normalize, verify and the gate. |
+| M-1: And group with a blank item | The whole group is dropped. |
+| M-2: rows in only some colleges' templates were forced optional | They keep their section's required-ness; colleges without the row are `NOT_LISTED`. |
+| M-3: "ELECTIVE(S)" always optional | Optional only under the same rule as "ADDITIONAL". |
+| H-1: badge blocked on splits the plan resolves | `completedSplits` judges completed-course splits with the finished plan. |
+| L-1 / L-2: carried-over data green; empty agreement years skipped the check | Prior-year data is amber (`CAUTION_TITLE`). Empty years are untrusted. |
+| M-4: one course fills two slots of a "choose N" group | **Safety net, not a full fix:** a required choose-2+ group sets `ValidationResult.review`, and the badge turns a would-be green amber ("Looks covered — confirm the 'choose several' requirement with a counselor"). The validator warns `tree.choose-n-review`. No current agreement has one. |
+
+**Round 7: import**
+
+| Finding | Fix |
+|---|---|
+| C-1: `courseGroupConjunctions` ignored, so "A And (B or C)" read as "A or B or C" | Groups are combined as ASSIST says: an And range is the cross product, capped at 64 alternatives. A malformed or unknown conjunction list, or one over the cap, makes the row `NOT_LISTED` at that college, and the validator warns `normalize.conjunctions`. |
+| M-3: content normalize can't model was dropped silently | Unmodelled cells (GE, requirement text) become required counselor rows. Odd section types, `NFollowingUnits` and unknown instructions raise the warning `normalize.unmodelled`. |
+| L-1: case-sensitive conjunctions, NFollowing ignored, prefix case | Case-insensitive; NFollowing becomes N_OF; course ids are upper-cased. |
+
+**Round 7: engine and badge**
+
+| Finding | Fix |
+|---|---|
+| M-2: schema errors read loosely (lowercase "and" as choose-1, missing `required` as optional, empty course group satisfied by nothing, missing children crashed) | `malformed()` checks the schema of the whole tree and fails closed; nothing throws. |
+| Invalid trust values could show green | Anything except exactly "trusted" or "aging" is untrusted. |
+
+**Round 7: planner**
+
+| Finding | Fix |
+|---|---|
+| N-1: Statics, Dynamics and Circuits planned before calculus and physics | Ordering by title (ENGR, EGR, ENGN, ENGIN): after Calculus II and calculus-based mechanics; Circuits also after E&M; Dynamics after Statics. Went from 23/330 plans affected to 0. |
+| N-2: a planner error left "Planning…" forever and disabled the worker | The worker catches errors and replies. The client delivers an error plan, keeps the worker, and has a 10 s watchdog. The badge shows "Couldn't build a plan". |
+| N-3: NaN or string units, NaN or fractional year, or Summer start made the solver hang or return garbage | Inputs are validated with clear errors, and the pack loop is bounded. A tree with a row that has no groups list gives an invalid plan instead of throwing. |
+| N-4: `chosen` named courses that weren't planned (honors twins) | It names the planned courses. |
+
+**Round 7: pipeline and workflows**
+
+| Finding | Fix |
+|---|---|
+| High: a normalize-version bump auto-published without review | A renormalize pass that needs review forces the run's decision to review. The workflow also passes `--no-auto-renormalize`. |
+| M1: a removed required choice passed as "stricter" when a row was added | New looser change `choice-removed`, which goes to review. |
+| M2: data edited after validation could publish | `swapIn` re-hashes the copy and refuses on a mismatch. |
+| L1 / L2: recovery could pick an incomplete backup; duplicate listing entries were stored | Only a complete backup is restored. Exact duplicates are dropped; a conflicting duplicate fails the fetch. |
+| Workflows | CI gate checks runs from any event. Superseded PRs close on every route. Off-hour cron. Numeric, bounded `FRESHNESS_MAX_HOURS`, and the freshness step no longer exits early on a failed live fetch (so the stale issue still opens). No `${{ }}` in `run:`. `.nvmrc` and `engines >=22.18`. UTF-8-safe truncation. Docs cover PR-mode deploy and the required external monitor. |
+
+**Round 7: browser UI**
+
+| Finding | Fix |
+|---|---|
+| H-1: keyboard users couldn't Tab to the Planner (hidden until scrolled into view) | Reveal uses opacity only, and focus reveals a block at once. |
+| H-2: two selects had no accessible name | `Select` requires a label. |
+| M-1 / M-2: a wrong red verdict flashed for one frame; a mixed old-plan/new-selection frame | Planning state comes from the inputs on every render (`planState.ts`). A plan counts only for the exact inputs it was solved for. |
+| M-3: old plan fully visible while planning | Dimmed, inert, with "Updating the plan…". |
+| L items | "Try again" on the error screen (clear of the nav); chips named "Remove …" with focus kept; prior-year and choose-several caveats shown together. |
+
+**Final checks:**
+- `tsc -b` and `tsc -p tests/independent`: clean.
+- vitest: 936 pass.
+- Independent suite: 333 pass.
+- Smoke: 95 of 95.
+- Build: clean.
+- `validate:data:ci`: exit 0.
+- actionlint: clean.
+- Re-verification: every earlier repro passes. Browser checks at 375, 768 and 1280 px: 11 of 11.
+
+**Still open:**
+- **The bundled data predates these fixes.** It shows as untrusted until the first refresh. For example, the legacy UCLA CS file still lets CIS 22A alone count for COM SCI 32.
+- **The ASSIST conjunction field names are unconfirmed.** They are our best knowledge, and a mismatch fails closed. Confirm on the first real fetch.
+- **Choose-N:** a full fix (each course fills one slot, in verify and the solver) is still to do. The safety net covers it until then.
+- **Known plan-quality issues:**
+  - Same-titled courses are treated as equal (Foothill "Calculus").
+  - Scheduling doesn't put the longest prerequisite chain first.
+  - Duplicate course content across colleges.
+  - No re-optimization after prerequisites are added.
+  - Honors combined calculus has no placement caveat.
+  - Home college and distance are ignored.
+  - Registration cutoffs use UTC.
+  - Summer is never planned.
+  - `MAX_TERMS` is the same for semester and quarter schools.
+- **Low items:**
+  - Retrying the same failed agreement file needs a page reload (the browser caches the failed load).
+  - Focus isn't moved after "Try again".
+  - An empty schedule header shows on a planning failure.
+  - `--first-publish` on the command line skips review.
+  - `NFollowingUnits` is read as "take all".

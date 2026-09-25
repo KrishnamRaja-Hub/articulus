@@ -5,7 +5,7 @@ import institutions from '../../data/institutions.json'
 import type { Agreement, Course, CourseId, Institution, Plan, ReqNode, Requirement } from './types'
 import { solve, treeState, type SolveOptions } from './solve'
 import { has, honorsColleges, malformed, reqStatus, verifySchedule } from './verify'
-import { NOT_LISTED } from './normalize'
+import { isUcOnlyProof, NOT_LISTED } from './normalize'
 
 const ME = me as unknown as Agreement, MAE = mae as unknown as Agreement
 const DA = 113, FH = 51, SM = 137
@@ -384,7 +384,7 @@ type N = ReqNode | Requirement
 type St = 'sat' | 'def' | 'open'
 const kidsOf = (n: ReqNode) => n.children.filter((c) => c.kind === 'req' || c.required)
 const need = (n: ReqNode) => (n.type === 'OR' ? 1 : n.n ?? 1)
-const isUcOnly = (r: Requirement) => !r.groups.length && Object.values(r.noArticulation ?? {}).some((w) => w !== NOT_LISTED)
+const isUcOnly = (r: Requirement) => !r.groups.length && Object.values(r.noArticulation ?? {}).some(isUcOnlyProof)
 /** The rules as stated (FIXES round 3), written out again: `sat`, `def` (passes as UC-only), `open`. */
 const stateOf = (n: N, ok: (r: Requirement) => boolean): St => {
   if (n.kind === 'req') return ok(n) ? 'sat' : isUcOnly(n) ? 'def' : 'open'
@@ -628,4 +628,35 @@ describe('solve: matches a brute-force oracle on random agreements', () => {
       expect([...p2.unsolvable].sort()).toEqual([...p1.unsolvable].sort())
     }
   }, 600_000)
+})
+
+describe('chosen names the courses planned (N-4)', () => {
+  it('UCLA CS at De Anza: honors chemistry in the plan is reported as honors chemistry', async () => {
+    const cs = (await import('../../data/agreements/89-computer-science-b-s.json')).default as unknown as Agreement
+    const p = solve(new Set(), cs, { allowed: [DA], home: DA, startTerm: { season: 'Fall', year: 2026 } })
+    const planned = new Set(plannedOf(p))
+    expect(planned.has(`${DA}:CHEM 1AH`)).toBe(true) // the repro: the plan takes the honors twins
+    for (const [id, g] of Object.entries(p.chosen)) {
+      expect(g.courses.every((c) => planned.has(c)), id).toBe(true)
+      if (p.result.satisfied[id]) expect([...g.courses].sort(), id).toEqual([...p.result.satisfied[id].courses].sort())
+    }
+  })
+  it('no listed group matches the plan exactly: the closest listing, each course named as planned', () => {
+    // the row lists X 1 + X 2 and X 1H + X 2H (so twins mix); the catalog has only X 1H and X 2
+    const a = agreement(and(req('R', [['1:X 1', '1:X 2'], ['1:X 1H', '1:X 2H']])), [['1:X 1H', 4], ['1:X 2', 4]])
+    const p = solve(new Set(), a, { allowed: [1], home: 1 })
+    expect(plannedOf(p).sort()).toEqual(['1:X 1H', '1:X 2'])
+    expect([...p.chosen.R.courses].sort()).toEqual(['1:X 1H', '1:X 2'])
+    expect(p.chosen.R.institutionId).toBe(1)
+  })
+})
+
+describe('round 8 N-1: a tree the planner cannot walk', () => {
+  it('returns an invalid plan with no schedule instead of throwing', () => {
+    const bad = { ...(me as unknown as Agreement), root: { kind: 'node', type: 'AND', required: true, children: [{ kind: 'req', id: 'Q', label: 'Q', units: 4 }] } } as unknown as Agreement
+    const p = solve(new Set(), bad, { allowed: [113], home: 113, startTerm: { season: 'Fall', year: 2026 } } as SolveOptions)
+    expect(p.terms).toEqual([])
+    expect(p.result.isValid).toBe(false)
+    expect(p.unsolvable[0]).toMatch(/malformed/)
+  })
 })

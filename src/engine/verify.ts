@@ -1,9 +1,16 @@
 import type { Agreement, CourseGroup, CourseId, Partial, ReqNode, Requirement, ValidationResult, Violation } from './types'
-import { NOT_LISTED } from './normalize.ts'
+import { isUcOnlyProof } from './normalize.ts'
 
 export interface ReqStatus { satisfied?: CourseGroup; partials: Partial[] }
 
 const stripH = (id: CourseId) => id.replace(/H$/, '')
+
+const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
+/** A group some set of courses can complete: at least one course id. An empty `courses` is satisfied by nothing (M-2). */
+const usable = (g: unknown): g is CourseGroup =>
+  isObj(g) && Array.isArray(g.courses) && g.courses.length > 0 && g.courses.every((c) => typeof c === 'string')
+/** The row's usable groups; a malformed row (no `groups` array, M-2) has none, so it never passes on CC courses. */
+const groupsOf = (r: Requirement): CourseGroup[] => (Array.isArray(r.groups) ? r.groups.filter(usable) : [])
 
 /**
  * ASSIST marks series where "Regular and honors courses may be combined": the same college lists a regular
@@ -11,8 +18,9 @@ const stripH = (id: CourseId) => id.replace(/H$/, '')
  * Returns the colleges where the row has such a twin; only there are a course and its honors twin interchangeable.
  */
 export const honorsColleges = (req: Requirement): ReadonlySet<number> => {
-  const keys = req.groups.map((g) => `${g.institutionId}|${g.courses.map(stripH).sort().join('+')}`)
-  return new Set(req.groups.filter((_, i) => keys.indexOf(keys[i]) !== i).map((g) => g.institutionId))
+  const groups = groupsOf(req)
+  const keys = groups.map((g) => `${g.institutionId}|${g.courses.map(stripH).sort().join('+')}`)
+  return new Set(groups.filter((_, i) => keys.indexOf(keys[i]) !== i).map((g) => g.institutionId))
 }
 
 /** True if any college in the row has an honors twin. Pass `honorsColleges(req)` to `has` for the per-college rule. */
@@ -41,7 +49,7 @@ export function reqStatus(req: Requirement, taken: Set<CourseId>): ReqStatus {
   const best = new Map<number, Partial>() // one partial per college: its regular and honors groups overlap
   const mix = honorsColleges(req)
   let done: { g: CourseGroup; exact: number; swapped: number } | undefined
-  for (const g of req.groups) {
+  for (const g of groupsOf(req)) {
     if (g.courses.every((c) => has(taken, c, mix))) {
       // fewest honors swaps first (groups can differ in length), then most courses taken as listed; ties keep ASSIST order
       const exact = g.courses.filter((c) => taken.has(c)).length, swapped = g.courses.length - exact
@@ -81,7 +89,8 @@ interface Res { st: St; art: boolean; miss: string[]; def: string[]; kids: Res[]
 
 const passes = (r: Res) => r.st !== 'open'
 /** Required children only: optional (recommended) subtrees never fail, satisfy, or defer anything for their parent. */
-const counted = (r: Res) => r.node.kind === 'req' || r.node.required
+// A `required` that is not `false` counts (M-2: fail closed; malformed() reports the non-boolean).
+const counted = (r: Res) => !isObj(r.node) || r.node.kind === 'req' || r.node.required !== false
 const uniq = (ids: string[]) => [...new Set(ids)]
 // "(B + C)" names an alternative by what it still lacks; a UC-only one (listed only when a node cannot be met) by its rows
 const alt = (rs: Res[]) => rs.map((r) => {
@@ -93,11 +102,13 @@ const alt = (rs: Res[]) => rs.map((r) => {
  * Fold one subtree; `leafSt` decides each row. Children are all evaluated, so optional rows are still reported.
  */
 function fold(n: ReqNode | Requirement, leafSt: (r: Requirement) => St): Res {
+  // not a node or row at all (M-2): never passes; malformed() reports it
+  if (!isObj(n)) return { st: 'open', art: false, miss: [], def: [], kids: [], node: n }
   if (n.kind === 'req') {
     const st = leafSt(n)
     return { st, art: canRoute(n), miss: st === 'open' ? [n.id] : [], def: st === 'def' ? [n.id] : [], kids: [], node: n }
   }
-  const kids = n.children.map((c) => fold(c, leafSt))
+  const kids = (Array.isArray(n.children) ? n.children : []).map((c) => fold(c, leafSt))
   const req = kids.filter(counted)
   const sat = req.filter((r) => r.st === 'sat')
   // among satisfied alternatives, rely on the ones that leave the least for the university (stable)
@@ -111,6 +122,8 @@ function fold(n: ReqNode | Requirement, leafSt: (r: Requirement) => St): Res {
     const def = req.flatMap((r) => r.def) // an open child still commits its own deferrals
     return res(open.length ? 'open' : sat.length || !req.length ? 'sat' : 'def', open.flatMap((r) => r.miss), def)
   }
+  // an unknown type ('and', undefined, ...) is not read as choose-1 (M-2): it never passes; malformed() reports it
+  if (n.type !== 'OR' && n.type !== 'N_OF') return res('open', req.flatMap((r) => r.miss), [])
   const need = n.type === 'OR' ? 1 : (n.n ?? 1)
   // a: still open but reachable with CC courses; d: passes only as UC-only. A row ASSIST never mentions is neither.
   const a = req.filter((r) => r.st === 'open' && r.art), d = req.filter((r) => r.st === 'def')
@@ -125,21 +138,23 @@ function fold(n: ReqNode | Requirement, leafSt: (r: Requirement) => St): Res {
 }
 
 /**
- * UC-only: no CC group anywhere in the agreement AND ASSIST itself says so for at least one college. A row that is
- * merely absent from the payloads (NOT_LISTED) is not proof; it stays open so the student is sent to a counselor
- * rather than told to take it at the university.
+ * UC-only: no CC group anywhere in the agreement AND ASSIST itself says so for at least one college, in one of the
+ * allowlisted reasons (isUcOnlyProof, round 7 M-1). A row merely absent from the payloads (NOT_LISTED), or with any
+ * other stored value ("Course(s) Denied", "Pending", blank, null, a new wording), is not proof: it stays open so the
+ * student is sent to a counselor rather than told to take it at the university.
  */
 export const ucOnly = (r: Requirement) =>
-  r.groups.length === 0 && Object.values(r.noArticulation ?? {}).some((why) => why !== NOT_LISTED)
+  Array.isArray(r.groups) && r.groups.length === 0 && isObj(r.noArticulation) && Object.values(r.noArticulation).some(isUcOnlyProof)
 
 const routable = new WeakMap<ReqNode | Requirement, boolean>()
 /** True iff taking the CC courses the agreement lists (leaving UC-only rows for the university) would make it pass. */
 export function canRoute(n: ReqNode | Requirement): boolean {
-  if (n.kind === 'req') return n.groups.length > 0 || ucOnly(n)
+  if (!isObj(n)) return false
+  if (n.kind === 'req') return groupsOf(n).length > 0 || ucOnly(n)
   let v = routable.get(n)
   if (v === undefined) {
     routable.set(n, false) // the fold asks for n's own art, which this pass discards; guard the recursion
-    routable.set(n, (v = passes(fold(n, (r) => (r.groups.length ? 'sat' : ucOnly(r) ? 'def' : 'open')))))
+    routable.set(n, (v = passes(fold(n, (r) => (groupsOf(r).length ? 'sat' : ucOnly(r) ? 'def' : 'open')))))
   }
   return v
 }
@@ -150,6 +165,7 @@ const deferrable = new WeakMap<ReqNode | Requirement, boolean>()
  * no sending college articulates. Optional children are ignored; the node's own `required` flag is not consulted.
  */
 export function isDeferrable(n: ReqNode | Requirement): boolean {
+  if (!isObj(n)) return false
   if (n.kind === 'req') return ucOnly(n)
   let v = deferrable.get(n)
   if (v === undefined) deferrable.set(n, (v = passes(fold(n, (r) => (ucOnly(r) ? 'def' : 'open')))))
@@ -162,14 +178,40 @@ export function blockingSplits(r: ValidationResult): Violation[] {
 }
 
 /**
- * Why the tree is degenerate, or null (TESTER2 M-3). The fold reads two shapes as met with nothing taken: a required AND
- * with no required child, and an N_OF asking for fewer than 1; a tree with no required row at all is met the same way.
- * (An OR or N_OF with no required child already stays open.) The data gate rejects these (tree.empty, tree.empty-node,
- * tree.n-of, tree.no-required, tree.no-required-children); verifySchedule also fails closed on them, so a gate bypass
- * can never show green. Only nodes reached through required nodes count: optional subtrees never decide a verdict.
+ * Why the tree is malformed or degenerate, or null. verifySchedule fails closed on every one of these, so a data-gate
+ * bypass can never show green; the gate rejects them too (tree.schema, group.schema, tree.empty, tree.empty-node,
+ * tree.n-of, tree.no-required, tree.no-required-children).
+ * - Schema (round 7 M-2), anywhere in the tree, optional subtrees included: a node that is not { kind: "node", type:
+ *   AND|OR|N_OF, required: boolean, children: [] } (the fold would otherwise read an unknown type as choose-1 and a
+ *   missing `required` as optional), or a row with no `groups` array or a group with no course ids (an empty group is
+ *   satisfied by nothing). The fold itself never throws on these and reads them as unmet.
+ * - Degenerate (TESTER2 M-3), only through required nodes (optional subtrees never decide a verdict): the fold reads a
+ *   required AND with no required child, and an N_OF asking for fewer than 1, as met with nothing taken; a tree with no
+ *   required row at all is met the same way. (An OR or N_OF with no required child already stays open.)
  */
 export function malformed(root: ReqNode): string | null {
-  let rows = 0, why: string | null = null
+  let rows = 0, schema: string | null = null, why: string | null = null
+  const seen = new Set<unknown>()
+  const check = (n: unknown, path: string): void => {
+    if (!isObj(n)) return void (schema ??= `${path} is not a node or requirement`)
+    if (seen.has(n)) return
+    seen.add(n)
+    if (n.kind === 'req') {
+      const id = typeof n.id === 'string' && n.id ? n.id : path
+      if (typeof n.id !== 'string' || !n.id) schema ??= `${path}: requirement has no id`
+      if (!Array.isArray(n.groups)) schema ??= `${id} has no course groups`
+      else if (!n.groups.every(usable)) schema ??= `${id} has a course group with no courses`
+      return
+    }
+    const name = typeof n.title === 'string' && n.title ? `"${n.title}"` : path
+    if (n.kind !== 'node') schema ??= `${name} is neither a node nor a requirement (kind ${JSON.stringify(n.kind)})`
+    if (n.type !== 'AND' && n.type !== 'OR' && n.type !== 'N_OF') schema ??= `${name} has unknown type ${JSON.stringify(n.type)}`
+    if (typeof n.required !== 'boolean') schema ??= `${name} has no required flag`
+    if (!Array.isArray(n.children)) return void (schema ??= `${name} has no children`)
+    n.children.forEach((c, i) => check(c, `${path}/${i}`))
+  }
+  check(root, 'root')
+  if (schema) return schema
   const walk = (n: ReqNode | Requirement) => {
     if (n.kind === 'req') return void rows++
     const req = n.children.filter((c) => c.kind === 'req' || c.required)
@@ -180,6 +222,21 @@ export function malformed(root: ReqNode): string | null {
   }
   if (root.required) walk(root)
   return why ?? (rows ? null : 'the requirement tree has no required rows')
+}
+
+/**
+ * Safety net for M-4: required "choose N of" groups asking for 2 or more, reached through required nodes. One course
+ * may still fill two slots in such a group, so the badge sends the student to a counselor instead of showing green.
+ */
+export function chooseMany(root: ReqNode): string[] {
+  const out: string[] = []
+  const walk = (n: ReqNode | Requirement) => {
+    if (!isObj(n) || n.kind === 'req' || !Array.isArray(n.children)) return
+    if (n.type === 'N_OF' && (n.n ?? 1) >= 2) out.push(n.title ? `"${n.title}"` : `choose ${n.n} of ${n.children.length}`)
+    n.children.filter((c) => isObj(c) && (c.kind === 'req' || c.required)).forEach(walk)
+  }
+  if (isObj(root) && root.required) walk(root)
+  return out
 }
 
 /** Evaluate every requirement, then fold the tree. */
@@ -202,6 +259,7 @@ export function verifySchedule(taken: Set<CourseId>, agreement: Agreement): Vali
   // Needed rows, top down from a failing root: AND needs every failing child, OR / N_OF every failing CC alternative.
   const needed = new Set<string>()
   const mark = (r: Res) => {
+    if (!isObj(r.node)) return
     if (r.node.kind === 'req') return void needed.add(r.node.id)
     const and = r.node.type === 'AND'
     for (const k of r.kids) if (counted(k) && !passes(k) && (and || k.art)) mark(k)
@@ -209,10 +267,12 @@ export function verifySchedule(taken: Set<CourseId>, agreement: Agreement): Vali
   if (!passes(root)) mark(root)
   for (const v of out.splitSeriesViolations) v.blocking = needed.has(v.requirementId)
 
-  if (!passes(root) && agreement.root.required) out.missing = root.miss
+  if (!passes(root) && agreement.root?.required !== false) out.missing = root.miss
   out.deferred = uniq(root.def)
   out.isValid = passes(root) && !out.splitSeriesViolations.some((v) => v.blocking)
   const bad = malformed(agreement.root)
   if (bad) { out.isValid = false; out.missing = [...out.missing, `Agreement data is malformed (${bad}); check ASSIST`] }
+  const review = chooseMany(agreement.root)
+  if (review.length) out.review = review
   return out
 }

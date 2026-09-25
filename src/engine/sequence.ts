@@ -18,15 +18,19 @@ import type { CourseId } from './types'
  *   or by the series guess (1C < 2A): the math ladder puts both after Calculus II.
  *   chem     General Chemistry I < II < III < Organic Chemistry (any) ; Organic I < II < III
  *   cs       Intro Programming < Data Structures, Intro Programming < Assembly / Architecture
+ *   engr     (ENGR / EGR / ENGN / ENGIN) Statics, Dynamics, Strength of Materials, Circuit / Network Analysis each after
+ *            calculus-based Mechanics and Calculus II (and below); Circuits also after calculus-based E&M; Dynamics and
+ *            Strength of Materials after Statics. Graphics, Materials science, Intro, Programming, Thermo: no order.
+ *            Pack-only: prereq.ts does not add these as enrollment prerequisites (an edge needs both ends planned).
  * Generic titles ("Calculus", "General Chemistry", "Organic Chemistry") take their level from the letter (1A = I).
  * Same level never orders: a lecture and its lab ("Circuit Analysis" + "... Lab", PHYC 4A + 4AL) may share a term.
  *   co       a lab is never earlier than its lecture at the same college (ENGN 20L with ENGN 20, CHEM 24 "Organic
  *            Chemistry II Laboratory" with CHEM 22 "Organic Chemistry II"); pack puts it in the lecture's term when it fits.
  * Cycles: edges are added strongest rule first; one that would close a cycle is dropped and reported. */
 
-export type Rule = 'letter' | 'co' | 'ordinal' | 'title' | 'math' | 'physics' | 'chem' | 'cs' | 'series'
+export type Rule = 'letter' | 'co' | 'ordinal' | 'title' | 'math' | 'physics' | 'chem' | 'cs' | 'engr' | 'series'
 /** Strongest first. `series` is last: it is a guess about the college's numbering, not read from any title. */
-export const RULES: Rule[] = ['letter', 'co', 'ordinal', 'title', 'math', 'physics', 'chem', 'cs', 'series']
+export const RULES: Rule[] = ['letter', 'co', 'ordinal', 'title', 'math', 'physics', 'chem', 'cs', 'engr', 'series']
 /** `from` strictly before `to`; for rule 'co', `to` (the lab) is in the same term as `from` or later. */
 export interface Edge { from: CourseId; to: CourseId; rule: Rule }
 
@@ -59,7 +63,7 @@ const ordinals = (w: string[]) => {
 const isLab = (t: string) => /\blab(oratory)?\b/i.test(t) && !/\bwith lab/i.test(t)
 
 type Lvl = { lo: number; hi: number }
-type Topic = { ladder: 'math' | 'physics' | 'chem' | 'cs'; kind: string; lvl?: Lvl; calc?: boolean }
+type Topic = { ladder: 'math' | 'physics' | 'chem' | 'cs' | 'engr'; kind: string; lvl?: Lvl; calc?: boolean }
 
 /** Level from the title's ordinals; for a generic title, from the course letter (MATH 1C "Calculus" -> 3). */
 const level = (id: CourseId, w: string[], generic: boolean): Lvl | undefined => {
@@ -108,12 +112,26 @@ export const topic = (id: CourseId, title: string): Topic | undefined => {
     if (/^(introduction to (computer )?programming|introduction to computers and programming|beginning programming)\b/.test(t)
       || /\bprogramming( language)? (i|1)\b/.test(t)) return { ladder: 'cs', kind: 'intro' }
   }
+  if (/^(ENGR|EGR|ENGN|ENGIN)$/.test(p) && !/\b(digital|logic)\b/.test(t)) {
+    // "Statics and Strength of Materials" is Statics; "Statics/Vector Mechanics", "Engineering Mechanics - Dynamics"
+    if (/\bstatics\b/.test(t)) return { ladder: 'engr', kind: 'statics' }
+    if (/\b(strength|mechanics) of materials\b/.test(t)) return { ladder: 'engr', kind: 'mat' }
+    if (/\bdynamics\b/.test(t)) return { ladder: 'engr', kind: 'dyn' }
+    // "Circuit Analysis", "Engineering Circuits", "Electronic Circuits", "Introduction to Network Analysis"
+    if (/\bcircuits?\b|\bnetwork analysis\b/.test(t)) return { ladder: 'engr', kind: 'circ' }
+  }
   return undefined
 }
 
 const below = (a?: Lvl, b?: Lvl) => !!a && !!b && a.hi < b.lo
 /** true when topic a must come strictly before topic b. */
 const before = (a: Topic, b: Topic): boolean => {
+  // engineering: Calculus II (and below) and calculus-based Mechanics first; Circuits after E&M; Statics before the rest
+  if (b.ladder === 'engr') {
+    if (a.ladder === 'math') return a.kind === 'calc' && a.lvl!.hi <= 2
+    if (a.ladder === 'physics') return !!a.calc && (a.kind === 'M' || (a.kind === 'E' && b.kind === 'circ'))
+    return a.ladder === 'engr' && a.kind === 'statics' && (b.kind === 'dyn' || b.kind === 'mat')
+  }
   // Calculus I (and Precalculus) < calculus-based Mechanics; Calculus II (and below) < calculus-based E&M
   if (a.ladder === 'math' && b.ladder === 'physics')
     return a.kind === 'calc' && !!b.calc && (b.kind === 'M' ? a.lvl!.hi <= 1 : b.kind === 'E' && a.lvl!.hi <= 2)
@@ -173,7 +191,8 @@ export function prereqs(courses: CourseId[], titleOf: (c: CourseId) => string = 
     const ta = tit.get(a), tb = tit.get(b)
     if (ta && tb && ta.base === tb.base && ta.n < tb.n) add(a, b, 'title')
     const pa = tops.get(a), pb = tops.get(b)
-    if (pa && pb && before(pa, pb)) add(a, b, pa.ladder)
+    // into an engineering course the rule is 'engr' (pack order only; prereq.ts adds no enrollment prerequisite for it)
+    if (pa && pb && before(pa, pb)) add(a, b, pb.ladder === 'engr' ? 'engr' : pa.ladder)
   }
   // Strongest rule first, then ids: an edge that would close a cycle is dropped (deterministic).
   all.sort((x, y) => RULES.indexOf(x.rule) - RULES.indexOf(y.rule) || (x.from < y.from ? -1 : x.from > y.from ? 1 : x.to < y.to ? -1 : x.to > y.to ? 1 : 0))
