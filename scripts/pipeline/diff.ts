@@ -330,7 +330,8 @@ export function decide({ prev, next, baseline, behavioral = true }: DecideInput)
   const meta = baseline ? { reviewedAt: baseline.reviewedAt, academicYear: baseline.academicYear, normalizeVersion: baseline.normalizeVersion } : null
 
   if (!prev && !base) {
-    return { decision: 'publish', reasons: ['first publish: no previous data; the baseline is initialized from this data'], reference: 'none', baseline: null, changes: [], counts, restored: 0, drops: [], updateBaseline: true }
+    // Nothing to compare against means nobody reviewed any of this data: never publish it on its own.
+    return { decision: 'review', reasons: ['first publish: no previous data or reviewed baseline to compare against, so all of this data needs human review; merging it creates the baseline'], reference: 'none', baseline: null, changes: [], counts, restored: 0, drops: [], updateBaseline: true }
   }
   if (!base) reasons.push(`no reviewed baseline (data/${BASELINE_FILE}); this review establishes it`)
   else {

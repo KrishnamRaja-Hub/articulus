@@ -96,3 +96,17 @@ export function honorsNote(h: HonorsHint): string {
     : 'Regular and honors versions usually count the same'
   return `ASSIST lists ${listed}, not ${took}, for this row. ${why} — confirm with a counselor before retaking.`
 }
+
+export const CALCULUS_PLACEMENT_NOTE = 'Honors/combined calculus may need a placement or instructor approval — check with a counselor.'
+
+/**
+ * Whether a planned course is an honors or combined/accelerated calculus course, which can need a placement or
+ * instructor approval. Conservative: the title must name calculus (not calculus-based physics or the like), and the
+ * course must be marked honors (course number ending in H, or "Honors" in the title) or combined/accelerated.
+ * Informational only: it never changes a verdict.
+ */
+export function isHonorsCalculus(id: CourseId, title: string | undefined): boolean {
+  const t = title ?? ''
+  if (!/\bcalculus\b/i.test(t) || /physics|\bbased\b/i.test(t)) return false
+  return /H$/.test(code(id).trim()) || /\b(honors|combined|accelerated)\b/i.test(t)
+}

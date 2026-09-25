@@ -35,8 +35,21 @@ describe('pipeline end to end (mock ASSIST)', () => {
   it('happy path via the CLI: writes agreements, index, institutions, raw, meta.json and the report', async () => {
     const m = await serve()
     const dir = tmp('cli'), data = join(dir, 'data')
-    const { code, out } = await node(['scripts/fetch-assist.ts', '--skip-suites', '--first-publish', '--data-dir', data, '--work-dir', join(dir, 'work')], fastEnv(m.url))
+    const args = ['scripts/fetch-assist.ts', '--skip-suites', '--first-publish', '--data-dir', data, '--work-dir', join(dir, 'work')]
+    // Fix 8: --first-publish alone never publishes (a first publish is always review) ...
+    const refused = await node(args, fastEnv(m.url, { DATA_REFRESH_ON_REVIEW: '' }))
+    expect(refused.code, refused.out).toBe(1)
+    expect(refused.out).toMatch(/release decision: review/)
+    expect(refused.out).toMatch(/DATA_REFRESH_ON_REVIEW=pr/)
+    expect(existsSync(data)).toBe(false)
+    // ... not even with --accept-large-change ...
+    const accepted = await node([...args, '--accept-large-change'], fastEnv(m.url, { DATA_REFRESH_ON_REVIEW: '' }))
+    expect(accepted.code, accepted.out).toBe(1)
+    expect(existsSync(data)).toBe(false)
+    // ... it is staged for a reviewed PR through the review path.
+    const { code, out } = await node(args, fastEnv(m.url, { DATA_REFRESH_ON_REVIEW: 'pr' }))
     expect(code, out).toBe(0)
+    expect(out).toMatch(/release decision: review/)
     const meta = readJson(join(data, 'meta.json'))
     expect(meta).toMatchObject({ schema: 1, normalizeVersion: NORMALIZE_VERSION, academicYear: { id: 77, code: '2026-2027' }, validation: { passed: true, report: 'data/validation-report.json' } })
     const index = readJson(join(data, 'index.json'))

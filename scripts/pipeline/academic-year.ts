@@ -1,12 +1,26 @@
 /* Academic year discovery. DATA_CONTRACT.md: the year in effect runs July 1 to June 30 (from 2026-07-01: "2026-2027").
+   The date is the calendar date in California (America/Los_Angeles, src/terms.ts pacificDate), the same rule the app
+   uses (src/data-trust.ts academicYearOn), so the pipeline and the app always agree on the year in effect.
    Until ASSIST publishes the new year's agreements, the prior year is carried over and marked as such. */
+
+import { pacificDate } from '../../src/terms.ts'
 
 export interface AcademicYear { id: number; code: string }
 
-/** Fall year of the academic year in effect on `now` (UTC): July or later is this year's fall. */
-export const fallYearInEffect = (now: Date) => (now.getUTCMonth() >= 6 ? now.getUTCFullYear() : now.getUTCFullYear() - 1)
+/** Fall year of the academic year in effect on `now` (the California date): July or later is this year's fall.
+ *  NaN when the date can't be worked out (codeInEffect then throws). */
+export const fallYearInEffect = (now: Date) => {
+  const d = pacificDate(now)
+  return d ? (d.month >= 7 ? d.year : d.year - 1) : NaN
+}
 export const codeFor = (fallYear: number) => `${fallYear}-${fallYear + 1}`
-export const codeInEffect = (now: Date) => codeFor(fallYearInEffect(now))
+/** Throws when the California date can't be worked out (invalid date, or a runtime without that time zone), so a run
+ *  stops with a clear message instead of looking for a "NaN-NaN" year. */
+export const codeInEffect = (now: Date) => {
+  const fall = fallYearInEffect(now)
+  if (Number.isNaN(fall)) throw new Error(`Can't work out today's date in California from ${String(now)}; refusing to guess the academic year`)
+  return codeFor(fall)
+}
 
 /**
  * Parse /api/AcademicYears. Known shape: [{ "Id": 76, "FallYear": 2025 }, ...]. Accepts camelCase and a code field

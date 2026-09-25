@@ -10,9 +10,18 @@ export type { Season, StartTerm, TermSystem }
 
 export interface CalendarTerm { system: TermSystem; season: Season; year: number; start: number; end: number }
 
-/** The next term open for registration (src/terms.ts holds the cutoffs); Fall of this year for an invalid date. */
+/** The next term open for registration (src/terms.ts holds the cutoffs). When the California date of `now` cannot be
+ *  determined (invalid date, or a runtime without the America/Los_Angeles zone) this falls back to Fall of the year
+ *  after the UTC year of `now` (or of the system clock, when `now` is invalid). That term is never already closed:
+ *  its registration closes on Sep 20 (Aug 20 for semesters) of that later year, which no instant in the UTC year can
+ *  have reached. It may skip a term that is still open; callers that can ask the student should use
+ *  src/terms.ts nextOpenTerm, which returns null instead. Callers here (solve.ts default start term) need a term. */
 export function nextOpenTerm(now: Date = new Date(), system: TermSystem = 'quarter'): StartTerm {
-  return openTerm(now, system) ?? { season: 'Fall', year: new Date().getUTCFullYear() }
+  const open = openTerm(now, system)
+  if (open) return open
+  const valid = now instanceof Date && !Number.isNaN(now.getTime())
+  const utcYear = (valid ? now : new Date()).getUTCFullYear()
+  return { season: 'Fall', year: (Number.isFinite(utcYear) ? utcYear : 2026) + 1 }
 }
 
 const SEASONS: Record<string, Season> = { fall: 'Fall', winter: 'Winter', spring: 'Spring' }

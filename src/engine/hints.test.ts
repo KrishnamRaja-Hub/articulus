@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Agreement, ReqNode, Requirement } from './types'
-import { honorsHint, honorsHints, honorsNote } from './hints'
+import { CALCULUS_PLACEMENT_NOTE, honorsHint, honorsHints, honorsNote, isHonorsCalculus } from './hints'
 import { verifySchedule } from './verify'
 import ucsdMae from '../../data/agreements/7-mae-mechanical-engineering-b-s.json'
 import ucsdEce from '../../data/agreements/7-ece-electrical-engineering-b-s.json'
@@ -148,5 +148,26 @@ describe('honors companions (TESTER1_REPORT L-4): UC Davis MAT 021A lists Foothi
     const r = req('X 9', [[1, ['1:X 1A']], [1, ['1:X 1AH', '1:X 1AHP']], [2, ['2:X 1A']]])
     const h = honorsHint(r, new Set(['1:X 1AH', '2:X 1AH']))
     expect(h.map((x) => [x.institutionId, x.swaps.length, x.companions ?? null])).toEqual([[1, 0, ['1:X 1AHP']], [2, 1, null]])
+  })
+})
+
+describe('isHonorsCalculus (fix 4): placement caveat for honors/combined calculus', () => {
+  it('matches honors and combined/accelerated calculus', () => {
+    expect(isHonorsCalculus('113:MATH 1AH', 'Honors Calculus')).toBe(true)
+    expect(isHonorsCalculus('113:MATH 1AH', 'Calculus')).toBe(true) // H course number
+    expect(isHonorsCalculus('1:MATH 3A', 'Calculus I - HONORS')).toBe(true)
+    expect(isHonorsCalculus('1:MATH 5', 'Combined Calculus I-II')).toBe(true)
+    expect(isHonorsCalculus('1:MATH 5', 'Accelerated Calculus')).toBe(true)
+  })
+  it('does not match regular calculus, honors non-calculus or calculus-based physics', () => {
+    expect(isHonorsCalculus('113:MATH 1A', 'Calculus')).toBe(false)
+    expect(isHonorsCalculus('113:EWRT 1AH', 'Honors English')).toBe(false)
+    expect(isHonorsCalculus('1:MATH 1H', 'Honors Linear Algebra')).toBe(false)
+    expect(isHonorsCalculus('1:MATH 1H', undefined)).toBe(false)
+    expect(isHonorsCalculus('1:PHYS 4AH', 'Calculus-Based Physics: Mechanics with Lab Honors')).toBe(false)
+    expect(isHonorsCalculus('1:PHYS 4AH', 'General Physics (Calculus)')).toBe(false)
+  })
+  it('the note sends the student to a counselor', () => {
+    expect(CALCULUS_PLACEMENT_NOTE).toMatch(/counselor/)
   })
 })

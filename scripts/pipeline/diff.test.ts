@@ -39,8 +39,10 @@ describe('decide', () => {
     expect(d.changes).toEqual([])
     expect(d.updateBaseline).toBe(false)
   })
-  it('first publish publishes and initializes the baseline; no baseline yet goes to review', () => {
-    expect(decide({ next: base })).toMatchObject({ decision: 'publish', updateBaseline: true })
+  it('first publish (no previous data, no baseline) goes to review and initializes the baseline; no baseline yet goes to review', () => {
+    // Defence in depth: nothing to compare against means nobody reviewed it, so it never publishes on its own.
+    expect(decide({ next: base })).toMatchObject({ decision: 'review', updateBaseline: true, reference: 'none' })
+    expect(decide({ next: base }).reasons.join()).toMatch(/first publish/)
     expect(decide({ prev: base, next: clone(base) })).toMatchObject({ decision: 'review', updateBaseline: true })
   })
 

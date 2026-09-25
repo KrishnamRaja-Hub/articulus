@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Agreement, CourseId } from '../engine/types'
 import { errorPlan, type PlanResult } from '../engine/solveClient'
 import { badgeStatus } from './plannerStatus'
-import { authoritative, EMPTY_PLAN, inputsKey, planView, type PlanInputs, type Solved } from './planState'
+import { authoritative, beyondWindow, EMPTY_PLAN, inputsKey, maxTermsFor, planView, showSchedule, tooLongNote, type PlanInputs, type Solved } from './planState'
 
 const agA = { receivingId: 79, major: 'A' } as unknown as Agreement
 const agB = { receivingId: 79, major: 'B' } as unknown as Agreement
@@ -63,5 +63,101 @@ describe('planView (r7 M-1/M-2: planning is derived synchronously from the input
   it('an error plan for other inputs is just stale (planning), not failed', () => {
     const v = planView(solvedFor(agA, inputs(), errorPlan('x')), agA, inputsKey(inputs({ home: 51 })))
     expect(v).toMatchObject({ planning: true, stale: true, failed: false })
+  })
+})
+
+describe('maxTermsFor / tooLongNote (fix 3): the limit is two academic years in the home calendar', () => {
+  it('is 4 semesters or 6 quarters', () => {
+    expect(maxTermsFor('semester')).toBe(4)
+    expect(maxTermsFor('quarter')).toBe(6)
+  })
+  it('the note names the home calendar, and is null when nothing is beyond the window', () => {
+    expect(tooLongNote(false, 'semester')).toBeNull()
+    expect(tooLongNote(true, 'semester')).toBe('More than 4 semesters (two academic years) needed at this unit cap. Talk to a counselor about your timeline before you enroll.')
+    expect(tooLongNote(false, 'quarter')).toBeNull()
+    expect(tooLongNote(true, 'quarter')).toMatch(/^More than 6 quarters/)
+  })
+  it('the limit is part of the inputs key, so switching calendars re-plans', () => {
+    expect(inputsKey(inputs({ maxTerms: maxTermsFor('semester') }))).not.toBe(inputsKey(inputs({ maxTerms: maxTermsFor('quarter') })))
+  })
+})
+
+describe('showSchedule (fix 7): no empty schedule header for a failed plan', () => {
+  const i = inputs()
+  it('hides the schedule for an error plan', () => {
+    const v = planView(solvedFor(agA, i, errorPlan('timed out')), agA, inputsKey(i))
+    expect(v.failed).toBe(true)
+    expect(showSchedule(v)).toBe(false)
+  })
+  it('hides it while the first plan is being built, shows a stale plan dimmed', () => {
+    expect(showSchedule(planView(null, agA, inputsKey(i)))).toBe(false)
+    expect(showSchedule(planView(solvedFor(agA, i), agA, inputsKey(inputs({ home: 51 }))))).toBe(true)
+  })
+  it('shows a settled plan, with terms or with none (its note says why nothing is scheduled)', () => {
+    expect(showSchedule(planView(solvedFor(agA, i), agA, inputsKey(i)))).toBe(true)
+    expect(showSchedule(planView(solvedFor(agA, i, EMPTY_PLAN), agA, inputsKey(i)))).toBe(true)
+  })
+})
+
+describe('beyondWindow (r9: the too-long window is measured in time, not by counting cards)', () => {
+  type Sys = 'quarter' | 'semester'
+  // a planned term as the solver emits it (span from engine/calendar.ts: Fall Y = 3Y, Winter/Spring semester Y = [3(Y-1)+1, 3(Y-1)+2])
+  const card = (label: string): PlanResult['terms'][number] => {
+    const m = /^(Fall|Winter|Spring) (\d{4})(?: \((quarter|semester)\))?$/.exec(label)!
+    const season = m[1] as 'Fall' | 'Winter' | 'Spring', year = Number(m[2]), system = (m[3] ?? 'quarter') as Sys
+    const base = season === 'Fall' ? 3 * year : 3 * (year - 1) + 1
+    const span: [number, number] = season === 'Fall' ? [base, base]
+      : system === 'semester' ? [base, base + 1] : season === 'Winter' ? [base, base] : [base + 1, base + 1]
+    return { name: label, courses: [], units: 12, system, season, year, span }
+  }
+  const sem = (label: string) => card(`${label} (semester)`)
+  const run = (labels: string[], mk: (l: string) => PlanResult['terms'][number], start: string, home: Sys) => {
+    const [season, year] = start.split(' ')
+    return beyondWindow(labels.map(mk), { season: season as 'Fall', year: Number(year) }, home)
+  }
+
+  it('single semester calendar: 4 semesters fit, the 5th is beyond', () => {
+    const four = ['Spring 2027', 'Fall 2027', 'Spring 2028', 'Fall 2028']
+    expect(run(four, sem, 'Spring 2027', 'semester')).toEqual([])
+    expect(run([...four, 'Spring 2029'], sem, 'Spring 2027', 'semester')).toEqual([4])
+    expect(run(['Fall 2026', 'Spring 2027', 'Fall 2027', 'Spring 2028', 'Fall 2028'], sem, 'Fall 2026', 'semester')).toEqual([4])
+  })
+
+  it('single quarter calendar: 6 quarters fit, the 7th is beyond', () => {
+    const six = ['Fall 2026', 'Winter 2027', 'Spring 2027', 'Fall 2027', 'Winter 2028', 'Spring 2028']
+    expect(run(six, card, 'Fall 2026', 'quarter')).toEqual([])
+    expect(run([...six, 'Fall 2028'], card, 'Fall 2026', 'quarter')).toEqual([6])
+  })
+
+  it('start term not Fall: the window starts at the chosen term', () => {
+    const q = ['Winter 2027', 'Spring 2027', 'Fall 2027', 'Winter 2028', 'Spring 2028', 'Fall 2028', 'Winter 2029']
+    expect(run(q.slice(0, 6), card, 'Winter 2027', 'quarter')).toEqual([])
+    expect(run(q, card, 'Winter 2027', 'quarter')).toEqual([6])
+    const s = ['Spring 2027', 'Fall 2027', 'Spring 2028', 'Fall 2028', 'Spring 2029']
+    expect(run(s.slice(0, 4), sem, 'Spring 2027', 'semester')).toEqual([])
+    expect(run(s, sem, 'Spring 2027', 'semester')).toEqual([4])
+  })
+
+  it('under-warn repro: quarter home + semester extra, 6 mixed cards running to Winter 2029 (7th quarter) is flagged', () => {
+    const labels = ['Spring 2027 (semester)', 'Fall 2027 (quarter)', 'Fall 2027 (semester)', 'Spring 2028 (semester)', 'Fall 2028 (quarter)', 'Winter 2029 (quarter)']
+    expect(run(labels, card, 'Winter 2027', 'quarter')).toEqual([5])
+  })
+
+  it('false-alarm repro: semester home + quarter extra, 8 mixed cards within Spring 2027-Fall 2028 is not flagged', () => {
+    const labels = ['Winter 2027 (quarter)', 'Spring 2027 (semester)', 'Spring 2027 (quarter)', 'Fall 2027 (quarter)', 'Fall 2027 (semester)',
+      'Winter 2028 (quarter)', 'Spring 2028 (semester)', 'Fall 2028 (semester)']
+    expect(run(labels, card, 'Spring 2027', 'semester')).toEqual([])
+    // one more semester, and only the card past the window is red
+    expect(run([...labels, 'Spring 2029 (semester)'], card, 'Spring 2027', 'semester')).toEqual([8])
+  })
+
+  it('a semester term that starts inside a quarter window but ends after it is beyond (the "ends after" rule)', () => {
+    // quarter home from Spring 2027: 6 quarters end with Winter 2029; Spring 2029 semester runs Jan-May 2029
+    expect(run(['Spring 2027 (quarter)', 'Winter 2029 (quarter)', 'Spring 2029 (semester)'], card, 'Spring 2027', 'quarter')).toEqual([2])
+  })
+
+  it('terms without calendar info fall back to position', () => {
+    const bare = Array.from({ length: 7 }, (_, i) => ({ name: `T${i}`, courses: [], units: 12 }))
+    expect(beyondWindow(bare, { season: 'Fall', year: 2026 }, 'quarter')).toEqual([6])
   })
 })

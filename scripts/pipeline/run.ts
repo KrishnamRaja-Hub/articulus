@@ -41,8 +41,10 @@ export interface RunOptions {
   onReview?: 'fail' | 'stage'
   log?: (m: string) => void
   /**
-   * Allow publishing when there is no previous data to diff against. Without it, a run with no data/index.json
-   * refuses to publish: a crash or a deleted data/ must never switch the diff guard off.
+   * Allow a run when there is no previous data to diff against. Without it, a run with no data/index.json
+   * refuses to run: a crash or a deleted data/ must never switch the diff guard off. Even with it, such a run's
+   * release decision is always 'review' (never 'publish', not even with acceptDiff): with onReview 'stage' it is
+   * staged with a new baseline for a reviewed PR, otherwise it fails and publishes nothing.
    */
   firstPublish?: boolean
   /**
@@ -180,10 +182,17 @@ async function runLocked(o: RunOptions, dataDir: string, workDir: string, env: N
 
   try {
     // 0. Never publish without a baseline unless asked (H-3): a missing data/ must not switch the diff guard off.
-    const hasPrev = existsSync(join(dataDir, 'index.json'))
-    if (!hasPrev && !o.firstPublish && !o.dryRun) {
+    //    Previous data counts only when it can actually be read: an index.json that is corrupt, not an array, or empty
+    //    compares against nothing, so it must not reach the diff guard as "previous data" (nor as a silent first publish).
+    const prevState = previousData(dataDir)
+    const hasPrev = prevState.state === 'ok'
+    if (prevState.state === 'missing' && !o.firstPublish && !o.dryRun) {
       return fail(`no published data at ${dataDir} (index.json missing), so the diff guard has nothing to compare against. ` +
         'Restore it (git checkout -- data) and rerun; pass --first-publish only if this really is the first publish.')
+    }
+    if (prevState.state !== 'ok' && prevState.state !== 'missing' && !o.firstPublish && !o.dryRun) {
+      return fail(`previous data is unreadable: restore it (git checkout -- data) and rerun. ${join(dataDir, 'index.json')} ${prevState.why}, ` +
+        'so the diff guard has nothing to compare against; nothing was fetched or published. Pass --first-publish only if this really is the first publish (it then goes to review).')
     }
 
     // 1. raw payloads
@@ -232,10 +241,18 @@ async function runLocked(o: RunOptions, dataDir: string, workDir: string, env: N
 
     // 5. release decision: only neutral or stricter changes publish on their own (diff.ts)
     stage = 'review'
-    const prevDir = existsSync(join(dataDir, 'index.json')) ? dataDir : undefined
+    const prevDir = hasPrev ? dataDir : undefined
     const decision = decideDirs(prevDir, staging)
     // A human who re-ran with the override after reading the report has reviewed it: publish, with the new baseline.
     if (decision.decision === 'review' && acceptDiff) { decision.decision = 'publish'; decision.reasons.push(`accepted by ${cfg.diff.overrideEnv}; this data becomes the reviewed baseline`) }
+    // A first publish (no previous data) has nothing to diff against, so nobody has reviewed any of it: always review,
+    // whatever the flags (--first-publish only permits the run; --accept-large-change does not review data never shown).
+    // The review path then stages it with a new baseline in PR mode, or fails locally and says how to stage it.
+    if (!prevDir) {
+      decision.decision = 'review'
+      decision.updateBaseline = true
+      decision.reasons = ['first publish: no previous data or reviewed baseline to compare against, so all of this data needs human review; merging it creates the baseline']
+    }
     // The renormalize pass before this one needed review (runPipeline): so does this run, whatever this diff says.
     if (prior) {
       decision.reasons.push(...prior.reasons.map((x) => `automatic renormalize (normalize v${prior.from} -> v${NORMALIZE_VERSION}), not published: ${x}`))
@@ -251,7 +268,12 @@ async function runLocked(o: RunOptions, dataDir: string, workDir: string, env: N
     const onReview = o.onReview ?? (env.DATA_REFRESH_ON_REVIEW === 'pr' ? 'stage' : 'fail')
     if (o.dryRun) { log('dry run: not publishing'); return { ok: true, published: false, contentChanged: !!report.diff?.contentChanged, rawChanged, report, decision: decision.decision, stage: 'done' } }
     if (decision.decision === 'review' && onReview === 'fail') {
-      const r = fail(`needs human review, not published: ${decision.reasons.join('; ')}\n(set DATA_REFRESH_ON_REVIEW=pr to stage it for a reviewed PR with a new ${BASELINE_FILE})`, report)
+      const how = prevDir
+        ? `(set DATA_REFRESH_ON_REVIEW=pr to stage it for a reviewed PR with a new ${BASELINE_FILE})`
+        : `(a first publish always needs review. Rerun with DATA_REFRESH_ON_REVIEW=pr to stage it in ${dataDir} with a new ${BASELINE_FILE}, ` +
+          `check it against ASSIST using ${join(workDir, 'diff-report.md')}, and land it through a reviewed PR; or run the data-refresh workflow, which opens that PR)`
+      const r = fail(`needs human review, not published: ${decision.reasons.join('; ')}\n${how}`, report)
+      log(how) // fail() logs only the first line; the operator needs to see what to do next
       appendFileSync(join(workDir, 'failure.md'), '\n' + decisionMd + '\n')
       return { ...r, decision: 'review' }
     }
@@ -280,6 +302,27 @@ async function runLocked(o: RunOptions, dataDir: string, workDir: string, env: N
   } finally {
     rmSync(stagingRoot, { recursive: true, force: true })
   }
+}
+
+/**
+ * Is there previous data the diff guard can compare against? `ok` only when index.json parses to a non-empty array
+ * (readDataSet); `unreadable` for a corrupt or non-array index, `empty` for `[]` (nothing to compare against either).
+ */
+export function previousData(dataDir: string): { state: 'ok' | 'missing' | 'unreadable' | 'empty'; why?: string } {
+  if (!existsSync(join(dataDir, 'index.json'))) return { state: 'missing' }
+  let index: unknown
+  try { index = JSON.parse(readFileSync(join(dataDir, 'index.json'), 'utf8')) } catch { index = undefined }
+  if (!Array.isArray(index)) return { state: 'unreadable', why: 'is not a readable JSON array of agreements' }
+  if (index.length === 0) return { state: 'empty', why: 'is an empty list (no previous agreements)' }
+  // every entry must name a plain file inside agreements/ (no paths), and every one of them must load
+  const plain = (f: unknown) => typeof f === 'string' && f.length > 0 && !/[/\\\0]/.test(f) && f !== '.' && f !== '..'
+  if (!index.every((e) => e && typeof e === 'object' && plain((e as { file?: unknown }).file)))
+    return { state: 'unreadable', why: 'has an entry that is not a plain agreement file name' }
+  let set: ReturnType<typeof readDataSet>
+  try { set = readDataSet(dataDir) } catch { set = undefined }
+  if (!set) return { state: 'unreadable', why: 'is not a readable JSON array of agreements' }
+  if (set.agreements.size < index.length) return { state: 'unreadable', why: `lists ${index.length} agreements but only ${set.agreements.size} could be read` }
+  return { state: 'ok' }
 }
 
 /** Did any raw payload file change (by manifest checksum)? */

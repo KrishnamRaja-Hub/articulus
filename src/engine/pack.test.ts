@@ -224,8 +224,8 @@ describe('pack: real calendars (H-3)', () => {
 describe('start term', () => {
   const a = agreement([['1:A 1A', '1:A 1B']], [['1:A 1A', 4], ['1:A 1B', 4]])
   it('nextOpenTerm follows the registration cutoffs in src/terms.ts', () => {
-    expect(nextOpenTerm(new Date(Date.UTC(2026, 2, 31)))).toEqual({ season: 'Spring', year: 2026 })
-    expect(nextOpenTerm(new Date(Date.UTC(2026, 3, 1)))).toEqual({ season: 'Fall', year: 2026 })
+    expect(nextOpenTerm(new Date(Date.UTC(2026, 2, 31, 12)))).toEqual({ season: 'Spring', year: 2026 })
+    expect(nextOpenTerm(new Date(Date.UTC(2026, 3, 1, 12)))).toEqual({ season: 'Fall', year: 2026 })
     expect(nextOpenTerm(new Date(Date.UTC(2026, 8, 24)), 'semester')).toEqual({ season: 'Spring', year: 2027 })
     expect(nextOpenTerm(new Date(Date.UTC(2026, 11, 20)))).toEqual({ season: 'Winter', year: 2027 })
     expect(nextOpenTerm(new Date(NaN)).season).toBe('Fall') // invalid date: never throws

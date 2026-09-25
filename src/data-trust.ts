@@ -1,9 +1,11 @@
 import { NORMALIZE_VERSION } from './engine/normalize.ts'
+import { pacificDate } from './terms.ts'
 
 /**
  * How far the bundled ASSIST data (data/meta.json) can be trusted, per the policy in DATA_CONTRACT.md.
  * Pure: the caller passes the current time, so the app evaluates it in the browser at run time, never at build time.
- * All dates are UTC.
+ * Ages are measured between instants; the academic year in effect is decided on the calendar date in California
+ * (src/terms.ts pacificDate), the same rule the pipeline uses (scripts/pipeline/academic-year.ts).
  */
 
 export type TrustLevel = 'trusted' | 'aging' | 'untrusted'
@@ -32,12 +34,18 @@ function parseDate(x: unknown): Date | null {
   return Number.isNaN(d.getTime()) ? null : d
 }
 
-/** The academic year in effect on `now`: July 1 through June 30, in UTC. 2026-07-01 -> "2026-2027". */
-export function academicYearOn(now: Date): string {
-  const y = now.getUTCFullYear()
-  const start = now.getUTCMonth() >= 6 ? y : y - 1
+/** The academic year in effect on `now`: July 1 through June 30, on the California date. 2026-07-01 -> "2026-2027".
+ *  null for an invalid date (or a runtime that cannot resolve the California zone). */
+export function academicYearOn(now: Date): string | null {
+  const d = pacificDate(now)
+  if (!d) return null
+  const start = d.month >= 7 ? d.year : d.year - 1
   return `${start}-${start + 1}`
 }
+
+/** The instant the academic year starting in `fall` takes effect: midnight July 1 in California. July is always
+ *  Pacific Daylight Time (UTC-7), so that is 07:00 UTC. */
+export const rolloverInstant = (fall: number) => Date.UTC(fall, 6, 1, 7)
 
 /** "2026-2027" -> "2026-27", the way counselors and ASSIST write it. */
 export const shortYear = (code: string) => `${code.slice(0, 4)}-${code.slice(7)}`
@@ -106,8 +114,9 @@ export function dataTrust(meta: unknown, now: Date, normalizeVersion: number = N
   const academicYear = ym && Number(ym[2]) === Number(ym[1]) + 1 ? ay as string : null
   let yearNote: string | null = null
   if (!academicYear) reasons.push('The academic year of the data is not recorded')
+  else if (clockOk && !academicYearOn(now)) reasons.push("Today's date in California could not be worked out on this device")
   else if (clockOk) {
-    const expected = academicYearOn(now)
+    const expected = academicYearOn(now)!
     const fall = Number(expected.slice(0, 4))
     const prior = `${fall - 1}-${fall}`
     // M-6: ASSIST often publishes the new year's agreements weeks after July 1. The prior year is shown as aging with a
@@ -115,7 +124,7 @@ export function dataTrust(meta: unknown, now: Date, normalizeVersion: number = N
     // MAX_AGE_DAYS, so the pipeline must keep re-checking), or, for ROLLOVER_GRACE_DAYS after July 1, when it was
     // fetched before July 1 and the pipeline has not run since. Two or more years back, a future year, or an unmarked
     // prior year past the grace period is the wrong year: untrusted.
-    const rollover = Date.UTC(fall, 6, 1)
+    const rollover = rolloverInstant(fall)
     const inGrace = !!fetchedAt && fetchedAt.getTime() < rollover && now.getTime() <= rollover + ROLLOVER_GRACE_DAYS * DAY
     if (academicYear === prior && m.carriedOver === true) yearNote = `${shortYear(expected)} agreements aren't published on ASSIST yet`
     else if (academicYear === prior && m.carriedOver !== true && inGrace) yearNote = `${shortYear(expected)} agreements are now in effect but not downloaded yet`
@@ -197,6 +206,13 @@ export const sameTrust = (a: DataTrust, b: DataTrust) =>
   a.level === b.level && a.academicYear === b.academicYear && a.yearNote === b.yearNote && a.fetchedAt?.getTime() === b.fetchedAt?.getTime()
   && a.reasons.length === b.reasons.length && a.reasons.every((r, i) => r === b.reasons[i])
 
-/** Tone of a pass/fail demo verdict (TESTER1_REPORT L-5): a pass on untrusted data is an illustration, never green. */
-export const demoTone = (ok: boolean, level: TrustLevel): 'ok' | 'illustration' | 'split' =>
-  !ok ? 'split' : level === 'untrusted' ? 'illustration' : 'ok'
+/** Tone of a pass/fail demo verdict (TESTER1_REPORT L-5), by the same rule as the planner's badge
+ *  (src/sections/plannerStatus.ts badgeStatus): a pass is green only on 'trusted' or 'aging' data of the year in
+ *  effect. On untrusted data (or any unrecognized level) it is an illustration, and on the prior academic year's
+ *  agreements (a yearNote, L-1) too: articulation can change between years, so it is never a clean green. */
+export function demoTone(ok: boolean, trust: Pick<DataTrust, 'level' | 'yearNote'>): 'ok' | 'illustration' | 'split' {
+  if (!ok) return 'split'
+  const level: unknown = trust?.level
+  if (level !== 'trusted' && level !== 'aging') return 'illustration'
+  return trust.yearNote ? 'illustration' : 'ok'
+}

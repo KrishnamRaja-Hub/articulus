@@ -4,7 +4,9 @@
  *
  * Registration cutoffs are conservative approximations, the same for every college in a system: most California
  * community colleges close open registration a week or two into the term. A date on or after a cutoff moves the
- * default to the next term. Dates are read in UTC so every viewer and test sees the same answer.
+ * default to the next term. Dates are read as the calendar date in California (America/Los_Angeles, see pacificDate),
+ * whatever the viewer's own zone, so every viewer and test sees the same answer and 6 pm Pacific on Aug 31 is still
+ * Aug 31 (in UTC it is already Sep 1).
  *
  * | System   | Term   | Registration treated as closed from |
  * |----------|--------|-------------------------------------|
@@ -30,12 +32,55 @@ export const REGISTRATION_CLOSES: Record<TermSystem, Partial<Record<Season, [num
   semester: { Spring: [1, 20], Fall: [8, 20] },
 }
 
-/** The next term, in `system`, whose registration has not closed on `now`. null for an invalid date, so the caller
+/** The time zone of the California colleges: every calendar-date decision (registration cutoffs, the July 1
+ *  academic-year rollover) is made on the date there. */
+export const COLLEGE_TIME_ZONE = 'America/Los_Angeles'
+
+export interface CalendarDate { year: number; month: number; day: number }
+
+/** The cached formatter: undefined until first built, false when this runtime does not honour the zone. */
+let pacificFormat: Intl.DateTimeFormat | false | undefined
+
+function pacificFormatter(): Intl.DateTimeFormat | null {
+  if (pacificFormat === undefined) {
+    const f = new Intl.DateTimeFormat('en-US', { timeZone: COLLEGE_TIME_ZONE, year: 'numeric', month: 'numeric', day: 'numeric' })
+    // A runtime without time-zone data may ignore timeZone and format in UTC (or the host zone): refuse rather than guess.
+    pacificFormat = f.resolvedOptions().timeZone === COLLEGE_TIME_ZONE ? f : false
+  }
+  return pacificFormat || null
+}
+
+/** The calendar date (month 1-12) in California at the instant `now`, DST included. null for an invalid date, a date
+ *  outside years 1-275760 AD (the formatter drops the era, so 1 BC would read as year 1), or when this runtime cannot
+ *  resolve the zone (the formatter throws, or silently ignores timeZone), so the caller asks instead of guessing. The
+ *  one shared helper for calendar-date decisions (src/data-trust.ts, src/engine/calendar.ts,
+ *  scripts/pipeline/academic-year.ts). */
+export function pacificDate(now: Date): CalendarDate | null {
+  if (!(now instanceof Date) || Number.isNaN(now.getTime())) return null
+  const utcYear = now.getUTCFullYear()
+  if (utcYear < 2) return null // the formatter drops the era: Dec 31, 1 BC in California would read as year 1
+  try {
+    const fmt = pacificFormatter()
+    if (!fmt) return null
+    const parts = fmt.formatToParts(now)
+    const num = (t: Intl.DateTimeFormatPartTypes) => Number(parts.find((p) => p.type === t)?.value)
+    const year = num('year'), month = num('month'), day = num('day')
+    if (![year, month, day].every(Number.isInteger) || month < 1 || month > 12 || day < 1 || day > 31) return null
+    // California is at most a day behind UTC, so the years differ by at most 1; anything else is a misread (lost era).
+    if (Math.abs(year - utcYear) > 1) return null
+    return { year, month, day }
+  } catch {
+    return null
+  }
+}
+
+/** The next term, in `system`, whose registration has not closed on `now` (the California date). null for an invalid date, so the caller
  *  asks the student instead of guessing. */
 export function nextOpenTerm(now: Date, system: TermSystem): StartTerm | null {
-  if (Number.isNaN(now.getTime())) return null
-  const y = now.getUTCFullYear()
-  const md = (now.getUTCMonth() + 1) * 100 + now.getUTCDate()
+  const today = pacificDate(now)
+  if (!today) return null
+  const y = today.year
+  const md = today.month * 100 + today.day
   const before = (s: Season) => { const [m, d] = REGISTRATION_CLOSES[system][s]!; return md < m * 100 + d }
   if (system === 'semester') {
     if (before('Spring')) return { season: 'Spring', year: y }

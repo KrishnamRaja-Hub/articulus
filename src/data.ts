@@ -10,9 +10,19 @@ import { NORMALIZE_VERSION } from './engine/normalize'
 export interface IndexEntry { file: string; receivingId: number; major: string }
 
 // Berkeley ME is already in the main bundle (imported eagerly below), so keep it out of the lazy glob.
+// Every other agreement is emitted as a plain JSON asset and fetched on demand. It is deliberately not a module
+// import(): Chromium caches a failed dynamic import in its module map, so after a network blip "Try again" would
+// replay the error until a page reload. A fetch() has no such memory, so a retry really goes back to the network.
 const TRAP = '../data/agreements/79-mechanical-engineering-b-s.json'
+const urls = import.meta.glob<string>(['../data/agreements/*.json', '!../data/agreements/79-mechanical-engineering-b-s.json'],
+  { query: '?url', import: 'default', eager: true })
+async function fetchAgreement(url: string, file: string): Promise<{ default: Agreement }> {
+  const r = await fetch(url)
+  if (!r.ok) throw new Error(`Agreement file ${file} failed to load (HTTP ${r.status})`)
+  return { default: (await r.json()) as Agreement }
+}
 const files: Record<string, () => Promise<{ default: Agreement }>> = {
-  ...import.meta.glob<{ default: Agreement }>(['../data/agreements/*.json', '!../data/agreements/79-mechanical-engineering-b-s.json']),
+  ...Object.fromEntries(Object.entries(urls).map(([k, url]) => [k, () => fetchAgreement(url, k.split('/').pop()!)])),
   [TRAP]: async () => ({ default: berkeleyME as unknown as Agreement }),
 }
 
@@ -27,13 +37,34 @@ export const universities = institutions
   .filter((i) => !i.isCC && index.some((e) => e.receivingId === i.id))
   .sort((a, b) => (a.id === 79 ? -1 : b.id === 79 ? 1 : a.name.localeCompare(b.name)))
 export const majorsFor = (receivingId: number) => index.filter((e) => e.receivingId === receivingId)
+/**
+ * Memoises an async loader per key. A successful load stays cached; a rejected one evicts itself, so the next call
+ * (e.g. the error boundary's "Try again") really calls the loader again instead of replaying the cached failure.
+ */
+export function memoizeLoader<K, V>(load: (key: K) => Promise<V>): (key: K) => Promise<V> {
+  const cache = new Map<K, Promise<V>>()
+  return (key) => {
+    const hit = cache.get(key)
+    if (hit) return hit
+    let p: Promise<V>
+    try { p = load(key) } catch (e) { p = Promise.reject(e) }
+    cache.set(key, p)
+    // evict only this attempt's promise, never a newer one started after it
+    p.catch(() => { if (cache.get(key) === p) cache.delete(key) })
+    return p
+  }
+}
+
 /** Loads one agreement and records its academic year, so trust is re-checked against the agreements actually shown.
- *  A missing file rejects instead of throwing synchronously (TESTER2_REPORT M-8). */
-export const loadAgreement = (file: string): Promise<Agreement> => {
+ *  A missing file rejects instead of throwing synchronously (TESTER2_REPORT M-8). Successful loads are cached; a
+ *  failed one is dropped from the cache so "Try again" re-requests it: the loader is a fetch() of the agreement's
+ *  JSON asset, which the browser re-issues on every call (unlike a failed dynamic import(), which Chromium replays
+ *  from its module map until reload). */
+export const loadAgreement: (file: string) => Promise<Agreement> = memoizeLoader((file: string) => {
   const get = files[`../data/agreements/${file}`]
   if (!get) return Promise.reject(new Error(`Agreement file ${file} is not bundled`))
   return get().then((m) => { noteAgreementYear(m.default?.year); return m.default })
-}
+})
 
 // eager sync export for Trap.tsx, which only needs Berkeley ME
 export const agreements: Agreement[] = [berkeleyME as unknown as Agreement]

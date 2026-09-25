@@ -136,6 +136,45 @@ describe('crash safety', () => {
     expect(existsSync(data)).toBe(false)
   })
 
+  it('fix 8: a first publish always decides review; locally (no DATA_REFRESH_ON_REVIEW=pr) it publishes nothing and says how to stage it', async () => {
+    const m = (mock = await startMockAssist())
+    const data = join(tmp('first'), 'data'), work = join(data, '..', 'work')
+    const r = await run(m.url, data, { firstPublish: true, onReview: undefined })
+    expect(r).toMatchObject({ ok: false, published: false, decision: 'review', stage: 'review' })
+    expect(r.error).toMatch(/first publish/)
+    expect(r.error).toMatch(/DATA_REFRESH_ON_REVIEW=pr/)
+    expect(existsSync(data)).toBe(false)
+    expect(readJson(join(work, 'decision.json'))).toMatchObject({ decision: 'review', updateBaseline: true })
+    expect(readFileSync(join(work, 'failure.md'), 'utf8')).toContain('REVIEW REQUIRED')
+  })
+
+  it('fix 8: a first publish with --accept-large-change (or the env override) still decides review', async () => {
+    const m = (mock = await startMockAssist())
+    const data = join(tmp('first-accept'), 'data')
+    const r = await run(m.url, data, { firstPublish: true, onReview: undefined, acceptDiff: true })
+    expect(r).toMatchObject({ ok: false, published: false, decision: 'review' })
+    expect(existsSync(data)).toBe(false)
+    const e = await run(m.url, data, { firstPublish: true, onReview: undefined, envExtra: { DATA_ACCEPT_LARGE_CHANGE: '1' } })
+    expect(e).toMatchObject({ ok: false, published: false, decision: 'review' })
+    expect(existsSync(data)).toBe(false)
+  })
+
+  it('fix 8: a first publish in PR mode is staged through the review path with a new baseline, never as publish', async () => {
+    const m = (mock = await startMockAssist())
+    const data = join(tmp('first-pr'), 'data')
+    const r = await run(m.url, data, { firstPublish: true, onReview: undefined, acceptDiff: true, envExtra: { DATA_REFRESH_ON_REVIEW: 'pr' } })
+    expect(r).toMatchObject({ ok: true, published: true, decision: 'review' })
+    expect(existsSync(join(data, BASELINE_FILE))).toBe(true)
+  })
+
+  it('fix 8: a normal run with previous data is unchanged: unchanged data publishes on its own', async () => {
+    const { m, data } = await published()
+    const r = await run(m.url, data, { firstPublish: true }) // the flag is irrelevant once data exists
+    expect(r).toMatchObject({ ok: true, published: true, decision: 'publish' })
+    const r2 = await run(m.url, data)
+    expect(r2).toMatchObject({ ok: true, published: true, decision: 'publish' })
+  })
+
   it('M2: staged data changed after validation (in beforePublish) is not published; data/ untouched', async () => {
     const { m, data } = await published()
     const before = snapshot(data), work = join(data, '..', 'work'), file = 'agreements/79-mechanical-engineering-b-s.json'
@@ -197,6 +236,87 @@ describe('crash safety', () => {
     expect(treeHash(d, ['meta.json'])).toBe(h)
     writeFileSync(join(d, 'a', 'x'), '2')
     expect(treeHash(d, ['meta.json'])).not.toBe(h)
+  })
+})
+
+describe('odd previous data: an index.json that cannot be compared against is never "previous data"', () => {
+  const odd: [string, string][] = [['corrupt', '{'], ['null', 'null'], ['an object', '{}'], ['an empty list', '[]'],
+    ['a list of numbers', '[1]'], ['a list with null', '[null]'], ['entries without a file', '[{}]'], ['a non-string file', '[{"file":{}}]'],
+    ['a dangling entry', '[{"file":"x.json"}]'], ['a path outside agreements/', '[{"file":"../../../../etc/passwd"}]'], ['a nested path', '[{"file":"a/b.json"}]']]
+  /** data/ holding only that index.json (no baseline, no raw store). */
+  const oddData = async (content: string) => {
+    const m = (mock = await startMockAssist())
+    const data = join(tmp('odd'), 'data')
+    mkdirSync(data, { recursive: true }); writeFileSync(join(data, 'index.json'), content)
+    return { m, data }
+  }
+  it.each(odd)('index.json %s, no --first-publish: refused before fetching, nothing published (also with accept flags or PR mode)', async (_, content) => {
+    const extras: (Parameters<typeof run>[2])[] = [{}, { acceptDiff: true }, { envExtra: { DATA_ACCEPT_LARGE_CHANGE: '1' } }, { onReview: undefined, envExtra: { DATA_REFRESH_ON_REVIEW: 'pr' } }, { onReview: 'stage', acceptDiff: true }]
+    for (const extra of extras) {
+      const { m, data } = await oddData(content)
+      const before = snapshot(data)
+      const r = await run(m.url, data, { firstPublish: false, onReview: 'fail', ...extra })
+      expect(r).toMatchObject({ ok: false, published: false, stage: 'preflight' })
+      expect(r.decision).toBeUndefined()
+      expect(r.error).toMatch(/previous data is unreadable: restore it \(git checkout -- data\) and rerun/)
+      expect(m.log.length).toBe(0) // nothing fetched
+      expect(snapshot(data)).toEqual(before)
+      await m.close(); mock = undefined
+    }
+  })
+  it.each(odd)('index.json %s with --first-publish: a first publish, so review; locally nothing is published, even with --accept-large-change', async (_, content) => {
+    for (const acceptDiff of [false, true]) {
+      const { m, data } = await oddData(content)
+      const before = snapshot(data), work = join(data, '..', 'work')
+      const r = await run(m.url, data, { firstPublish: true, onReview: undefined, acceptDiff })
+      expect(r).toMatchObject({ ok: false, published: false, decision: 'review', stage: 'review' })
+      expect(r.error).toMatch(/first publish/)
+      expect(readJson(join(work, 'decision.json'))).toMatchObject({ decision: 'review', updateBaseline: true })
+      expect(snapshot(data)).toEqual(before)
+      await m.close(); mock = undefined
+    }
+  })
+  it.each(odd)('index.json %s with --first-publish in PR mode: staged through the review path with a new baseline, never as publish', async (_, content) => {
+    const { m, data } = await oddData(content)
+    const r = await run(m.url, data, { firstPublish: true, onReview: undefined, acceptDiff: true, envExtra: { DATA_REFRESH_ON_REVIEW: 'pr' } })
+    expect(r).toMatchObject({ ok: true, published: true, decision: 'review' })
+    expect(existsSync(join(data, BASELINE_FILE))).toBe(true)
+  })
+  it('dry run with a corrupt index.json decides review, not publish', async () => {
+    const { m, data } = await oddData('{')
+    const r = await run(m.url, data, { firstPublish: false, dryRun: true })
+    expect(r).toMatchObject({ published: false, decision: 'review' })
+  })
+  it('the auto-renormalize pass does not publish over a corrupt index.json either', async () => {
+    const { m, data } = await published()
+    const metaPath = join(data, 'meta.json')
+    writeFileSync(metaPath, JSON.stringify({ ...readJson(metaPath), normalizeVersion: NORMALIZE_VERSION - 1 }))
+    rmSync(join(data, BASELINE_FILE))
+    writeFileSync(join(data, 'index.json'), '{')
+    const before = snapshot(data)
+    for (const extra of [{}, { acceptDiff: true }, { onReview: 'stage' as const }]) {
+      const r = await run(m.url, data, { firstPublish: false, onReview: 'fail', ...extra })
+      expect(r).toMatchObject({ ok: false, published: false, stage: 'preflight', renormalized: false })
+      expect(r.error).toMatch(/previous data is unreadable/)
+      expect(snapshot(data)).toEqual(before)
+    }
+    const f = await run(m.url, data, { firstPublish: true, onReview: 'fail' })
+    expect(f).toMatchObject({ ok: false, published: false, decision: 'review', renormalized: false })
+    expect(snapshot(data)).toEqual(before)
+  })
+  it('recovery never restores a sidecar whose index.json is unreadable; a run then refuses (H-3), publishing nothing', async () => {
+    const m = (mock = await startMockAssist())
+    const dir = tmp('corrupt-prev'), data = join(dir, 'data')
+    for (const [i, content] of ['{', 'null', '{}'].entries()) { const p = join(dir, `.data-prev-9-${1000 + i}`); mkdirSync(p); writeFileSync(join(p, 'index.json'), content) }
+    const r = await run(m.url, data, { firstPublish: false, onReview: 'fail', acceptDiff: true })
+    expect(r).toMatchObject({ ok: false, published: false, stage: 'preflight' })
+    expect(existsSync(data)).toBe(false)
+    expect(siblings(data).sort()).toEqual(['.data-prev-9-1000', '.data-prev-9-1001', '.data-prev-9-1002'])
+    // a readable older prev is restored instead of a newer corrupt one
+    const good = join(dir, '.data-prev-9-500'); mkdirSync(good); writeFileSync(join(good, 'index.json'), '["ok"]')
+    const done = recoverPublish(data)
+    expect(done[0]).toMatch(/restored data\/ from \.data-prev-9-500/)
+    expect(readFileSync(join(data, 'index.json'), 'utf8')).toBe('["ok"]')
   })
 })
 

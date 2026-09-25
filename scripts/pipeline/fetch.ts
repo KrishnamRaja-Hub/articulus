@@ -64,8 +64,8 @@ export const slugFile = (receivingId: number, label: string) =>
 export async function fetchRaw(client: AssistClient, cfg: PipelineConfig, opts: { base: string; now: Date; pinYear?: number; log: (m: string) => void }): Promise<RawBundle> {
   const { log } = opts
   const academicYears = await client.get<unknown>('/api/AcademicYears')
+  const yearInEffect = codeInEffect(opts.now) // first: an unknown date fails with a clear message
   const candidates = candidateYears(parseAcademicYears(academicYears), opts.now, opts.pinYear)
-  const yearInEffect = codeInEffect(opts.now)
 
   const all = await client.get<RawInstitution[]>('/api/institutions')
   if (!Array.isArray(all)) throw new Error('/api/institutions: expected an array')

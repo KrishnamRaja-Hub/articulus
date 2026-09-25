@@ -2,9 +2,13 @@ import { describe, expect, it } from 'vitest'
 import { candidateYears, codeInEffect, parseAcademicYears } from './academic-year.ts'
 
 describe('academic year (July-1 rule, DATA_CONTRACT.md)', () => {
-  it('switches on July 1 UTC', () => {
+  it('switches on July 1 in California (midnight PDT = 07:00 UTC), the same rule as the app', () => {
     expect(codeInEffect(new Date('2026-06-30T23:59:59Z'))).toBe('2025-2026')
-    expect(codeInEffect(new Date('2026-07-01T00:00:00Z'))).toBe('2026-2027')
+    expect(codeInEffect(new Date('2026-07-01T00:00:00Z'))).toBe('2025-2026') // 5 pm June 30 PDT
+    expect(codeInEffect(new Date('2026-07-01T06:59:59Z'))).toBe('2025-2026')
+    expect(codeInEffect(new Date('2026-07-01T07:00:00Z'))).toBe('2026-2027')
+    expect(codeInEffect(new Date('2027-01-01T07:59:59Z'))).toBe('2026-2027') // Dec 31 PST
+    expect(() => codeInEffect(new Date(NaN))).toThrow(/date in California/)
     expect(codeInEffect(new Date('2027-01-15T00:00:00Z'))).toBe('2026-2027')
   })
   it('parses the ASSIST shape and camelCase / code variants', () => {
@@ -22,12 +26,12 @@ describe('academic year (July-1 rule, DATA_CONTRACT.md)', () => {
   it('tries the year in effect first, then the prior year as the explicit carry-over (M-6)', () => {
     expect(candidateYears(years, new Date('2026-09-24Z')).map((y) => y.id)).toEqual([77, 76])
     expect(candidateYears(years, new Date('2026-03-01Z')).map((y) => y.id)).toEqual([76, 75])
-    // the rollover boundary, in UTC
-    expect(candidateYears(years, new Date('2026-06-30T23:59:59Z'))[0].code).toBe('2025-2026')
-    expect(candidateYears(years, new Date('2026-07-01T00:00:00Z'))[0].code).toBe('2026-2027')
+    // the rollover boundary, in California
+    expect(candidateYears(years, new Date('2026-07-01T06:59:59Z'))[0].code).toBe('2025-2026')
+    expect(candidateYears(years, new Date('2026-07-01T07:00:00Z'))[0].code).toBe('2026-2027')
   })
   it('carries over the prior year when ASSIST does not list the year in effect yet', () => {
-    expect(candidateYears(years.slice(0, 2), new Date('2026-07-01T00:00:00Z'))).toEqual([{ id: 76, code: '2025-2026' }])
+    expect(candidateYears(years.slice(0, 2), new Date('2026-07-01T07:00:00Z'))).toEqual([{ id: 76, code: '2025-2026' }])
   })
   it('never falls back two or more years', () => {
     expect(() => candidateYears(years.slice(0, 1), new Date('2026-09-24Z'))).toThrow(/neither 2026-2027 .* nor the carry-over year 2025-2026/)

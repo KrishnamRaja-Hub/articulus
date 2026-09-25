@@ -19,7 +19,7 @@ export function cliArgs(argv: string[]) {
     dryRun: flag('--dry-run'),
     skipSuites: flag('--skip-suites'),
     acceptDiff: flag('--accept-large-change'),
-    /** Allow a publish with no previous data (no diff guard baseline). Never needed once data/ exists. */
+    /** Allow a run with no previous data (no diff guard baseline); its decision is always review. Never needed once data/ exists. */
     firstPublish: flag('--first-publish'),
     /** Do not rebuild stale-NORMALIZE_VERSION data from the raw store before a fetch. */
     autoRenormalize: !flag('--no-auto-renormalize'),

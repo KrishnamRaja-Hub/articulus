@@ -7,16 +7,15 @@ import { agreementYearLabel, formatDataDate } from '../data-trust'
 import { nextOpenTerm, termKey, termLabel, termsFrom, type StartTerm } from '../terms'
 import { has, honorsColleges, ucOnly, verifySchedule } from '../engine/verify'
 import { SolveClient, type WorkerLike } from '../engine/solveClient'
-import { honorsHints, honorsNote } from '../engine/hints'
+import { CALCULUS_PLACEMENT_NOTE, honorsHints, honorsNote, isHonorsCalculus } from '../engine/hints'
 import type { Agreement, CourseGroup, CourseId, ReqNode, Requirement, ValidationResult } from '../engine/types'
 import Button from '../ui/Button'
 import Select from '../ui/Select'
 import { Check, Cross } from './Trap'
 import { badgeStatus, completedSplits, PLANNING, deferredOf, isBlocking, noMatchNote, optimalExplain, optimalNote, PREREQ_TAG, prereqOnlySet, scheduleCaveat, scheduleNote, splitUnsolvable, type ScheduleNote } from './plannerStatus'
 import { DataBanner, Exclaim } from './DataStatus'
-import { inputsKey, planView, type Solved } from './planState'
+import { beyondWindow, inputsKey, maxTermsFor, planView, showSchedule, tooLongNote, type Solved } from './planState'
 
-const MAX_TERMS = 6
 const EMPTY_RESULT: ValidationResult = { isValid: false, satisfied: {}, missing: [], incomplete: {}, splitSeriesViolations: [], deferred: [] }
 // solve off the UI thread (TESTER2_REPORT M-4); no Worker (tests, old browsers): SolveClient solves on the main thread
 const makeWorker = typeof Worker === 'undefined' ? null
@@ -84,9 +83,10 @@ export default function Planner() {
   }, [entry.file])
   // a missing or unreadable agreement goes to the section's error boundary (TESTER2_REPORT M-8)
   if (loadError) throw loadError
-  const terms = byId[home].terms, UNIT_CAP = capFor(home)
+  // two academic years in the home college's calendar: 4 semesters or 6 quarters
+  const terms = byId[home].terms, UNIT_CAP = capFor(home), maxTerms = maxTermsFor(terms)
   // first term: the next one the student can still register for at the home college, unless they pick another
-  const startOptions = termsFrom(nextOpenTerm(today, terms) ?? { season: 'Fall', year: today.getUTCFullYear() || 2026 }, terms, START_OPTIONS)
+  const startOptions = termsFrom(nextOpenTerm(today, terms) ?? { season: 'Fall', year: (Number.isNaN(today.getTime()) ? new Date() : today).getUTCFullYear() + 1 }, terms, START_OPTIONS)
   const start = (startPick && startOptions.find((t) => termKey(t) === termKey(startPick))) || startOptions[0]
   const allowed = [home, ...extra.filter((id) => id !== home)]
   const paletteOf = (inst: number) => PALETTE[allowed.indexOf(inst)] ?? GREY
@@ -97,7 +97,7 @@ export default function Planner() {
   const current = useMemo(() => (agreement ? verifySchedule(taken, agreement) : EMPTY_RESULT), [taken, agreement])
   // each plan is kept with the exact inputs it was solved for; `planning` is derived on every render by comparing them
   // with the current inputs, so no frame pairs the current selection with another input's verdict (r7 M-1, M-2)
-  const key = inputsKey({ taken, allowed, home, unitCap: UNIT_CAP, maxTerms: MAX_TERMS, start: termKey(start) })
+  const key = inputsKey({ taken, allowed, home, unitCap: UNIT_CAP, maxTerms, start: termKey(start) })
   const [solved, setSolved] = useState<Solved | null>(null)
   // the inputs of the newest request; SolveClient delivers only the newest request's plan (it may do so synchronously)
   const requested = useRef<Omit<Solved, 'plan'> | null>(null)
@@ -106,7 +106,7 @@ export default function Planner() {
   useEffect(() => {
     if (!agreement) return
     requested.current = { agreement, key }
-    client.request({ taken, agreement, opts: { allowed, home, unitCap: UNIT_CAP, maxTerms: MAX_TERMS, termSystem: terms, unitSystems, startTerm: start } })
+    client.request({ taken, agreement, opts: { allowed, home, unitCap: UNIT_CAP, maxTerms, termSystem: terms, unitSystems, startTerm: start } })
   }, [agreement, key])
   const view = planView(solved, agreement, key)
   // while planning, `plan` is the previous plan for this agreement (shown dimmed, never as a verdict) or empty
@@ -206,6 +206,8 @@ export default function Planner() {
   const caveat = scheduleCaveat(plan, trust.level, trust.fetchedAt ? formatDataDate(trust.fetchedAt) : null)
   const prereqOnly = prereqOnlySet(plan)
   const prereqWarnings = plan.prereqWarnings ?? []
+  const beyond = new Set(beyondWindow(plan.terms, start, terms))
+  const tooLong = tooLongNote(beyond.size > 0, terms)
 
   return (
     <section id="plan" ref={ref} className="px-6 py-32 md:py-48">
@@ -438,7 +440,8 @@ export default function Planner() {
           )}
 
           {/* ---- schedule ---- */}
-          <div className="mt-12">
+          {/* no schedule header for a failed plan or before the first plan: nothing to show (the badge says why) */}
+          {showSchedule(view) && <div data-schedule className="mt-12">
             <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
               <h3 className="h3">Your cross-enrollment schedule</h3>
               <span className="text-[14px] text-ink-3">Starts {termLabel(start)} · {UNIT_CAP} units per term max</span>
@@ -455,7 +458,7 @@ export default function Planner() {
             {plan.terms.length > 0 && (
               <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-3">
                 {plan.terms.map((t, i) => (
-                  <div key={t.name} data-term className={`card card-hover min-w-0 p-5 ${i >= MAX_TERMS ? 'border-alert/30' : ''}`}>
+                  <div key={t.name} data-term className={`card card-hover min-w-0 p-5 ${beyond.has(i) ? 'border-alert/30' : ''}`}>
                     <div className="flex items-baseline justify-between gap-3">
                       <div className="font-medium">{t.name}</div>
                       <div className={`shrink-0 text-[13px] ${t.overCap ? 'text-alert' : 'text-ink-3'}`}>{t.units} units{t.overCap && ` · over the ${UNIT_CAP}-unit cap`}</div>
@@ -469,6 +472,7 @@ export default function Planner() {
                             <span className={`h-2 w-2 shrink-0 rounded-full ${dot(instOf(c))}`} />
                             <span className="min-w-0 flex-1">
                               <span className="block truncate text-[14.5px]"><span className="font-semibold">{code(c)}</span> <span className="opacity-70">{course?.title}</span></span>
+                              {isHonorsCalculus(c, course?.title) && <span data-placement-note className="mt-0.5 block text-[12.5px] opacity-80">{CALCULUS_PLACEMENT_NOTE}</span>}
                               {prereqOnly.has(c) && <span data-prereq-only className="mt-0.5 inline-block rounded-full border border-current/30 px-1.5 text-[11.5px] font-medium opacity-80" title="Needed to enroll in a later course; not a UC requirement">{PREREQ_TAG}</span>}
                             </span>
                             <span className="shrink-0 text-[12px] opacity-70">{byId[instOf(c)].short}</span>
@@ -480,8 +484,8 @@ export default function Planner() {
                 ))}
               </div>
             )}
-            {plan.terms.length > MAX_TERMS && <p className="mt-3 text-[14px] text-alert">More than {MAX_TERMS} {terms}s needed at this unit cap.</p>}
-          </div>
+            {tooLong && <p data-too-long className="mt-3 text-[14px] text-alert">{tooLong}</p>}
+          </div>}
 
           {/* ---- requirement map ---- */}
           <div ref={map} className="mt-24 grid grid-cols-1 gap-10 lg:grid-cols-12">

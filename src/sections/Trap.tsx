@@ -75,13 +75,13 @@ function Chain() {
 function LiveCheck() {
   const [split, setSplit] = useState(true)
   const trust = useTrust()
-  // on untrusted data the demo is an illustration of the rule, not a verdict, so a pass is never shown in green
+  // on untrusted or prior-year data the demo is an illustration of the rule, not a verdict, so a pass is never green
   const me = agreements.find((a) => a.receivingId === 79 && /Mechanical/.test(a.major))!
   const taken = useMemo(() => new Set(split ? [`${DA}:PHYS 4B`, `${FH}:PHYS 4C`] : [`${DA}:PHYS 4B`, `${DA}:PHYS 4C`]), [split])
   const result = useMemo(() => verifySchedule(taken, me), [taken, me])
   const v = result.splitSeriesViolations.find((x) => x.requirementId === 'PHYSICS 7B')
   const ok = !!result.satisfied['PHYSICS 7B']
-  const tone = demoTone(ok, trust.level)
+  const tone = demoTone(ok, trust)
   const illustrate = tone === 'illustration'
   // credit in the university's own unit system: De Anza is on quarters, Berkeley on semesters (1 semester unit = 1.5 quarter)
   const sys = byId[me.receivingId].terms
@@ -131,6 +131,11 @@ function LiveCheck() {
       {trust.level === 'untrusted' && (
         <p data-trust-caption className="mt-3 text-[13px] text-ink-3">
           An illustration on the bundled {trust.academicYear ? `${trust.academicYear} data` : 'data'}, which needs a refresh. The planner won't mark any plan complete until it is.
+        </p>
+      )}
+      {trust.level !== 'untrusted' && trust.yearNote && (
+        <p data-trust-caption className="mt-3 text-[13px] text-ink-3">
+          An illustration on the prior year's {trust.academicYear ? `${trust.academicYear} agreements` : 'agreements'} ({trust.yearNote}). Articulation can change between years, so confirm with a counselor.
         </p>
       )}
     </div>

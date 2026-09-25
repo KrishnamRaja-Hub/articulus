@@ -183,29 +183,47 @@ describe('dataTrust: fetchedAt parsing', () => {
 })
 
 describe('dataTrust: academic year', () => {
-  it('switches on July 1 UTC', () => {
+  it('switches on July 1 in California (midnight PDT = 07:00 UTC)', () => {
     expect(academicYearOn(new Date('2026-06-30T23:59:59.999Z'))).toBe('2025-2026')
-    expect(academicYearOn(new Date('2026-07-01T00:00:00Z'))).toBe('2026-2027')
+    expect(academicYearOn(new Date('2026-07-01T00:00:00Z'))).toBe('2025-2026')
+    expect(academicYearOn(new Date('2026-07-01T06:59:59.999Z'))).toBe('2025-2026')
+    expect(academicYearOn(new Date('2026-07-01T07:00:00Z'))).toBe('2026-2027')
     expect(academicYearOn(new Date('2026-12-31T23:59:59Z'))).toBe('2026-2027')
     expect(academicYearOn(new Date('2027-01-01T00:00:00Z'))).toBe('2026-2027')
   })
 
-  it('uses UTC, not the local zone: 5 pm June 30 in California is already July 1', () => {
-    expect(academicYearOn(new Date('2026-06-30T17:00:00-07:00'))).toBe('2026-2027')
-    expect(academicYearOn(new Date('2026-06-30T16:59:59-07:00'))).toBe('2025-2026')
+  it('uses the California date, not UTC: 5 pm June 30 in California (already July 1 UTC) is still June 30', () => {
+    expect(academicYearOn(new Date('2026-06-30T17:00:00-07:00'))).toBe('2025-2026')
+    expect(academicYearOn(new Date('2026-06-30T23:59:59-07:00'))).toBe('2025-2026')
+    expect(academicYearOn(new Date('2026-07-01T00:00:00-07:00'))).toBe('2026-2027')
+    // Jan 1 UTC is still Dec 31 in California: same academic year either way, no off-by-one at the calendar year
+    expect(academicYearOn(new Date('2027-01-01T07:59:59Z'))).toBe('2026-2027')
   })
 
-  it('rolls over on July 1 UTC: data fetched the day before is aging with a year caveat, for a short grace period (M-6)', () => {
+  it('is null for an invalid date', () => {
+    expect(academicYearOn(new Date(NaN))).toBeNull()
+  })
+
+  it('rolls over on July 1 in California: data fetched the day before is aging with a year caveat, for a short grace period (M-6)', () => {
     const meta = good({ fetchedAt: '2026-06-30T12:00:00Z', academicYear: { id: 76, code: '2025-2026' } })
     expect(dataTrust(meta, new Date('2026-06-30T23:59:59Z'))).toMatchObject({ level: 'trusted', yearNote: null })
-    expect(dataTrust(meta, new Date('2026-07-01T00:00:00Z'))).toMatchObject({
+    // July 1 UTC, still June 30 in California
+    expect(dataTrust(meta, new Date('2026-07-01T06:59:59Z'))).toMatchObject({ level: 'trusted', yearNote: null })
+    expect(dataTrust(meta, new Date('2026-07-01T07:00:00Z'))).toMatchObject({
       level: 'aging', yearNote: '2026-27 agreements are now in effect but not downloaded yet',
       reasons: ['2026-27 agreements are now in effect but not downloaded yet; showing 2025-26. Articulation can change between years'],
     })
     // the pipeline has had a week to refresh or carry over explicitly; an unmarked prior year is now the wrong year
-    expect(dataTrust(meta, new Date('2026-07-08T00:00:00Z')).level).toBe('aging')
-    expect(dataTrust(meta, new Date('2026-07-08T00:00:00.001Z')))
+    expect(dataTrust(meta, new Date('2026-07-08T07:00:00Z')).level).toBe('aging')
+    expect(dataTrust(meta, new Date('2026-07-08T07:00:00.001Z')))
       .toMatchObject({ level: 'untrusted', reasons: ['Data is for 2025-2026 but 2026-2027 agreements are in effect'], yearNote: null })
+  })
+
+  it('the grace period counts from midnight July 1 in California: a fetch late on June 30 Pacific is before it', () => {
+    const meta = good({ fetchedAt: '2026-07-01T03:00:00Z', academicYear: { id: 76, code: '2025-2026' } }) // 8 pm June 30 PDT
+    expect(dataTrust(meta, new Date('2026-07-01T08:00:00Z')).level).toBe('aging')
+    const after = good({ fetchedAt: '2026-07-01T07:00:00Z', academicYear: { id: 76, code: '2025-2026' } }) // midnight PDT
+    expect(dataTrust(after, new Date('2026-07-01T08:00:00Z')).level).toBe('untrusted')
   })
 
   it('an unmarked prior year fetched after July 1 is the wrong year', () => {
@@ -234,8 +252,8 @@ describe('dataTrust: carried-over prior year (M-6)', () => {
     expect(agreementYearLabel('2025-2026', t)).toBe("2025-26 agreement (2026-27 agreements aren't published on ASSIST yet)")
   })
 
-  it('stays aging for as long as the pipeline keeps re-checking, from July 1 UTC on', () => {
-    expect(dataTrust(carried({ fetchedAt: '2026-07-01T00:00:00Z' }), new Date('2026-07-01T00:00:00Z')).level).toBe('aging')
+  it('stays aging for as long as the pipeline keeps re-checking, from July 1 in California on', () => {
+    expect(dataTrust(carried({ fetchedAt: '2026-07-01T07:00:00Z' }), new Date('2026-07-01T07:00:00Z')).level).toBe('aging')
     expect(dataTrust(carried({ fetchedAt: '2026-11-20T00:00:00Z' }), new Date('2026-11-21T00:00:00Z')).level).toBe('aging')
   })
 
@@ -253,7 +271,8 @@ describe('dataTrust: carried-over prior year (M-6)', () => {
     }
     // a carry-over mark from last year does not stretch into the next rollover
     expect(dataTrust(carried({ fetchedAt: '2027-06-30T00:00:00Z' }), new Date('2027-06-30T23:59:59Z')).level).toBe('aging')
-    expect(dataTrust(carried({ fetchedAt: '2027-06-30T00:00:00Z' }), new Date('2027-07-01T00:00:00Z')))
+    expect(dataTrust(carried({ fetchedAt: '2027-06-30T00:00:00Z' }), new Date('2027-07-01T06:59:59Z')).level).toBe('aging')
+    expect(dataTrust(carried({ fetchedAt: '2027-06-30T00:00:00Z' }), new Date('2027-07-01T07:00:00Z')))
       .toMatchObject({ level: 'untrusted', reasons: ['Data is for 2025-2026 but 2027-2028 agreements are in effect'] })
   })
 
@@ -316,12 +335,38 @@ describe('banner text', () => {
   })
 })
 
-describe('demoTone (L-5)', () => {
+describe('demoTone (L-5, L-1)', () => {
+  const NOTE = "2026-27 agreements aren't published on ASSIST yet"
   it('never shows a green pass on untrusted data', () => {
-    expect(demoTone(true, 'untrusted')).toBe('illustration')
-    expect(demoTone(true, 'aging')).toBe('ok')
-    expect(demoTone(true, 'trusted')).toBe('ok')
-    expect(demoTone(false, 'trusted')).toBe('split')
+    expect(demoTone(true, { level: 'untrusted', yearNote: null })).toBe('illustration')
+    expect(demoTone(true, { level: 'aging', yearNote: null })).toBe('ok')
+    expect(demoTone(true, { level: 'trusted', yearNote: null })).toBe('ok')
+    expect(demoTone(false, { level: 'trusted', yearNote: null })).toBe('split')
+  })
+
+  it('every level x ok x yearNote: green only for a pass on trusted or aging data of the year in effect', () => {
+    const want = {
+      'trusted/true/none': 'ok', 'trusted/true/note': 'illustration', 'trusted/false/none': 'split', 'trusted/false/note': 'split',
+      'aging/true/none': 'ok', 'aging/true/note': 'illustration', 'aging/false/none': 'split', 'aging/false/note': 'split',
+      'untrusted/true/none': 'illustration', 'untrusted/true/note': 'illustration', 'untrusted/false/none': 'split', 'untrusted/false/note': 'split',
+    } as const
+    for (const level of ['trusted', 'aging', 'untrusted'] as const)
+      for (const ok of [true, false])
+        for (const note of ['none', 'note'] as const)
+          expect(demoTone(ok, { level, yearNote: note === 'note' ? NOTE : null }), `${level}/${ok}/${note}`).toBe(want[`${level}/${ok}/${note}`])
+  })
+
+  it('a carried-over prior year from dataTrust is never green (mirrors badgeStatus caution)', () => {
+    const t = dataTrust(good({ academicYear: { id: 76, code: '2025-2026' }, yearInEffect: '2026-2027', carriedOver: true }), NOW)
+    expect(t).toMatchObject({ level: 'aging', yearNote: NOTE })
+    expect(demoTone(true, t)).toBe('illustration')
+    expect(demoTone(false, t)).toBe('split')
+    expect(demoTone(true, dataTrust(good(), NOW))).toBe('ok')
+  })
+
+  it('an unrecognized level is untrusted, never green', () => {
+    for (const level of ['Trusted', '', undefined, null])
+      expect(demoTone(true, { level, yearNote: null } as never)).toBe('illustration')
   })
 })
 

@@ -75,8 +75,9 @@ export function recoverPublish(targetDir: string): string[] {
     .map((x) => ({ path: join(parent, x.f), kind: x.m![1] as 'next' | 'prev', at: Number(x.m![3]) }))
     .sort((a, b) => b.at - a.at)
   if (!existsSync(target)) {
-    // The newest prev that is a complete data directory (has index.json); a junk or partial prev is never restored.
-    const prev = found.find((x) => x.kind === 'prev' && existsSync(join(x.path, 'index.json')))
+    // The newest prev that is a complete data directory (a readable index.json array); a junk, partial or corrupt prev
+    // is never restored.
+    const prev = found.find((x) => x.kind === 'prev' && readableIndex(x.path))
     if (prev) {
       renameSync(prev.path, target)
       done.push(`restored ${basename(target)}/ from ${basename(prev.path)} (a previous publish crashed between renames)`)
@@ -86,7 +87,7 @@ export function recoverPublish(targetDir: string): string[] {
       found.splice(0, found.length, ...found.filter((x) => x.kind !== 'prev'))
     } else if (found.some((x) => x.kind === 'prev')) {
       // Nothing restorable: keep every prev for a human to inspect.
-      for (const x of found) if (x.kind === 'prev') done.push(`kept ${basename(x.path)} (no index.json; not restored)`)
+      for (const x of found) if (x.kind === 'prev') done.push(`kept ${basename(x.path)} (no readable index.json; not restored)`)
       found.splice(0, found.length, ...found.filter((x) => x.kind !== 'prev'))
     }
   }
@@ -95,6 +96,11 @@ export function recoverPublish(targetDir: string): string[] {
     done.push(`removed leftover ${basename(x.path)}`)
   }
   return done
+}
+
+/** Does dir hold an index.json that parses to an array (what readDataSet requires)? */
+const readableIndex = (dir: string) => {
+  try { return Array.isArray(JSON.parse(readFileSync(join(dir, 'index.json'), 'utf8'))) } catch { return false }
 }
 
 /** Content hash of a directory tree (relative paths + bytes), to prove what was validated is what gets published. */

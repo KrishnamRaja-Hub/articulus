@@ -369,14 +369,38 @@ Testers covered verdicts, the planner, the data pipeline, the GitHub workflows a
   - Scheduling doesn't put the longest prerequisite chain first.
   - Duplicate course content across colleges.
   - No re-optimization after prerequisites are added.
-  - Honors combined calculus has no placement caveat.
   - Home college and distance are ignored.
-  - Registration cutoffs use UTC.
   - Summer is never planned.
-  - `MAX_TERMS` is the same for semester and quarter schools.
 - **Low items:**
-  - Retrying the same failed agreement file needs a page reload (the browser caches the failed load).
-  - Focus isn't moved after "Try again".
-  - An empty schedule header shows on a planning failure.
-  - `--first-publish` on the command line skips review.
   - `NFollowingUnits` is read as "take all".
+
+---
+
+## Round 9: small fixes
+
+| Issue | Fix |
+|---|---|
+| Registration cutoffs and the July 1 year switch used UTC (6 pm Aug 31 in California counted as Sep 1) | `pacificDate()` in `src/terms.ts` reads the California calendar date. The app, calendar and pipeline all use it. It returns null (ask the student / untrusted / the run fails) for invalid dates, dates before 2 AD, or a runtime without the time zone. `codeInEffect` throws a clear error instead of "NaN-NaN". |
+| Trap demo could be green on prior-year data | `demoTone(ok, trust)` mirrors `badgeStatus`: prior-year or not-trusted data is an illustration, never green. |
+| Same term limit for semester and quarter schools; mixed-calendar plans warned by card count | The limit is two academic years of the home calendar (`maxTermsFor`). `beyondWindow()` flags cards that end after that window, by date, so mixed quarter/semester plans are judged correctly. |
+| No placement caveat for honors/combined calculus | `isHonorsCalculus()` adds an informational note under the course. It never changes the verdict. |
+| Empty schedule header on a planning failure | The schedule is hidden for an error plan and during the first build (`showSchedule`). |
+| "Try again" couldn't recover from a network failure (Chromium caches failed module imports) | Agreements load as JSON with `fetch`. Failures are evicted from the cache, successes are kept, concurrent requests are shared. |
+| Focus after "Try again" | Focus moves to the recovered section, or to the fallback if it fails again or focus was lost on the first crash. |
+| `--first-publish` skipped review | A first publish always decides review, even with the accept overrides. |
+| Unreadable, empty, garbage or dangling `data/index.json` could count as previous data and publish | `previousData()` in `run.ts`: the run is refused at preflight unless every entry is a plain file name that loads. `decide()` with nothing to compare returns review. Recovery skips a corrupt sidecar. |
+
+**Final checks:**
+- `tsc -b` and `tsc -p tests/independent`: clean.
+- vitest: 1025 pass.
+- Independent suite: 333 pass.
+- Smoke: 95 of 95.
+- Build: clean.
+- `validate:data:ci`: exit 0.
+- actionlint: clean.
+- Browser re-run at 375, 768 and 1280 px: every item passes, with 0 green frames. The mixed-calendar sweep (70 plans) had no missed or false warnings. "Try again" recovers after 2 failures with no reload.
+
+**Decisions taken:**
+- A covered plan that runs past two years keeps its green badge, with a red "talk to a counselor about your timeline" warning under the schedule.
+- Dry runs are not refused on unreadable previous data. They publish nothing and decide review.
+

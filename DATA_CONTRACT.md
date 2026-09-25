@@ -61,6 +61,8 @@ Before refreshing, the `refresh` job checks the latest completed CI run (any eve
 
 The first run after this change goes to review, because no `data/baseline-manifest.json` exists yet. A person merging that PR creates the baseline, and later runs judge looser changes against it.
 
+A run with no previous data (no `data/index.json`) is refused unless it is started with `--first-publish`. That flag only lets the run proceed: its decision is always `review`, never `publish`, even with `--accept-large-change` or `DATA_ACCEPT_LARGE_CHANGE=1`, because none of the data has been reviewed. Locally (no `DATA_REFRESH_ON_REVIEW=pr`) the run fails and publishes nothing, and the message says to rerun with `DATA_REFRESH_ON_REVIEW=pr`. That stages `data/` with a new `data/baseline-manifest.json`, which then lands through a reviewed PR.
+
 | Decision | `DATA_REFRESH_MODE` | Result |
 |---|---|---|
 | `publish` | unset | Commit to the default branch, then dispatch `DEPLOY_WORKFLOW`. If there's no `DATA_REFRESH_TOKEN`, it also dispatches CI with `stress=false`, because a `GITHUB_TOKEN` push triggers no workflows. The run also closes the open failure issue. |
