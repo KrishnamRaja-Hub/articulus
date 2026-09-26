@@ -93,6 +93,8 @@ Exactness is checked in two places. `src/engine/solve.test.ts` compares full cos
 
 Units are converted between systems when the plan mixes quarter and semester colleges. Semester units are multiplied by 1.5 to quarter units. Packing and totals use exact converted units; only displayed numbers are rounded to 0.5. The default cap is 16 quarter units or 12 semester units per term, and terms are named for the student's `termSystem` (Fall/Winter/Spring for quarter, Fall/Spring for semester).
 
+Summer is never planned unless the student turns on **Include summer** in the planner (`SolveOptions.summer`, off by default). Then each college's summer session (quarter and semester alike, June to August, between Spring and Fall on the shared timeline) may hold at most `SUMMER_MAX_COURSES` = 2 courses and `SUMMER_UNIT_CAP` = 10 quarter or 8 semester units (never above the regular cap), across all colleges. A lecture and its lab go together or not at all. Prerequisites work the same way. Summer is used only when it lets the student finish sooner, so turning it on never lengthens a plan. The two-year "too long" window is measured by date, so a summer between the two years is inside it. Summer offerings and financial aid vary by college; the planner says so next to the toggle.
+
 Everything is deterministic. There is no language model anywhere in the path. Same inputs, same plan.
 
 ## Data
@@ -218,7 +220,7 @@ src/engine/types.ts          Course, CourseGroup, Requirement, ReqNode, Agreemen
 src/engine/normalize.ts      raw ASSIST payloads -> Agreement (tree + catalog)
 src/engine/verify.ts         verifySchedule: tree fold, split-series detection
 src/engine/solve.ts          exact minimum-unit search
-src/engine/pack.ts           term packing, critical path first
+src/engine/pack.ts           term packing, critical path first, opt-in summer
 src/engine/engine.test.ts    vitest cases against the real Berkeley ME agreement
 src/sections/Hero.tsx        landing
 src/sections/Trap.tsx        the PHYSICS 7B example, running the live engine

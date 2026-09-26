@@ -1,6 +1,6 @@
 import type { PlanResult } from '../engine/solveClient'
 import type { Agreement, CourseId, Term, ValidationResult } from '../engine/types'
-import { nthTerm, startSlot } from '../engine/calendar'
+import { nthTerm, startSlot, summerSlot } from '../engine/calendar'
 import type { StartTerm, TermSystem } from '../terms'
 
 /** Pure planning-state derivation for the Planner (TESTER r7 M-1/M-2/M-3), kept out of the component so it can be tested. */
@@ -16,9 +16,11 @@ export interface PlanInputs {
   unitCap: number
   maxTerms: number
   start: string
+  /** "Include summer" (off by default). */
+  summer?: boolean
 }
 export const inputsKey = (i: PlanInputs) =>
-  JSON.stringify([[...i.taken].sort(), [...i.allowed], i.home, i.unitCap, i.maxTerms, i.start])
+  JSON.stringify([[...i.taken].sort(), [...i.allowed], i.home, i.unitCap, i.maxTerms, i.start, i.summer === true])
 
 /** A plan as delivered by the solver, with the exact inputs it was solved for. */
 export interface Solved { agreement: Agreement; key: string; plan: PlanResult }
@@ -49,8 +51,9 @@ export function planView(solved: Solved | null, agreement: Agreement | null, key
 export const authoritative = (v: PlanView) => !v.planning && !v.failed
 
 /**
- * The longest plan that fits in two academic years: 4 semesters or 6 quarters (summer not counted). The solver packs
- * every course regardless (solve.ts ignores maxTerms); the Planner flags a plan past this limit as too long.
+ * The longest plan that fits in two academic years: 4 semesters or 6 quarters (summer not counted: with "Include summer"
+ * on, a summer between them is inside the window, since beyondWindow compares dates). The solver packs every course
+ * regardless (solve.ts ignores maxTerms); the Planner flags a plan past this limit as too long.
  */
 export const maxTermsFor = (system: 'semester' | 'quarter'): number => (system === 'semester' ? 4 : 6)
 
@@ -69,6 +72,7 @@ export function windowEnd(start: StartTerm, home: TermSystem): number | null {
 function spanOf(t: Term): [number, number] | null {
   if (t.span) return t.span
   if (!t.system || !t.season || t.year === undefined) return null
+  if (t.season === 'Summer') return Number.isInteger(t.year) ? [summerSlot(t.year), summerSlot(t.year)] : null
   try {
     const c = nthTerm(t.system, startSlot({ season: t.season, year: t.year }, t.system), 0)
     return [c.start, c.end]
@@ -87,6 +91,9 @@ function spanOf(t: Term): [number, number] | null {
  * where every quarter term ends too, so this equals "starts after the window". With a quarter home whose window ends
  * on a Winter quarter, a Spring semester (Jan-May) that starts inside the window but runs past it is flagged: it cannot
  * finish in time.
+ *
+ * Summer terms (opt-in) are judged the same way: a summer between two academic years of the window is inside it; the
+ * summer after the window's last Spring ends after it, so it is beyond.
  *
  * A term without any calendar information falls back to its position (index >= maxTermsFor(home)).
  */

@@ -7,6 +7,7 @@ import { agreementYearLabel, formatDataDate } from '../data-trust'
 import { nextOpenTerm, termKey, termLabel, termsFrom, type StartTerm } from '../terms'
 import { has, honorsColleges, ucOnly, verifySchedule } from '../engine/verify'
 import { SolveClient, type WorkerLike } from '../engine/solveClient'
+import { SUMMER_MAX_COURSES, SUMMER_UNIT_CAP } from '../engine/pack'
 import { CALCULUS_PLACEMENT_NOTE, honorsHints, honorsNote, isHonorsCalculus } from '../engine/hints'
 import type { Agreement, CourseGroup, CourseId, ReqNode, Requirement, ValidationResult } from '../engine/types'
 import Button from '../ui/Button'
@@ -64,6 +65,9 @@ export default function Planner() {
   const [query, setQuery] = useState('')
   const [hover, setHover] = useState<CourseId | null>(null)
   const [startPick, setStartPick] = useState<StartTerm | null>(null)
+  // product decision (Round 10): summer is never planned unless the student turns it on
+  const [summer, setSummer] = useState(false)
+  const summerHelp = useId()
   const [today] = useState(() => new Date())
   const trust = useTrust()
 
@@ -85,6 +89,7 @@ export default function Planner() {
   if (loadError) throw loadError
   // two academic years in the home college's calendar: 4 semesters or 6 quarters
   const terms = byId[home].terms, UNIT_CAP = capFor(home), maxTerms = maxTermsFor(terms)
+  const SUMMER_CAP = Math.min(UNIT_CAP, SUMMER_UNIT_CAP[terms])
   // first term: the next one the student can still register for at the home college, unless they pick another
   const startOptions = termsFrom(nextOpenTerm(today, terms) ?? { season: 'Fall', year: (Number.isNaN(today.getTime()) ? new Date() : today).getUTCFullYear() + 1 }, terms, START_OPTIONS)
   const start = (startPick && startOptions.find((t) => termKey(t) === termKey(startPick))) || startOptions[0]
@@ -97,7 +102,7 @@ export default function Planner() {
   const current = useMemo(() => (agreement ? verifySchedule(taken, agreement) : EMPTY_RESULT), [taken, agreement])
   // each plan is kept with the exact inputs it was solved for; `planning` is derived on every render by comparing them
   // with the current inputs, so no frame pairs the current selection with another input's verdict (r7 M-1, M-2)
-  const key = inputsKey({ taken, allowed, home, unitCap: UNIT_CAP, maxTerms, start: termKey(start) })
+  const key = inputsKey({ taken, allowed, home, unitCap: UNIT_CAP, maxTerms, start: termKey(start), summer })
   const [solved, setSolved] = useState<Solved | null>(null)
   // the inputs of the newest request; SolveClient delivers only the newest request's plan (it may do so synchronously)
   const requested = useRef<Omit<Solved, 'plan'> | null>(null)
@@ -106,7 +111,7 @@ export default function Planner() {
   useEffect(() => {
     if (!agreement) return
     requested.current = { agreement, key }
-    client.request({ taken, agreement, opts: { allowed, home, unitCap: UNIT_CAP, maxTerms, termSystem: terms, unitSystems, startTerm: start } })
+    client.request({ taken, agreement, opts: { allowed, home, unitCap: UNIT_CAP, maxTerms, termSystem: terms, unitSystems, startTerm: start, summer } })
   }, [agreement, key])
   const view = planView(solved, agreement, key)
   // while planning, `plan` is the previous plan for this agreement (shown dimmed, never as a verdict) or empty
@@ -207,6 +212,7 @@ export default function Planner() {
   const prereqOnly = prereqOnlySet(plan)
   const prereqWarnings = plan.prereqWarnings ?? []
   const beyond = new Set(beyondWindow(plan.terms, start, terms))
+  const summers = plan.terms.filter((t) => t.season === 'Summer').length
   const tooLong = tooLongNote(beyond.size > 0, terms)
 
   return (
@@ -238,6 +244,14 @@ export default function Planner() {
               <Select value={termKey(start)} label={`First ${terms} to plan`} onChange={(k) => setStartPick(startOptions.find((t) => termKey(t) === k) ?? null)}>
                 {startOptions.map((t, i) => <option key={termKey(t)} value={termKey(t)}>{termLabel(t)}{i === 0 ? ' (next open registration)' : ''}</option>)}
               </Select>
+            </div>
+            <div>
+              <label className="flex min-h-11 cursor-pointer items-center gap-3 text-[14.5px] text-ink">
+                <input type="checkbox" data-summer-toggle checked={summer} onChange={(e) => setSummer(e.target.checked)} aria-describedby={summerHelp}
+                  className="h-5 w-5 shrink-0 cursor-pointer rounded accent-accent" />
+                <span><span className="font-medium">Include summer</span> <span className="text-ink-2">· up to {SUMMER_MAX_COURSES} courses, {SUMMER_CAP} units</span></span>
+              </label>
+              <p id={summerHelp} className="pl-8 text-[13px] text-ink-2">Used only when it lets you finish sooner. Summer offerings and financial aid vary, so check with the college before you count on a summer course.</p>
             </div>
             <div>
               <div className="mb-2 text-[13px] text-ink-3">Also enroll at, via CVC or district cross-enrollment</div>
@@ -308,7 +322,7 @@ export default function Planner() {
             {/* a failed plan has nothing to count; a stale one is dimmed while the new plan is computed (r7 M-3, N-2) */}
             {!failed && <dl data-stats data-stale={planning || undefined} aria-hidden={planning || undefined}
               className={`grid grid-cols-3 gap-6 text-[14px] text-ink-2 transition-opacity md:text-right ${planning ? 'opacity-40' : ''}`}>
-              <Stat n={plan.terms.length} l={plan.terms.length === 1 ? terms : `${terms}s`} />
+              <Stat n={plan.terms.length - summers} l={plan.terms.length - summers === 1 ? terms : `${terms}s`} note={summers ? `+ ${summers} summer${summers === 1 ? '' : 's'}` : null} />
               <Stat n={plan.totalUnits} l={incomplete ? 'units scheduled' : 'units to go'} note={note} title={incomplete ? undefined : optimalExplain(plan)} />
               <Stat n={Object.keys(plan.result.satisfied).length} l="requirements" />
             </dl>}
@@ -444,9 +458,12 @@ export default function Planner() {
           {showSchedule(view) && <div data-schedule className="mt-12">
             <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
               <h3 className="h3">Your cross-enrollment schedule</h3>
-              <span className="text-[14px] text-ink-3">Starts {termLabel(start)} · {UNIT_CAP} units per term max</span>
+              <span className="text-[14px] text-ink-3">Starts {termLabel(start)} · {UNIT_CAP} units per term max{summer ? ` · summer up to ${SUMMER_MAX_COURSES} courses, ${SUMMER_CAP} units` : ''}</span>
             </div>
             {plan.terms.length > 0 && !incomplete && note && <p data-optimal className="mt-1 max-w-3xl text-[13.5px] text-ink-3">How it is chosen: {optimalExplain(plan)}</p>}
+            {summer && settled && plan.terms.length > 0 && !plan.terms.some((t) => t.season === 'Summer') && (
+              <p data-summer-unused className="mt-1 max-w-3xl text-[13.5px] text-ink-2">Summer would not finish this plan sooner, so none is planned.</p>
+            )}
             {caveat && <Notice note={caveat} data="schedule-caveat" />}
             {schedNote && <Notice note={schedNote} data="schedule-note" />}
             {prereqWarnings.length > 0 && (
@@ -458,9 +475,13 @@ export default function Planner() {
             {plan.terms.length > 0 && (
               <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-3">
                 {plan.terms.map((t, i) => (
-                  <div key={t.name} data-term className={`card card-hover min-w-0 p-5 ${beyond.has(i) ? 'border-alert/30' : ''}`}>
+                  <div key={t.name} data-term {...(t.season === 'Summer' ? { 'data-summer-term': '' } : {})}
+                    className={`card card-hover min-w-0 p-5 ${beyond.has(i) ? 'border-alert/30' : t.season === 'Summer' ? 'border-dashed border-warn/40 bg-warn-soft/40' : ''}`}>
                     <div className="flex items-baseline justify-between gap-3">
-                      <div className="font-medium">{t.name}</div>
+                      <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 font-medium">
+                        {t.name}
+                        {t.season === 'Summer' && <span className="rounded-full border border-warn/30 bg-warn-soft px-2 py-0.5 text-[11.5px] font-medium text-warn">Summer session · lighter load</span>}
+                      </div>
                       <div className={`shrink-0 text-[13px] ${t.overCap ? 'text-alert' : 'text-ink-3'}`}>{t.units} units{t.overCap && ` · over the ${UNIT_CAP}-unit cap`}</div>
                     </div>
                     <ul className="mt-4 space-y-2">

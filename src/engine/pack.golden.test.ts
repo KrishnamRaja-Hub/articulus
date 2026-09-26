@@ -65,6 +65,14 @@ describe('pack regression: real plans (Round 10)', () => {
     for (const c of g.cases) expect(shape(repack(g, c)), c.name).toEqual(c.terms)
   })
 
+  it('summer off (Round 10): exactly the stored schedules, and no summer term anywhere', () => {
+    for (const c of g.cases) {
+      const off = repack(g, c, { summer: false })
+      expect(shape(off), c.name).toEqual(c.terms)
+      expect(off.some((t) => t.season === 'Summer'), c.name).toBe(false)
+    }
+  })
+
   it('never ends later than the old order (Round 4) on any stored plan', () => {
     const end = (ts: Term[]) => [Math.max(...ts.map((t) => t.span![1])), ts.length]
     for (const c of g.cases) {

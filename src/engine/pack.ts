@@ -1,6 +1,6 @@
 import type { CourseId, Term } from './types'
 import { prereqs } from './sequence.ts'
-import { nthTerm, startSlot, type CalendarTerm, type StartTerm, type TermSystem } from './calendar.ts'
+import { nthTerm, startSlot, summerTerm, type CalendarTerm, type StartTerm, type TermSystem } from './calendar.ts'
 
 /* ---- term packing ----
  *
@@ -22,12 +22,29 @@ import { nthTerm, startSlot, type CalendarTerm, type StartTerm, type TermSystem 
  * shared by overlapping quarter and semester terms it is sometimes worse, so this fallback is what guarantees a plan is
  * never longer than the Round 4 one (FIXES.md Round 10 has the counts). The result is deterministic: both orders are
  * total (stable sorts over the input order).
+ *
+ * Summer (Round 10) is off unless the student turns it on (PackOptions.summer). When on, each college's summer session
+ * (calendar.ts: after Spring, before Fall, on quarter and semester calendars alike) may be used, under a lighter load:
+ * at most SUMMER_MAX_COURSES courses and SUMMER_UNIT_CAP units running in that summer, across every college. The
+ * prerequisite rules are the same (a summer course waits for Spring; Fall waits for summer). A lecture and lab pair goes
+ * to summer only when both fit. A course over the summer cap is never put in summer (unlike a regular term, where it
+ * may run alone). The plan without summer is packed too, and summer is used only when it lets the student finish
+ * sooner (an earlier last term). So turning summer on never lengthens a plan, and never adds summer work that gains
+ * nothing.
  */
+
+/** Summer: at most this many courses in one summer, across every college (a lecture and its lab count as two). */
+export const SUMMER_MAX_COURSES = 2
+/** Summer: at most this many units in one summer, in the home calendar's units: about two courses (two 5-unit quarter
+ *  courses, two 4-unit semester courses). Many colleges cap summer enrollment near here; never above the regular cap. */
+export const SUMMER_UNIT_CAP: Record<TermSystem, number> = { quarter: 10, semester: 8 }
 
 export type PackOrder = 'best' | 'critical' | 'legacy'
 export interface PackOptions {
   /** 'best' (default): critical, unless legacy finishes strictly earlier. 'critical', 'legacy': that order alone (tests). */
   order?: PackOrder
+  /** Use summer sessions (default false: the plan never uses summer). */
+  summer?: boolean
 }
 
 const half = (u: number) => Math.round(u * 2) / 2
@@ -78,11 +95,14 @@ export function pack(courses: CourseId[], unitsOf: (c: CourseId) => number, cap:
   // tail and release but is shallower.
   const critical = [...courses].sort((x, y) => tail(y) - tail(x) || release(y) - release(x) || legacyCmp(x, y))
 
-  const layout = (ordered: CourseId[]) => place(ordered, preds, unitsOf, cap, start, system, systemOf)
-  let used = layout(opts.order === 'legacy' ? legacy : critical)
-  if ((opts.order ?? 'best') === 'best') {
-    const alt = layout(legacy)
-    if (shorter(alt, used)) used = alt
+  const layout = (ordered: CourseId[], summer: boolean) => place(ordered, preds, unitsOf, cap, start, system, systemOf, summer)
+  const orders = opts.order === 'legacy' ? [legacy] : opts.order === 'critical' ? [critical] : [critical, legacy]
+  const best = (runs: Slot[][]) => runs.reduce((b, r) => (shorter(r, b) ? r : b)) // on a tie, the earlier order
+  let used = best(orders.map((o) => layout(o, false)))
+  if (opts.summer) {
+    // summer only when it lets the student finish sooner
+    const withSummer = best(orders.map((o) => layout(o, true)))
+    if (lengthOf(withSummer)[0] < lengthOf(used)[0]) used = withSummer
   }
   const loadOf = periodLoad(used)
   const mixed = new Set(used.map((t) => t.cal.system)).size > 1
@@ -110,15 +130,23 @@ function periodLoad(used: Slot[]) {
 
 /** Earliest-fit placement of `ordered` (a topological order), returning the used terms in timeline order. */
 function place(ordered: CourseId[], preds: Map<CourseId, [CourseId, number][]>, unitsOf: (c: CourseId) => number, cap: number,
-  start: StartTerm, system: TermSystem, systemOf: (c: CourseId) => TermSystem): Slot[] {
+  start: StartTerm, system: TermSystem, systemOf: (c: CourseId) => TermSystem, summer: boolean): Slot[] {
   // H-3: each course goes in a term of its own college's calendar; quarter and semester terms share one timeline
   // (calendar.ts) and the cap applies to the combined load of every term running in each quarter period.
   const slot0 = startSlot(start, system)
   const bySys: Record<TermSystem, Slot[]> = { quarter: [], semester: [] }
+  const regular: Record<TermSystem, number> = { quarter: 0, semester: 0 } // regular terms listed so far
   const termAt = (s: TermSystem, j: number) => {
-    while (bySys[s].length <= j) bySys[s].push({ cal: nthTerm(s, slot0, bySys[s].length), courses: [], units: 0 })
+    while (bySys[s].length <= j) {
+      const last = bySys[s].at(-1)?.cal
+      // with summer on, every Spring is followed by that year's summer session
+      const cal = summer && last?.season === 'Spring' ? summerTerm(s, last.year) : nthTerm(s, slot0, regular[s]++)
+      bySys[s].push({ cal, courses: [], units: 0 })
+    }
     return bySys[s][j]
   }
+  const summerCap = Math.min(cap, SUMMER_UNIT_CAP[system] ?? cap)
+  const count = new Map<number, number>() // summer slot -> courses
   // order on the timeline: start, then end, then home calendar first (Fall quarter and Fall semester share a span)
   const key = (t: CalendarTerm) => [t.start, t.end, t.system === system ? 0 : 1]
   const geq = (x: number[], y: number[]) => x[0] - y[0] || x[1] - y[1] || x[2] - y[2]
@@ -144,14 +172,17 @@ function place(ordered: CourseId[], preds: Map<CourseId, [CourseId, number][]>, 
     let j = 0
     for (;; j++) {
       // N-3: with finite units and cap a course always fits within a few terms of its last prerequisite; never spin
-      if (j > 4 * (ordered.length + 4)) throw new Error(`Could not place ${c} in any term (units ${unitsOf(c)}, cap ${cap}).`)
+      if (j > 8 * (ordered.length + 4)) throw new Error(`Could not place ${c} in any term (units ${unitsOf(c)}, cap ${cap}).`)
       const t = termAt(sys, j).cal
       if (!ok(t, c) || !go.every((l) => ok(t, l, c))) continue
-      if (units > cap + EPS ? loadOf(t) === 0 : loadOf(t) + units <= cap + EPS) break
+      if (t.season === 'Summer') {
+        if (loadOf(t) + units <= summerCap + EPS && (count.get(t.start) ?? 0) + 1 + go.length <= SUMMER_MAX_COURSES) break
+      } else if (units > cap + EPS ? loadOf(t) === 0 : loadOf(t) + units <= cap + EPS) break
     }
     const t = termAt(sys, j)
     for (const x of [c, ...go]) { t.courses.push(x); placed.set(x, t.cal) }
     t.units += units
+    if (t.cal.season === 'Summer') count.set(t.cal.start, (count.get(t.cal.start) ?? 0) + 1 + go.length)
     for (let k = t.cal.start; k <= t.cal.end; k++) load.set(k, (load.get(k) ?? 0) + units)
   }
   return [...bySys.quarter, ...bySys.semester].filter((t) => t.courses.length).sort((x, y) => geq(key(x.cal), key(y.cal)))

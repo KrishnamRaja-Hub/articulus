@@ -15,6 +15,8 @@ export interface SolveOptions {
   /** first term of the plan, read in the home calendar; default nextOpenTerm(today) (calendar.ts) */
   startTerm?: { season: 'Fall' | 'Winter' | 'Spring'; year: number }
   termSystem?: TermSystem                     // home college's system; Plan units are reported in it
+  /** Plan summer sessions too (pack.ts: lighter load, never a longer plan). Default false: summer is never planned. */
+  summer?: boolean
   unitSystems?: Record<number, TermSystem>    // institutionId -> native system; missing => assumed termSystem
   budget?: number                             // search nodes before falling back to greedy (optimal = false); default 200k
   timeLimitMs?: number                        // wall-clock search limit; past it, the best plan so far (optimal = false)
@@ -902,7 +904,7 @@ export function solve(taken: Set<CourseId>, a0: Agreement, opts: SolveOptions): 
   let prereqOnly: CourseId[] = [], prereqWarnings: string[] = []
   ;({ planned, chosen, prereqOnly, prereqWarnings, optimal } = withPrereqs(planned, chosen, optimal))
   const terms = pack([...planned], (c) => unitsOf(c, true), unitCap, startTerm, termSystem, (c) => a.catalog[c]?.title ?? '',
-    (c) => (a.catalog[c] ? unitSystems[a.catalog[c].institutionId] : undefined) ?? termSystem)
+    (c) => (a.catalog[c] ? unitSystems[a.catalog[c].institutionId] : undefined) ?? termSystem, { summer: opts.summer === true })
   const result = verifySchedule(withTaken(planned), a0)
   for (const c of badUnits) if (L.some((r) => r.groups.some((g) => allowed.includes(g.institutionId) && g.courses.includes(c))))
     prereqWarnings.push(`${c} has no valid unit count in the agreement data; it is not planned.`)

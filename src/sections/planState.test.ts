@@ -18,8 +18,11 @@ describe('inputsKey', () => {
   })
   it('changes with every other solver input', () => {
     const base = inputsKey(inputs())
-    for (const over of [{ allowed: [113] }, { home: 51 }, { unitCap: 12 }, { maxTerms: 5 }, { start: 'Spring-2027' }])
+    for (const over of [{ allowed: [113] }, { home: 51 }, { unitCap: 12 }, { maxTerms: 5 }, { start: 'Spring-2027' }, { summer: true }])
       expect(inputsKey(inputs(over))).not.toBe(base)
+  })
+  it('summer is off unless set: unset and false are the same request (Round 10)', () => {
+    expect(inputsKey(inputs({ summer: false }))).toBe(inputsKey(inputs()))
   })
 })
 
@@ -154,6 +157,24 @@ describe('beyondWindow (r9: the too-long window is measured in time, not by coun
   it('a semester term that starts inside a quarter window but ends after it is beyond (the "ends after" rule)', () => {
     // quarter home from Spring 2027: 6 quarters end with Winter 2029; Spring 2029 semester runs Jan-May 2029
     expect(run(['Spring 2027 (quarter)', 'Winter 2029 (quarter)', 'Spring 2029 (semester)'], card, 'Spring 2027', 'quarter')).toEqual([2])
+  })
+
+  it('summer terms (Round 10, opt-in) are judged by date: inside the window between years, beyond it after the last Spring', () => {
+    const summer = (year: number, system: Sys = 'quarter', withSpan = true): PlanResult['terms'][number] => ({
+      name: `Summer ${year}`, courses: [], units: 5, system, season: 'Summer', year,
+      ...(withSpan ? { span: [3 * (year - 1) + 2.5, 3 * (year - 1) + 2.5] as [number, number] } : {}) })
+    const six = ['Fall 2026', 'Winter 2027', 'Spring 2027', 'Fall 2027', 'Winter 2028', 'Spring 2028'].map(card)
+    // quarter home from Fall 2026: Summer 2027 sits inside the six quarters (7 cards, none too long: the window is
+    // dates, not a card count); Summer 2028 comes after Spring 2028
+    expect(beyondWindow([...six.slice(0, 3), summer(2027), ...six.slice(3)], { season: 'Fall', year: 2026 }, 'quarter')).toEqual([])
+    expect(beyondWindow([...six, summer(2028)], { season: 'Fall', year: 2026 }, 'quarter')).toEqual([6])
+    // without a span, a summer term's date comes from its season and year
+    expect(beyondWindow([...six, summer(2028, 'quarter', false)], { season: 'Fall', year: 2026 }, 'quarter')).toEqual([6])
+    expect(beyondWindow([...six.slice(0, 3), summer(2027, 'semester', false)], { season: 'Fall', year: 2026 }, 'quarter')).toEqual([])
+    // semester home from Spring 2027: four semesters end with Fall 2028, so Summer 2028 is inside
+    const sems = ['Spring 2027', 'Fall 2027', 'Spring 2028'].map(sem)
+    expect(beyondWindow([...sems, summer(2028, 'semester'), sem('Fall 2028')], { season: 'Spring', year: 2027 }, 'semester')).toEqual([])
+    expect(beyondWindow([...sems, sem('Fall 2028'), summer(2029, 'semester')], { season: 'Spring', year: 2027 }, 'semester')).toEqual([4])
   })
 
   it('terms without calendar info fall back to position', () => {

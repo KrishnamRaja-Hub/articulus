@@ -3,12 +3,26 @@
  * The timeline is counted in quarter periods: slot 3Y = Fall Y, 3Y+1 = Winter Y+1, 3Y+2 = Spring Y+1
  * (Y = the calendar year the academic year starts in). Quarter terms cover one slot. Semester terms cover:
  * Fall Y -> [3Y, 3Y] (Aug-Dec, alongside Fall quarter), Spring Y+1 -> [3Y+1, 3Y+2] (Jan-May, alongside Winter
- * and Spring quarter). Summer is not planned. */
+ * and Spring quarter).
+ *
+ * Summer (opt-in, SolveOptions.summer; off by default) sits between Spring and the next Fall at the half slot 3Y+2.5,
+ * for quarter and semester colleges alike (both run a June-August session). A half slot keeps every existing slot and
+ * span unchanged and still orders by date: Spring Y+1 (ends 3Y+2) < Summer Y+1 (3Y+2.5) < Fall Y+1 (3Y+3). A plan
+ * never starts in Summer: the start term is always Fall, Winter or Spring (checkStartTerm). */
 
 import { nextOpenTerm as openTerm, type Season, type StartTerm, type TermSystem } from '../terms.ts'
 export type { Season, StartTerm, TermSystem }
 
-export interface CalendarTerm { system: TermSystem; season: Season; year: number; start: number; end: number }
+/** A planned term's season: the start-term seasons, or an (opt-in) summer session. */
+export type TermSeason = Season | 'Summer'
+export interface CalendarTerm { system: TermSystem; season: TermSeason; year: number; start: number; end: number }
+
+/** Timeline slot of the summer session in calendar year `year` (after Spring `year`, before Fall `year`). */
+export const summerSlot = (year: number) => 3 * (year - 1) + 2.5
+
+/** The summer session of `system` in calendar year `year`. */
+export const summerTerm = (system: TermSystem, year: number): CalendarTerm =>
+  ({ system, season: 'Summer', year, start: summerSlot(year), end: summerSlot(year) })
 
 /** The next term open for registration (src/terms.ts holds the cutoffs). When the California date of `now` cannot be
  *  determined (invalid date, or a runtime without the America/Los_Angeles zone) this falls back to Fall of the year
