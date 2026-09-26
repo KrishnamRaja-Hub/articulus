@@ -5,7 +5,8 @@ import { prereqs, topic, type Rule } from './sequence.ts'
  * of a chain that sequence.ts infers (letters, ordinals, titles, the math / physics / chemistry / CS ladders), taken
  * from the agreement's catalog at the SAME college as the course that needs them. A prerequisite is met by a course
  * taken or planned at any college that covers it: the same course or its honors twin, the same ladder level
- * ("Calculus I" anywhere), or, for a taken course, anything after it. One the catalog lists only at other colleges is
+ * ("Calculus I" anywhere), the same title only when that title names one course at each college (never Foothill's four
+ * "Calculus" courses, told apart by letter), or, for a taken course, anything after it. One the catalog lists only at other colleges is
  * not added (it would add a college to the plan): the plan carries a warning instead.
  * Not added: precalculus (placement decides it), labs to lectures ('co'), and 'series' guesses (1C < 2A). */
 
@@ -53,15 +54,23 @@ function buildGraph(catalog: Record<CourseId, Course>, taken: CourseId[]): Prere
     while (st.length) { const x = st.pop()!; if (x === t) return true; for (const y of out.get(x) ?? []) if (!vis.has(y)) { vis.add(y); st.push(y) } }
     return false
   }
+  // A title is not a course's identity (round 10): Foothill MATH 1A-1D are all "Calculus" and PHYS 4A-4D all "General
+  // Physics (Calculus)". A title counts as naming one course only when no other course at its college (honors twins
+  // aside) carries it; a shared title never makes two different courses equivalent.
+  const holders = new Map<string, Set<CourseId>>()
+  for (const c of all) { const k = `${inst(c)}|${normOf(c)}`; if (!holders.has(k)) holders.set(k, new Set()); holders.get(k)!.add(stripH(c)) }
+  const distinctive = (c: CourseId) => !!normOf(c) && holders.get(`${inst(c)}|${normOf(c)}`)?.size === 1
   const equiv = (p: CourseId, q: CourseId) => {
     if (stripH(p) === stripH(q)) return true
     const a = tops.get(p), b = tops.get(q)
     if (a && b && a.ladder === b.ladder && a.kind === b.kind) {
       if (a.ladder === 'physics' || a.ladder === 'cs') return true
-      if (a.lvl && b.lvl && a.lvl.lo === b.lvl.lo && a.lvl.hi === b.lvl.hi) return true
+      // a leveled topic is decided by its level; a shared generic title ("Calculus", level from the letter) never overrides it
+      if (a.lvl && b.lvl) return a.lvl.lo === b.lvl.lo && a.lvl.hi === b.lvl.hi
     }
-    const tp = normOf(p)
-    return !!tp && tp === normOf(q)
+    // same title: only when each title is distinctive at its college and the topics read the same (none, or one without levels)
+    const sameTopic = a && b ? a.ladder === b.ladder && a.kind === b.kind && !a.lvl && !b.lvl : !a && !b
+    return sameTopic && distinctive(p) && distinctive(q) && normOf(p) === normOf(q)
   }
   /** A leveled course ("Calculus 1 and 2") whose every level some of `qs` covers (Calculus I + Calculus II). */
   const spans = (p: CourseId, qs: CourseId[]) => {

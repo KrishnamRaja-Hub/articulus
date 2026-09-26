@@ -151,3 +151,41 @@ describe('pack: engineering after calculus and physics (N-1 repros)', () => {
     expect(Object.keys(plan.result.satisfied).length).toBeGreaterThan(0)
   })
 })
+
+// Round 10: same-titled courses. Foothill MATH 1A-1D are all "Calculus" and PHYS 4A-4D all "General Physics
+// (Calculus)" (real catalog titles). The title never tells them apart, so order comes from the number, and two
+// same-titled courses at the same level are never ordered either way (no false prerequisite, no loop).
+describe('prereqs: same-titled courses are told apart by number', () => {
+  it('Foothill "Calculus" MATH 1A < 1B < 1C < 1D, with no dropped (cyclic) edge', () => {
+    const { edges, dropped } = run(['A', 'B', 'C', 'D'].map((l) => [`51:MATH 1${l}`, 'Calculus'] as [string, string]))
+    expect(dropped).toEqual([])
+    const has = (a: string, b: string) => edges.some((e) => e.from === `51:MATH 1${a}` && e.to === `51:MATH 1${b}`)
+    for (const [a, b] of [['A', 'B'], ['B', 'C'], ['C', 'D'], ['A', 'C'], ['A', 'D'], ['B', 'D']]) {
+      expect(has(a, b), `${a} < ${b}`).toBe(true)
+      expect(has(b, a), `${b} < ${a}`).toBe(false)
+    }
+  })
+  it('Foothill "General Physics (Calculus)" PHYS 4A < 4B < 4C < 4D, no loop', () => {
+    const { edges, dropped } = run(['A', 'B', 'C', 'D'].map((l) => [`51:PHYS 4${l}`, 'General Physics (Calculus)'] as [string, string]))
+    expect(dropped).toEqual([])
+    expect(edges.filter((e) => e.rule === 'letter').map((e) => `${e.from}>${e.to}`).sort())
+      .toEqual(['51:PHYS 4A>51:PHYS 4B', '51:PHYS 4B>51:PHYS 4C', '51:PHYS 4C>51:PHYS 4D'])
+    expect(edges.some((e) => e.from > e.to)).toBe(false) // every edge runs from the lower letter
+  })
+  it('same title, same level: never ordered either way (honors twin, or a second "Calculus" series)', () => {
+    const { edges, dropped } = run([['51:MATH 1A', 'Calculus'], ['51:MATH 1AH', 'Calculus'], ['51:MATH 10A', 'Calculus'],
+      ['80:MATH 003A', 'Calculus and Analytic Geometry'], ['80:MATH 003AH', 'Calculus and Analytic Geometry']])
+    expect(dropped).toEqual([])
+    expect(edges).toEqual([])
+  })
+  it('same title across colleges: ordered by each one\'s own number (De Anza 1A "Calculus" < Foothill 1B "Calculus")', () => {
+    const { edges, dropped } = run([['113:MATH 1A', 'Calculus'], ['51:MATH 1B', 'Calculus']])
+    expect(dropped).toEqual([])
+    expect(pairs(edges)).toEqual(['math 113:MATH 1A > 51:MATH 1B'])
+  })
+  it('same title, plain numbers: no level to read, so no order at all (safe fallback)', () => {
+    const { edges, dropped } = run([['7:CHEM 1', 'General Chemistry'], ['7:CHEM 2', 'General Chemistry'], ['7:MATH 5', 'Calculus'], ['7:MATH 6', 'Calculus']])
+    expect(dropped).toEqual([])
+    expect(edges).toEqual([])
+  })
+})

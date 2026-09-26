@@ -365,7 +365,7 @@ Testers covered verdicts, the planner, the data pipeline, the GitHub workflows a
 - **The ASSIST conjunction field names are unconfirmed.** They are our best knowledge, and a mismatch fails closed. Confirm on the first real fetch.
 - **Choose-N:** a full fix (each course fills one slot, in verify and the solver) is still to do. The safety net covers it until then.
 - **Known plan-quality issues:**
-  - Same-titled courses are treated as equal (Foothill "Calculus").
+  - Same-titled courses are treated as equal (Foothill "Calculus"). Fixed in round 10.
   - Scheduling doesn't put the longest prerequisite chain first.
   - Duplicate course content across colleges.
   - No re-optimization after prerequisites are added.
@@ -403,4 +403,25 @@ Testers covered verdicts, the planner, the data pipeline, the GitHub workflows a
 **Decisions taken:**
 - A covered plan that runs past two years keeps its green badge, with a red "talk to a counselor about your timeline" warning under the schedule.
 - Dry runs are not refused on unreadable previous data. They publish nothing and decide review.
+
+---
+
+## Round 10: same-titled courses
+
+| Issue | Fix |
+|---|---|
+| Same-titled courses were treated as equal (Foothill "Calculus"). Foothill titles MATH 1A-1D all "Calculus" and PHYS 4A-4D all "General Physics (Calculus)"; West Valley MATH 003A and 003B are both "Calculus and Analytic Geometry". The enrollment-prerequisite check (`equiv` in `src/engine/prereq.ts`) counted any two courses with the same title as the same course, so a taken or planned Calculus I "covered" Calculus II. Real repro: UCLA ME at Foothill planned PHYS 4B (E&M) with MATH 1A only, plus a misleading "prerequisite only at El Camino" warning. At West Valley the plan added honors 003BH instead of 003B. | A title identifies a course only when no other course at its college carries it (honors twins aside). A leveled topic ("Calculus", level from the letter) is decided by its level, never by the shared title. Course identity stays college + prefix + number everywhere. Foothill UCLA ME now plans MATH 1B before PHYS 4B, and West Valley plans 003B. |
+| Could title-based order confuse two same-titled courses? | Checked, and it can't. `sequence.ts` reads a generic title's level from the course letter, never orders two courses at the same level, and matches a lab to a lecture by title only when exactly one lecture fits. New tests cover Foothill 1A < 1B < 1C < 1D and 4A-4D with no dropped (cyclic) edge, same-level twins with no edge, and same-titled plain numbers with no order. |
+
+Audit of every title use in `src/` and `scripts/`. Only `prereq.ts` `equiv` used a title as identity. These stay as they are, because they are legitimate: sequence inference (`sequence.ts` topic ladders, ordinal and title rules, lab-to-lecture), section classification (`classifyTitle`, validator and canary checks), the honors-calculus note, search ranking in the Planner, and display. Verify, the solver, dedupe, hints, the search results and the transcript all key on course ids. The pipeline keys majors by report label, and fails on a conflicting duplicate.
+
+**Final checks:**
+- `tsc -b` and `tsc -p tests/independent`: clean.
+- vitest: 1039 pass (14 new: 9 in `prereq.test.ts`, 5 in `sequence.test.ts`; 7 failed before the fix).
+- Independent suite: 333 pass.
+- Build: clean.
+- `validate:data:ci`: exit 0.
+- Real-grid diff (22 agreements, each home college alone, empty transcript plus every single MATH/PHYS/CHEM/CS course taken, 4,810 solves): 14 plans changed, all at Foothill or West Valley for UCLA ME. Each change adds the missing Calculus II, or swaps honors 003BH for 003B.
+
+**Still open:** the other plan-quality items from round 8.
 
