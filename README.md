@@ -87,6 +87,8 @@ Exactness is checked in two places. `src/engine/solve.test.ts` compares full cos
      - **cs**: Intro Programming < Data Structures, and Intro Programming < Assembly / Architecture.
 
    Generic titles ("Calculus", "General Chemistry") take their level from the letter (1A = I). Courses at the same level are never ordered, so a lecture and its lab may share a term. Packing respects the per-term unit cap and never silently drops a course past `maxTerms`; the UI flags overflow. A single course larger than the cap gets a term to itself, marked `overCap` and flagged in the UI.
+
+   Packing (`src/engine/pack.ts`) puts the course at the head of the longest remaining prerequisite chain first (critical path). A chain is measured in time on each course's own calendar: a quarter is one period, a semester one and a half on average. Among equal chains the course whose prerequisites finish latest goes first, then the earlier order (fewest prerequisites above, larger courses first). Each course goes in the earliest term that fits. Greedy packing is not optimal, so the earlier order is packed too and kept when it finishes strictly sooner: a plan is never longer than before.
 7. Re-run `verifySchedule` on taken plus planned and return `{ terms, chosen, result, totalUnits, unsolvable, optimal }`.
 
 Units are converted between systems when the plan mixes quarter and semester colleges. Semester units are multiplied by 1.5 to quarter units. Packing and totals use exact converted units; only displayed numbers are rounded to 0.5. The default cap is 16 quarter units or 12 semester units per term, and terms are named for the student's `termSystem` (Fall/Winter/Spring for quarter, Fall/Spring for semester).
@@ -215,7 +217,8 @@ src/data.ts                  loads data/ fixtures, exposes institutions, univers
 src/engine/types.ts          Course, CourseGroup, Requirement, ReqNode, Agreement, ValidationResult, Plan
 src/engine/normalize.ts      raw ASSIST payloads -> Agreement (tree + catalog)
 src/engine/verify.ts         verifySchedule: tree fold, split-series detection
-src/engine/solve.ts          exact minimum-unit search + term packing
+src/engine/solve.ts          exact minimum-unit search
+src/engine/pack.ts           term packing, critical path first
 src/engine/engine.test.ts    vitest cases against the real Berkeley ME agreement
 src/sections/Hero.tsx        landing
 src/sections/Trap.tsx        the PHYSICS 7B example, running the live engine

@@ -404,3 +404,19 @@ Testers covered verdicts, the planner, the data pipeline, the GitHub workflows a
 - A covered plan that runs past two years keeps its green badge, with a red "talk to a counselor about your timeline" warning under the schedule.
 - Dry runs are not refused on unreadable previous data. They publish nothing and decide review.
 
+
+---
+
+## Round 10: schedule order and summer
+
+| Issue | Fix |
+|---|---|
+| Scheduling didn't put the longest prerequisite chain first, so some plans took an extra term | Packing moved to `src/engine/pack.ts`. Courses are placed longest remaining chain first (critical path). A chain is measured in time on each course's own calendar: a quarter is 1 period, a semester 1.5 on average. Among equal chains, the course whose prerequisites finish latest goes first; other ties keep the old order. Greedy packing isn't optimal (with quarter and semester terms sharing the cap it's sometimes worse), so the old order is packed too and kept when it finishes strictly sooner. A plan is never longer than before. |
+
+**Measured** on the real grid (22 agreements × 15 home colleges × home / home + Foothill / all 15, start Fall 2026, 990 plans per cap):
+- Default cap: 355 of 990 plans finish earlier (304 with fewer terms), 0 later. Plans past the two-year window went from 533 to 436.
+- Low cap (10 quarter / 7 semester units): 304 of 990 finish earlier, 0 later.
+- Critical path alone would have been later in 14 (default cap) and 58 (low cap) plans, all but 3 of them mixed-calendar. The fallback covers those.
+- 0 prerequisite violations. The old order, run through the new code, reproduces every old plan exactly (1,980 of 1,980).
+
+**Tests:** `pack.critical.test.ts` has the extra-term case (old order: 4 terms, new: 3), a mixed-calendar case where chains are measured in time, labs and caps, and two property tests: 1,500 random plans and every real agreement, each checking that the plan is never longer than the old order and no prerequisite is out of order. `pack.golden.test.ts` stores 176 real schedules with everything pack needs, so any change to packing shows up (regenerate with `UPDATE_PACK_GOLDEN=1`). It also checks all 176 against the old order.
