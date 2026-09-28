@@ -439,3 +439,22 @@ Testers covered verdicts, the planner, the data pipeline, the GitHub workflows a
 - Greedy packing is not optimal. With quarter and semester colleges sharing the cap, some plans could still be a term shorter.
 - The summer unit cap is in the home college's units (10 quarter or 8 semester), even for a summer course at a college on the other calendar. Its units are converted, so the load is right, but that college's own summer limit may differ.
 - Summer caps and sessions are one rule for every college. Real summer schedules, session lengths and which courses are offered in summer are not modelled.
+
+## Round 10: choose-N one course per slot, and "N units from the following"
+
+| Issue | Fix |
+|---|---|
+| M-4: one course could fill two slots of a "choose N" group (N ≥ 2), or the same row two slots | Each chosen alternative fills one slot and spends the taken courses (and the row) that meet it; no other slot may reuse them. Which alternatives fill which slots is an exact assignment (`src/engine/slots.ts`: bipartite matching, or an exact search when a way spends several courses), never greedy. The CC route is still owed first: UC-only rows fill only the slots the agreement's CC alternatives could never fill with courses of their own (`capOf`). With no shared course the verdicts are exactly as before. Same rule in `verify.ts`, in the planner (`solve.ts`: each row in a slot gets a way of its own, pairs of slots must spend different courses; the fallback re-routes or plans every course of a stuck group, then drops what is not needed) and in the independent oracle (rule 4b). |
+| M-4 safety net | Removed: `ValidationResult.review`, the amber "confirm the 'choose several' requirement" badge and schedule note, and the validator's `tree.choose-n-review` warning. |
+| "Choose 20 of 40" trees took 1–2 s | Now about 0.1–0.2 s: a group with more choices than the search cap overflows at once instead of listing 5,000 sets first. |
+| `NFollowingUnits` was read as "take all" | `normalize` makes it a `UNITS` node (`NORMALIZE_VERSION` 5, DATA_CONTRACT.md): met when the chosen rows, one course per slot, add up to N of their units. Units are the UC course's (`Requirement.units`, from ASSIST). A row whose units are unknown never counts (fail closed) and is warned about; an unreadable amount keeps "take all" with the old warning. Same rules in verify, the planner, the validator (`tree.units`), the diff guard and the oracle (rule 4c); UC-only rows listed in the group make up only the units CC rows cannot. |
+
+**Tests:** verify: a course that could fill two rows counts once; an assignment greedy would miss (A: X or Y, B: X); series; a row listed twice; UC-only rows filling what no CC course can; `assignSlots` directly. Solver: the same cases, "choose 20 of 40" under 2 s, and random cross-checks (verify vs solve, search and fallback) over generated choose-N and units trees. The brute-force oracle in `solve.test.ts` counts slots given up. Normalize: ASSIST-shaped `NFollowingUnits` payloads (one and two colleges, unknown units, bad amounts). Independent suite: rules 4b and 4c in `oracle.ts`, re-route rows in `brute.ts`, and new synthetic runs with units groups (verify and planner vs brute force).
+
+**Checks:** `tsc -b`, `tsc -p tests/independent`: clean. vitest: 1078 pass (was 1024 plus one timing flake). Independent suite: 336 pass (was 333). Build: passes (chunk-size warning unchanged). `validate:data:ci`: exit 0.
+
+**Still open:**
+- The bundled data predates `NORMALIZE_VERSION` 5 (it is still v1), so the first refresh goes to review; no current agreement is known to use `NFollowingUnits` or a choose-2+ group.
+- Units use the UC course's units. If ASSIST ever means the community-college units, this needs a change.
+- Ways are capped (256 per subtree, 200,000 search nodes per enumeration). Only a "choose several" or units group nested in another group's slot can reach the cap; past it the group reads as unmet (fail closed). A units group whose alternatives only pass through UC-only rows adds no units, and the planner's UC-only route for a units group needs UC-only rows listed directly in it.
+- `plan.chosen` shows the closest completed group for each row, which in a choose-N group may name a course another slot uses; the verdict and the plan are right.

@@ -173,3 +173,98 @@ export function assignSlots(fams: readonly Ways[], cap: number): Assignment {
   const { took } = fit(pick, pick.length, pick.length)
   return { pick, ways: pick.map((j) => way(j, took.get(j)!)) }
 }
+
+export interface Weighted extends Assignment { total: number }
+
+/**
+ * "N units from the following" (NFollowingUnits): the most total weight (units) candidates can reach, each taking one
+ * of its ways, no id spent twice, counted up to `cap`; exact search. The candidates taken: in candidate order, each one
+ * that can still be part of an assignment reaching that total, until those taken reach it alone (so callers control
+ * preference by ordering, and the choice does not depend on the order of any candidate's ways).
+ */
+export function assignWeight(fams: readonly Ways[], weight: (w: Way) => number, cap: number): Weighted {
+  const opts = fams.map((f) => f.map((w) => ({ w, u: weight(w) })).filter((x) => x.u > 0))
+  const most = opts.map((o) => Math.max(0, ...o.map((x) => x.u)))
+  /** An assignment of all of `must`, and any of `may`, reaching `goal`; or the heaviest when `goal` is Infinity. */
+  const search = (must: number[], may: number[], goal: number): { total: number; pick: number[]; ways: Way[] } | null => {
+    const order = [...must, ...may], used = new Set<string>(), pick: number[] = [], ways: Way[] = []
+    const rest = order.map((_, i) => order.slice(i).reduce((t, j) => t + most[j], 0))
+    const hold: { best: { total: number; pick: number[]; ways: Way[] } | null } = { best: null }
+    const go = (i: number, total: number): boolean => {
+      if (i >= must.length && (i === order.length || total >= goal)) {
+        if (!hold.best || total > hold.best.total) hold.best = { total, pick: [...pick], ways: [...ways] }
+        return total >= goal
+      }
+      if (total + rest[i] < goal && hold.best && total + rest[i] <= hold.best.total) return false
+      for (const { w, u } of opts[order[i]]) {
+        if (w.some((x) => used.has(x))) continue
+        w.forEach((x) => used.add(x)); pick.push(order[i]); ways.push(w)
+        const done = go(i + 1, total + u)
+        w.forEach((x) => used.delete(x)); pick.pop(); ways.pop()
+        if (done) return true
+      }
+      return i >= must.length ? go(i + 1, total) : false
+    }
+    go(0, 0)
+    const best = hold.best
+    return best && (goal === Infinity || best.total >= goal) ? best : null
+  }
+  const all = [...fams.keys()]
+  const top = search([], all, cap)?.total ?? Math.min(cap, search([], all, Infinity)?.total ?? 0)
+  if (top <= 0) return { total: 0, pick: [], ways: [] }
+  const goal = Math.min(cap, top), taken: number[] = []
+  for (const j of all) {
+    if (search(taken, [], goal)) break
+    if (search([...taken, j], all.filter((k) => k > j), goal)) taken.push(j)
+  }
+  const fit = search(taken, [], goal)!
+  const order = taken.map((j) => fit.pick.indexOf(j))
+  return { total: fit.total, pick: taken, ways: order.map((k) => fit.ways[k]) }
+}
+
+/**
+ * Every way a units group can be met, for a slot above it: each set of candidates (one way each, no id spent twice)
+ * reaching `need` that needs all of its members, as the union of what they spend. Minimal ways only, capped (fail
+ * closed, like unionsOf).
+ */
+export function unitWays(fams: readonly Ways[], weight: (w: Way) => number, need: number): string[][] {
+  const out: string[][] = [], used = new Map<string, number>(), acc: Way[] = []
+  let nodes = 0
+  const go = (i: number, total: number): void => {
+    if (out.length >= 4 * WAYS_CAP || ++nodes > ENUM_BUDGET) return
+    if (total >= need) {
+      if (acc.every((w) => total - weight(w) < need)) out.push(acc.flat())
+      return
+    }
+    if (i === fams.length) return
+    for (const w of fams[i]) {
+      if (w.some((x) => used.has(x))) continue
+      for (const x of w) used.set(x, (used.get(x) ?? 0) + 1)
+      acc.push(w)
+      go(i + 1, total + weight(w))
+      acc.pop()
+      for (const x of w) { const n = used.get(x)! - 1; if (n) used.set(x, n); else used.delete(x) }
+    }
+    go(i + 1, total)
+  }
+  go(0, 0)
+  return minimal(out)
+}
+
+/** Every way the candidates `taken` together, one way each, no id spent twice, reach `goal`: their unions (minimal). */
+export function takenWays(fams: readonly Ways[], taken: readonly number[], weight: (w: Way) => number, goal: number): string[][] {
+  const out: string[][] = [], used = new Set<string>(), acc: Way[] = []
+  let nodes = 0
+  const go = (i: number, total: number): void => {
+    if (out.length >= 4 * WAYS_CAP || ++nodes > ENUM_BUDGET) return
+    if (i === taken.length) return void (total >= goal && out.push(acc.flat()))
+    for (const w of fams[taken[i]]) {
+      if (w.some((x) => used.has(x))) continue
+      w.forEach((x) => used.add(x)); acc.push(w)
+      go(i + 1, total + weight(w))
+      w.forEach((x) => used.delete(x)); acc.pop()
+    }
+  }
+  go(0, 0)
+  return minimal(out)
+}

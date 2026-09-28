@@ -1,6 +1,6 @@
 import type { Agreement, CourseGroup, CourseId, Partial, ReqNode, Requirement, ValidationResult, Violation } from './types'
 import { isUcOnlyProof } from './normalize.ts'
-import { assignSlots, crossWays, minimal, NOTHING, rowToken, unionsOf, type Way, type Ways } from './slots.ts'
+import { assignSlots, assignWeight, crossWays, takenWays, unitWays, isRowToken, minimal, NOTHING, rowToken, unionsOf, type Way, type Ways } from './slots.ts'
 
 export interface ReqStatus { satisfied?: CourseGroup; partials: Partial[] }
 
@@ -140,6 +140,26 @@ const alt = (rs: Res[]) => rs.map((r) => {
 const needOf = (n: ReqNode) => (n.type === 'OR' ? 1 : (n.n ?? 1))
 /** A "choose N" group whose slots must use different courses: N_OF with N of 2 or more (M-4). */
 export const slotted = (n: ReqNode) => n.type === 'N_OF' && needOf(n) >= 2
+/** Rows under a subtree, by id, with their units (Requirement.units, the UC course's units from ASSIST). Units that are
+ *  not a positive number are unknown: 0, so that row never counts toward an "N units" group (fail closed). A row
+ *  listed twice with different units counts the smaller. */
+const unitsMemo = new WeakMap<object, Map<string, number>>()
+export const unitsIn = (n: ReqNode | Requirement): Map<string, number> => {
+  let m = unitsMemo.get(n)
+  if (!m) {
+    m = new Map()
+    const walk = (x: unknown): void => {
+      if (!isObj(x)) return
+      if (x.kind === 'req') {
+        const u = typeof x.units === 'number' && Number.isFinite(x.units) && x.units > 0 ? x.units : 0, id = String(x.id)
+        m!.set(id, Math.min(m!.get(id) ?? Infinity, u))
+      } else if (Array.isArray(x.children)) x.children.forEach(walk)
+    }
+    walk(n)
+    unitsMemo.set(n, m)
+  }
+  return m
+}
 
 /**
  * Fold one subtree; `leaf` decides each row. Children are all evaluated, so optional rows are still reported. `keep`:
@@ -164,8 +184,8 @@ function fold(n: ReqNode | Requirement, leaf: LeafFn, keep: Keep = null): Res {
     return { st: l.st, art: canRoute(n), miss: l.st === 'open' ? [n.id] : [], def: l.st === 'def' ? [n.id] : [], kids: [], node: n,
       uses: l.st === 'open' ? [] : keep && l.st === 'sat' ? keepOnly(l.uses, keep) : NOTHING }
   }
-  const slots = slotted(n)
-  const all = Array.isArray(n.children) ? n.children : [], keeps = slots ? keepsFor(all, keep) : null
+  const slots = slotted(n) || n.type === 'UNITS'
+  const all = Array.isArray(n.children) ? n.children : [], keeps = slots ? keepsFor(all, n.type === 'UNITS' ? (x) => isRowToken(x) || (!!keep && keep(x)) : keep) : null
   const kids = all.map((c, j) => fold(c, leaf, keeps ? keeps[j] : keep))
   const req = kids.filter(counted)
   const sat = req.filter((r) => r.st === 'sat')
@@ -180,7 +200,7 @@ function fold(n: ReqNode | Requirement, leaf: LeafFn, keep: Keep = null): Res {
     return res(st, open.flatMap((r) => r.miss), def, track && st !== 'open' ? crossWays(req.map((r) => r.uses)) : NOTHING)
   }
   // an unknown type ('and', undefined, ...) is not read as choose-1 (M-2): it never passes; malformed() reports it
-  if (n.type !== 'OR' && n.type !== 'N_OF') return res('open', req.flatMap((r) => r.miss), [])
+  if (n.type !== 'OR' && n.type !== 'N_OF' && n.type !== 'UNITS') return res('open', req.flatMap((r) => r.miss), [])
   const need = needOf(n)
   // a: still open but reachable with CC courses; d: passes only as UC-only. A row ASSIST never mentions is neither.
   const a = req.filter((r) => r.st === 'open' && r.art), d = req.filter((r) => r.st === 'def')
@@ -196,6 +216,24 @@ function fold(n: ReqNode | Requirement, leaf: LeafFn, keep: Keep = null): Res {
     const uc = Math.min(d.length, Math.max(0, need - sat.length - a.length))
     if (a.length) return res('open', pick(a, need - sat.length - uc), inOrder(new Set(sat)))
     return res('def', [], inOrder(new Set([...sat, ...d])))
+  }
+  if (n.type === 'UNITS') {
+    // "N units from the following": the same rules, counted in units (unitsOf) instead of slots
+    const units = unitsIn(n), weight = (w: Way) => w.reduce((t, x) => t + (isRowToken(x) ? units.get(x.slice(1)) ?? 0 : 0), 0)
+    const fit = assignWeight(S.map((r) => r.uses), weight, need)
+    const chosen = new Set(fit.pick.map((i) => S[i])), m = fit.total
+    // for a slot above: every minimal set reaching N (met), or the set taken (passing through UC-only rows)
+    const spent = keep ? keepOnly(takenWays(S.map((r) => r.uses), fit.pick, weight, m), keep) : NOTHING
+    const left = (rs: Res[]) => [`${+(need - m).toFixed(2)} more units of: ${alt(rs)}`]
+    if (m >= need) return res('sat', [], inOrder(chosen), keep ? keepOnly(unitWays(S.map((r) => r.uses), weight, need), keep) : NOTHING)
+    const C = Math.max(m, capOf(n))
+    const late = a.filter((r) => hypState(r.node) !== 'sat')
+    // UC-only rows listed in the group make up the rest, each once; a subtree passing through UC-only rows adds no units
+    const dU = [...new Set(d.flatMap((r) => (isObj(r.node) && r.node.kind === 'req' ? [r.node.id] : [])))].reduce((t, id) => t + (units.get(id) ?? 0), 0)
+    if (C + dU < need) return res('open', left(rest), inOrder(chosen)) // cannot be met
+    // a satisfied alternative may still bring more units through another group: all of them are named
+    if (m < C || late.length) return res('open', left(req.filter((r) => a.includes(r) || r.st === 'sat')), inOrder(chosen))
+    return res('def', [], inOrder(new Set([...chosen, ...d])), spent)
   }
   const fit = assignSlots(S.map((r) => r.uses), need)
   const chosen = new Set(fit.pick.map((i) => S[i])), m = chosen.size
@@ -250,9 +288,11 @@ const capMemo = new WeakMap<ReqNode, number>()
 export function capOf(n: ReqNode): number {
   let v = capMemo.get(n)
   if (v === undefined) {
-    const all = Array.isArray(n.children) ? n.children : [], keeps = keepsFor(all, null)
+    const units = n.type === 'UNITS', all = Array.isArray(n.children) ? n.children : [], keeps = keepsFor(all, units ? isRowToken : null)
     const hs = all.flatMap((c, j) => (countedNode(c) && hypState(c) === 'sat' ? [hypUses(c, keeps[j])] : []))
-    capMemo.set(n, (v = assignSlots(hs, needOf(n)).pick.length))
+    if (!units) v = assignSlots(hs, needOf(n)).pick.length
+    else { const u = unitsIn(n); v = assignWeight(hs, (w) => w.reduce((t, x) => t + (isRowToken(x) ? u.get(x.slice(1)) ?? 0 : 0), 0), needOf(n)).total }
+    capMemo.set(n, v)
   }
   return v
 }
@@ -304,14 +344,19 @@ export function treeStatus(n: ReqNode | Requirement, done: (r: Requirement) => b
 const canon = (n: ReqNode | Requirement): string => !isObj(n) ? '' : n.kind === 'req' ? n.id
   : `${n.type}${n.n ?? ''}(${(Array.isArray(n.children) ? n.children : []).map(canon).sort().join(',')})`
 /** For the planner's fallback: the required alternatives of an OR / N_OF that fill its slots now, and the ways they spend. */
-export function slotFill(n: ReqNode, done: (r: Requirement) => boolean | Ways): { kids: (ReqNode | Requirement)[]; ways: Way[] } {
-  const all = Array.isArray(n.children) ? n.children : [], keeps = keepsFor(all, null)
+export function slotFill(n: ReqNode, done: (r: Requirement) => boolean | Ways): { kids: (ReqNode | Requirement)[]; ways: Way[]; left: number } {
+  const units = n.type === 'UNITS', all = Array.isArray(n.children) ? n.children : [], keeps = keepsFor(all, units ? isRowToken : null)
   const S = all.flatMap((c, j) => (countedNode(c) ? [{ c, r: fold(c, doneLeaf(done), keeps[j]) }] : []))
     .filter((x) => x.r.st === 'sat').map((x) => ({ ...x, k: canon(x.c) }))
     // fewest deferred rows first, then by content, never by input order (the planner's plans must not depend on it)
     .sort((x, y) => x.r.def.length - y.r.def.length || (x.k < y.k ? -1 : x.k > y.k ? 1 : 0))
+  if (units) {
+    const u = unitsIn(n), fit = assignWeight(S.map((x) => x.r.uses), (w) => w.reduce((t, x) => t + (isRowToken(x) ? u.get(x.slice(1)) ?? 0 : 0), 0), needOf(n))
+    // `left`: alternatives still to meet; one at a time for units
+    return { kids: fit.pick.map((i) => S[i].c), ways: fit.ways, left: fit.total >= needOf(n) ? 0 : 1 }
+  }
   const fit = assignSlots(S.map((x) => x.r.uses), Math.max(0, needOf(n)))
-  return { kids: fit.pick.map((i) => S[i].c), ways: fit.ways }
+  return { kids: fit.pick.map((i) => S[i].c), ways: fit.ways, left: needOf(n) - fit.pick.length }
 }
 
 /** Splits the plan depends on; the others are warnings (those courses earn no credit toward that row). */
@@ -347,7 +392,7 @@ export function malformed(root: ReqNode): string | null {
     }
     const name = typeof n.title === 'string' && n.title ? `"${n.title}"` : path
     if (n.kind !== 'node') schema ??= `${name} is neither a node nor a requirement (kind ${JSON.stringify(n.kind)})`
-    if (n.type !== 'AND' && n.type !== 'OR' && n.type !== 'N_OF') schema ??= `${name} has unknown type ${JSON.stringify(n.type)}`
+    if (n.type !== 'AND' && n.type !== 'OR' && n.type !== 'N_OF' && n.type !== 'UNITS') schema ??= `${name} has unknown type ${JSON.stringify(n.type)}`
     if (typeof n.required !== 'boolean') schema ??= `${name} has no required flag`
     if (!Array.isArray(n.children)) return void (schema ??= `${name} has no children`)
     n.children.forEach((c, i) => check(c, `${path}/${i}`))
@@ -360,6 +405,7 @@ export function malformed(root: ReqNode): string | null {
     const name = n.title ? `"${n.title}"` : `${n.type} group`
     if (n.type === 'AND' && !req.length) why ??= `${name} has no required rows`
     if (n.type === 'N_OF' && !(Number.isInteger(n.n) && n.n! >= 1)) why ??= `${name} asks for ${n.n} of ${req.length}`
+    if (n.type === 'UNITS' && !(typeof n.n === 'number' && Number.isFinite(n.n) && n.n > 0)) why ??= `${name} asks for ${n.n} units`
     req.forEach(walk)
   }
   if (root.required) walk(root)

@@ -27,6 +27,19 @@ function fuzz(M: Metrics, inherit: boolean, seed: number) {
   }
 }
 
+const UNITS = new Metrics('synthetic ("N units" groups)')
+describe('verifySchedule vs oracle: "N units from the following" (round 10)', () => {
+  it(`${Math.ceil(BUDGET.synthTrees / 2)} trees with units groups x 4 transcripts`, () => {
+    const r = rng(SEED + 4)
+    for (let i = 0; i < Math.ceil(BUDGET.synthTrees / 2); i++) {
+      const a = randomAgreement(r, { inherit: true, units: 0.6 })
+      const pool = Object.keys(a.catalog), repro = `synthetic units seed=${SEED + 4} #${i} root=${JSON.stringify(a.root)}`
+      for (const p of [0.15, 0.4, 0.7, 0.9]) check(UNITS, repro, a, new Set(pool.filter(() => r.next() < p)))
+    }
+    expect(UNITS.failureCount, describeFailures(UNITS)).toBe(0)
+  }, SLOW)
+})
+
 describe('verifySchedule vs oracle: synthetic trees', () => {
   it(`${BUDGET.synthTrees} trees x 4 transcripts, optional flags at random (includes LOW-2 shapes)`, () => {
     fuzz(RANDOM_FLAGS, false, SEED + 2)
@@ -131,5 +144,5 @@ describe('harness self-test: plausible regressions fail the suite', () => {
 
 afterAll(() => writeMetrics('verify-synthetic', {
   seconds: Number(((performance.now() - t0) / 1000).toFixed(1)),
-  randomFlags: RANDOM_FLAGS.summary(), inheritedFlags: INHERITED.summary(), handTrees: HAND.summary(),
+  randomFlags: RANDOM_FLAGS.summary(), inheritedFlags: INHERITED.summary(), handTrees: HAND.summary(), units: UNITS.summary(),
 }))

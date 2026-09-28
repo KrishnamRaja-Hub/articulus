@@ -56,6 +56,20 @@ for (const W of OBJECTIVES) {
       expect(SYNTH.violationCount, report(SYNTH)).toBe(0)
       expect(SYNTH.minimality.checked).toBeGreaterThan(BUDGET.plannerSynth / 3)
     }, SLOW)
+    it(`${Math.ceil(BUDGET.plannerSynth / 3)} agreements with "N units from the following" groups (round 10)`, () => {
+      const U = new PlannerStats(`synthetic units, ${tag}`, W)
+      const r = rng(SEED + 14), rp = rng(SEED + 15)
+      for (let i = 0; i < Math.ceil(BUDGET.plannerSynth / 3); i++) {
+        const a = randomAgreement(r, { inherit: true, latentShapes: false, units: 0.6 })
+        const taken = Object.keys(a.catalog).filter(() => r.next() < 0.2)
+        const allowed = a.sendingIds.filter(() => r.next() < 0.7)
+        if (!allowed.length) allowed.push(a.sendingIds[0])
+        if (degenerate(a.root)) continue
+        const run = { a, file: `synthetic units seed=${SEED + 14} #${i} root=${JSON.stringify(a.root)}`, taken, allowed, home: allowed[0], brute: true, bruteBudget: 50_000 }
+        again(rp, runPlanner(U, run), run)
+      }
+      expect(U.violationCount, report(U)).toBe(0)
+    }, SLOW)
   })
 
   describe(`planner rules on the real agreements (${tag})`, () => {

@@ -1,5 +1,5 @@
 import type { Agreement, CourseGroup, CourseId, Institution, Partial, Plan, ReqNode, Requirement } from './types'
-import { canRoute, capOf, has, honorsColleges, hypState, isDeferrable, reqStatus, rowUses, slotFill, slotted, treeStatus, ucOnly, verifySchedule, type ReqStatus } from './verify.ts'
+import { canRoute, capOf, has, honorsColleges, hypState, isDeferrable, reqStatus, rowUses, slotFill, slotted, treeStatus, ucOnly, unitsIn, verifySchedule, type ReqStatus } from './verify.ts'
 import { rowToken, type Ways } from './slots.ts'
 import institutions from '../../data/institutions.json' with { type: 'json' }
 import { checkStartTerm, nextOpenTerm } from './calendar.ts'
@@ -87,7 +87,7 @@ const mayDef = (n: ReqNode | Requirement): boolean => {
   let v = mayDefM.get(n)
   if (v === undefined) {
     const ks = kidsOf(n), art = ks.filter(canRoute)
-    v = n.type === 'AND' ? ks.length > 0 && ks.every(mayDef) : needOf(n) > 0 && art.length >= needOf(n) && art.some(mayDef)
+    v = n.type === 'AND' ? ks.length > 0 && ks.every(mayDef) : n.type === 'UNITS' ? art.some(mayDef) : needOf(n) > 0 && art.length >= needOf(n) && art.some(mayDef)
     mayDefM.set(n, v)
   }
   return v
@@ -301,6 +301,7 @@ export function solve(taken: Set<CourseId>, a0: Agreement, opts: SolveOptions): 
     const art = ks.filter(canRoute), viaDef = art.length >= k && art.some(mayDef) ? art.filter((c) => !canPass(c)).length : INF
     const more = Math.min(k - ok.length, viaDef)
     const at = other.filter((x) => rest.some((c) => canSat(c, x)))
+    if (n.type === 'UNITS') return `${k} units of: ${[...new Set(ks.filter((c) => !isDeferrable(c)).map(names))].sort().join(', ')}${listed(at)}`
     return `${more}${ok.length ? ' more' : ''} of: ${[...new Set(rest.map(names))].sort().join(', ')}${listed(at)}`
   }
 
@@ -358,6 +359,35 @@ export function solve(taken: Set<CourseId>, a0: Agreement, opts: SolveOptions): 
     }))
   }
   type Fam = number[][]
+  /**
+   * "N units from the following" (verify's fold): sets of alternatives, each met with courses of its own (slotCross),
+   * whose rows add up to N units (unitsIn); smallest first. Through UC-only rows: the CC alternatives reach the units
+   * they can (capOf) and the UC-only rows listed directly in the group make up the rest. None: a shortfall.
+   */
+  const unitFams = (n: ReqNode, ks: (ReqNode | Requirement)[], fs: { S: Fam; P: Fam }[]): { S: Fam; P: Fam } => {
+    const need = needOf(n), units = unitsIn(n)
+    const weight = (c: number[]) => [...new Set(c.filter((i) => isRow(i) || isOcc(i)).map(rowOf))].reduce((t, r) => t + (units.get(L[r].id) ?? 0), 0)
+    const reach = (from: number[], want: number): Fam => {
+      const out: number[][] = []
+      for (let size = 1; size <= from.length && !overflow; size++) {
+        const pick = (i0: number, got: number[]): void => {
+          if (got.length === size) { out.push(...slotCross(got.map((j) => fs[j].S)).filter((c) => weight(c) >= want)); if (out.length > CONFIGS) overflow = true; return }
+          for (let i = i0; i <= from.length - (size - got.length) && !overflow; i++) pick(i + 1, [...got, from[i]])
+        }
+        pick(0, [])
+      }
+      return norm(out)
+    }
+    const ok = ks.flatMap((c, j) => (canSat(c) ? [j] : []))
+    let S = reach(ok, need)
+    if (!S.length) S = cross([slotCross(ok.map((j) => fs[j].S)), [[PSEUDO + pseudo.push(shortfall(n)) - 1]]])
+    // UC-only rows listed in the group count once each; every alternative that can only pass through UC-only rows passes
+    const C = capOf(n), dU = [...new Set(ks.filter((c): c is Requirement => c.kind === 'req' && ucOnly(c)).map((r) => r.id))].reduce((t, id) => t + (units.get(id) ?? 0), 0)
+    const hd = ks.flatMap((c, j) => (canRoute(c) && hypState(c) === 'def' ? [j] : []))
+    if (C >= need || C + dU < need || !dU) return { S, P: S }
+    const okH = ok.filter((j) => hypState(ks[j]) === 'sat'), R = C > 0 ? reach(okH, C) : [[]]
+    return { S, P: R.length ? norm([...S, ...cross([R, ...hd.map((j) => fs[j].P)])]) : S }
+  }
   /** Minimal requirement sets that make the subtree `sat` (S) or pass (P). A row with no way at `allowed` is given up.
    *  `path` names the place in the tree; `inSlot`: below a slot of a "choose N" group, where rows are occurrences. */
   // An occurrence is named by its row and the slots it sits in (every enclosing "choose N" group and which of its
@@ -369,7 +399,7 @@ export function solve(taken: Set<CourseId>, a0: Agreement, opts: SolveOptions): 
       const id = inSlot ? occ(`${slotsAt}#${ix.get(n)}`, ix.get(n)!) : ix.get(n)!
       return { S: [[id]], P: [[id]] }
     }
-    const ks = kidsOf(n), slots = slotted(n), fs = ks.map((c, j) => fams(c, `${path}/${j}`, inSlot || slots, slots ? `${slotsAt}/${path}:${j}` : slotsAt))
+    const ks = kidsOf(n), slots = slotted(n) || n.type === 'UNITS', fs = ks.map((c, j) => fams(c, `${path}/${j}`, inSlot || slots, slots ? `${slotsAt}/${path}:${j}` : slotsAt))
     if (n.type === 'AND') {
       const P = cross(fs.map((f) => f.P))
       // `sat` once all pass, unless every child can pass as UC-only: then one of them must be `sat`
@@ -377,6 +407,7 @@ export function solve(taken: Set<CourseId>, a0: Agreement, opts: SolveOptions): 
     }
     const k = needOf(n)
     if (k <= 0) return { S: [[]], P: [[]] }
+    if (n.type === 'UNITS') return unitFams(n, ks, fs)
     const join = slots ? slotCross : cross
     // k alternatives `sat`. Fewer completable here than needed: plan those, report the rest as one shortfall. Part
     // of an alternative that cannot be completed earns nothing, so it is never planned.
@@ -912,6 +943,7 @@ export function solve(taken: Set<CourseId>, a0: Agreement, opts: SolveOptions): 
      */
     const viaDef = (n: ReqNode, k: number, rest: (ReqNode | Requirement)[], h: Set<CourseId>, ok2: Ok, ex2: ReadonlySet<string>) => {
       const ks = kidsOf(n), need = needOf(n)
+      if (n.type === 'UNITS') return null // the fallback plans every course of a stuck group instead (flood)
       if (!slotted(n)) { const art = ks.filter(canRoute); return art.length >= need && art.some(mayDef) ? { pass: art, sat: [] } : null }
       const C = capOf(n), hd = ks.filter((c) => canRoute(c) && hypState(c) === 'def'), more = C - (need - k)
       if (C >= need || C + hd.length < need || !hd.length) return null
@@ -927,10 +959,13 @@ export function solve(taken: Set<CourseId>, a0: Agreement, opts: SolveOptions): 
      */
     const slotsOf = (n: ReqNode, ok: Ok, ex: ReadonlySet<string>) => {
       const ks = kidsOf(n)
-      if (!slotted(n)) { const sat = ks.filter((c) => state(c, ok) === 'sat'); return { k: needOf(n) - sat.length, rest: ks.filter((c) => !sat.includes(c)), ok2: ok, ex2: ex } }
+      if (!slotted(n) && n.type !== 'UNITS') { const sat = ks.filter((c) => state(c, ok) === 'sat'); return { k: needOf(n) - sat.length, rest: ks.filter((c) => !sat.includes(c)), ok2: ok, ex2: ex } }
       const fill = slotFill(n, (r) => ok(ix.get(r)!))
       const ex2 = new Set([...ex, ...fill.ways.flat()])
-      return { k: needOf(n) - fill.kids.length, rest: ks.filter((c) => !fill.kids.includes(c)), ok2: without(ok, ex2), ex2 }
+      // in a units group, an alternative whose rows have no known units adds nothing
+      const u = n.type === 'UNITS' ? unitsIn(n) : null, rowsIn = (x: ReqNode | Requirement): string[] => (x.kind === 'req' ? [x.id] : x.children.flatMap(rowsIn))
+      const rest = ks.filter((c) => !fill.kids.includes(c) && (!u || rowsIn(c).some((id) => (u.get(id) ?? 0) > 0)))
+      return { k: fill.left, rest, ok2: without(ok, ex2), ex2 }
     }
     /** Estimated cost to make a subtree `sat` or pass from here (used to choose among OR / N_OF children). */
     const estimate = (n: ReqNode | Requirement, h: Set<CourseId>, ok: Ok, want: Want, ex: ReadonlySet<string> = NONE): number => {
@@ -977,7 +1012,7 @@ export function solve(taken: Set<CourseId>, a0: Agreement, opts: SolveOptions): 
       const d = want === 'pass' ? viaDef(n, k, rest, h, ok2, ex2) : null, B = costOf(d, h, ok, ex, ok2, ex2)
       if (A < INF && A <= B) ranked.slice(0, k).forEach((r) => needed(r.c, h, ok2, 'sat', acc, alt, true, ex2))
       else if (B < INF) { d!.pass.forEach((c) => needed(c, h, ok, 'pass', acc, alt, true, ex)); d!.sat.forEach((c) => needed(c, h, ok2, 'sat', acc, alt, true, ex2)) }
-      else if (slotted(n) && !flooded.has(n)) stuck.push(n)
+      else if ((slotted(n) || n.type === 'UNITS') && !flooded.has(n)) stuck.push(n)
       else {
         ranked.filter((r) => r.cost < INF).slice(0, k).forEach((r) => needed(r.c, h, ok2, 'sat', acc, alt, true, ex2))
         unsolvable.add(shortfall(n))
@@ -1016,9 +1051,11 @@ export function solve(taken: Set<CourseId>, a0: Agreement, opts: SolveOptions): 
 
     // One group per iteration so shared courses (De Anza MATH 1B serves MATH 51 and 52) get counted once.
     // Each round satisfies a leaf or penalizes a group, so this bound (from the tree size) is never hit on a sane tree.
-    let rounds = L.reduce((s, r) => s + 1 + r.groups.length, 1)
-    let before = splitIds(have())
     const pickedFor = new Map<string, Requirement>()
+    let rounds = 0, before = splitIds(have())
+    const run = () => {
+    rounds = L.reduce((s, r) => s + 1 + r.groups.length, 1)
+    before = splitIds(have())
     for (;;) {
       const h = have()
       const todo: Todo[] = [], alt = new Set<Requirement>()
@@ -1049,6 +1086,12 @@ export function solve(taken: Set<CourseId>, a0: Agreement, opts: SolveOptions): 
       chosen[pick.req.id] = pick.g; pickedFor.set(pick.req.id, pick.req)
       next.forEach((c) => { if (!taken.has(c)) planned.add(c) })
     }
+    }
+    run()
+    // Still short, one group at a time (which alternative fills which slot of a "choose N" or units group may have to
+    // change): plan every course the tree could use, once, and start again; the pass below drops what is not needed.
+    const every = withTaken(Object.keys(a.catalog).filter((c) => allowed.includes(instOf(c))))
+    if (a.root.required && !rootPasses(have()) && rootPasses(every) && !flooded.has(a.root) && flood(a.root, have())) { unsolvable.clear(); run() }
 
     // Drop planned courses a later pick made redundant: every satisfied requirement stays satisfied, no new split,
     // and a tree that passes still passes (a course may be needed only so two slots use different courses, M-4).
@@ -1068,7 +1111,8 @@ export function solve(taken: Set<CourseId>, a0: Agreement, opts: SolveOptions): 
       const g = completed(pickedFor.get(id)!, hp)
       if (!chosen[id].courses.every((c) => has(hp, c, honorsColleges(pickedFor.get(id)!)))) { if (g) chosen[id] = g; else delete chosen[id] }
     }
-    return { planned: [...planned].sort(), chosen, unsolvable: [...unsolvable], forced }
+    // a plan the tree passes leaves nothing unmet, whatever an earlier round found short
+    return { planned: [...planned].sort(), chosen, unsolvable: rootPasses(hp) ? [] : [...unsolvable], forced }
   }
   /** Greedy, re-run with every last-resort group whose split the final plan still needs banned. */
   const fallback = () => {
@@ -1086,7 +1130,8 @@ export function solve(taken: Set<CourseId>, a0: Agreement, opts: SolveOptions): 
   const score = (cs: CourseId[]): Sol => {
     const h = withTaken(cs), st = statOf(h)
     let give = Math.min(...configs.map((C) => C.filter((i) => isPseudo(i) || (!isPair(i) && !st[rowOf(i)].satisfied)).length))
-    if (!give && !rootPasses(h)) give = 1
+    // a plan the tree passes leaves nothing unmet, whichever config it follows
+    if (a.root.required) give = rootPasses(h) ? 0 : Math.max(give, 1)
     const [u, away, hon, n] = sumV(cs.filter((c) => vec.has(c)))
     return { v: [give, u + pCollege * colleges(cs) + pChain * chains(cs), newSplits(h), away, hon, n], cs, skip: [], cfg: [] }
   }

@@ -49,8 +49,11 @@ export interface RawPayload {
  *       "NFollowingUnits" (not modelled) keeps the section "take all" with a warning; sending course ids are
  *       upper-cased with whitespace collapsed; template cells that are not UC courses or series (GE / "Requirement"
  *       cells) become required-where-placed rows NOT_LISTED at every college (counselor) instead of being dropped.
+ *   5 = a section "NFollowingUnits" advisement with a positive amount is a UNITS node ("N units from the following",
+ *       met when the chosen rows, each with courses of its own, add up to N of their units), not "take all"
+ *       (FIXES round 10). A row with unknown units never counts toward it, with a warning.
  */
-export const NORMALIZE_VERSION = 4
+export const NORMALIZE_VERSION = 5
 
 /*
  * Section titles (TESTER1 H-4). ASSIST puts the courses a campus requires for admission under one heading ("MAJOR
@@ -324,7 +327,7 @@ export function normalize(payloads: RawPayload[]): Agreement {
     return children.length ? { ...n, children } : null
   }
   const placed = new Map<string, string[] | null>() // tree requirement key -> UC courses it needs
-  const notes = { oddSection: new Set<string>(), unmodeled: new Set<string>(), units: new Set<string>(), instruction: new Set<string>() }
+  const notes = { oddSection: new Set<string>(), unmodeled: new Set<string>(), units: new Set<string>(), unitsUnknown: new Set<string>(), instruction: new Set<string>() }
   const ambiguous = new Map<string, string>() // title -> why it was kept required
   /** Tree nodes for one template. Each group takes the nearest RequirementTitle before it by position, and is required
    *  only if that title's section is (`sectionRules`). */
@@ -358,9 +361,17 @@ export function normalize(payloads: RawPayload[]): Agreement {
             return cells.length === 1 ? cells[0] : { kind: 'node', type: 'OR', required, children: cells }
           })
           const adv = s.advisements ?? []
-          // "Complete N units from the following" is not modelled: kept as "take all" (stricter), with a warning (L-1).
+          // "Complete N units from the following": a UNITS node, met when the chosen rows, each with courses of its own,
+          // add up to N of their (UC) units. A row whose units are unknown never counts toward it (verify.unitsIn); an
+          // unreadable amount keeps the section "take all" (stricter). Both with a warning.
           const units = adv.find((a) => word(a?.type) === 'nfollowingunits')
-          if (units) notes.units.add(`"${title}" (${units.amount} units)`)
+          const amount = units && typeof units.amount === 'number' && Number.isFinite(units.amount) && units.amount > 0 ? units.amount : null
+          if (units && amount === null) notes.units.add(`"${title}" (${units.amount} units)`)
+          if (amount !== null) {
+            const rowsIn = (x: ReqNode | Requirement): Requirement[] => (x.kind === 'req' ? [x] : x.children.flatMap(rowsIn))
+            for (const r of rows.flatMap(rowsIn)) if (!(typeof r.units === 'number' && Number.isFinite(r.units) && r.units > 0)) notes.unitsUnknown.add(`${r.id} in "${title}"`)
+            return { kind: 'node', type: 'UNITS', n: amount, required, children: rows }
+          }
           const nOf = units ? undefined : adv.find((a) => word(a?.type) === 'nfollowing')
           // "choose 0" (or a missing amount) is kept as is: the validator rejects it and verify never counts it as met (TESTER2 M-3)
           if (nOf && !(Number.isInteger(nOf.amount) && nOf.amount >= 1)) console.warn(`normalize: ${first.result.name}: NFollowing ${nOf.amount} in "${title}"`)
@@ -391,6 +402,7 @@ export function normalize(payloads: RawPayload[]): Agreement {
     if (notes.oddSection.size) console.warn(`normalize: ${first.result.name}: template section type is not "Section", read as one: ${[...notes.oddSection].join('; ')}`)
     if (notes.unmodeled.size) console.warn(`normalize: ${first.result.name}: template cell not modelled (not a UC course or series), kept as "${NOT_LISTED}" at every college: ${[...notes.unmodeled].join('; ')}`)
     if (notes.units.size) console.warn(`normalize: ${first.result.name}: NFollowingUnits not modelled, every course in the section kept required: ${[...notes.units].join('; ')}`)
+    if (notes.unitsUnknown.size) console.warn(`normalize: ${first.result.name}: NFollowingUnits row with unknown units, it does not count toward the units: ${[...notes.unitsUnknown].join('; ')}`)
     if (notes.instruction.size) console.warn(`normalize: ${first.result.name}: unknown group instruction, sections joined by AND: ${[...notes.instruction].join('; ')}`)
     Object.values(notes).forEach((x) => x.clear())
   }

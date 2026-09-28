@@ -74,7 +74,7 @@ describe('normalize: N-of sections (F-02)', () => {
 })
 
 describe('normalize v3: only admission sections are required (TESTER1 H-4)', () => {
-  it('NORMALIZE_VERSION is 4', () => expect(NORMALIZE_VERSION).toBe(4))
+  it('NORMALIZE_VERSION is 5', () => expect(NORMALIZE_VERSION).toBe(5))
   it('classifies titles', () => {
     expect(classifyTitle('MAJOR PREPARATION COURSES REQUIRED FOR TRANSFER').kind).toBe('admission')
     expect(classifyTitle('LOWER DIVISION MAJOR REQUIREMENTS').kind).toBe('required')
@@ -343,12 +343,14 @@ describe('normalize: conjunctions, N-of and ids read case-insensitively (L-1)', 
     const s = { ...section([[M31A], [P1A]]), advisements: [{ type: 'nfollowing', amount: 1 }] }
     expect((normalize([payload(DA, [group(0, [s])], arts)]).root.children[0] as ReqNode).type).toBe('N_OF')
   })
-  it('"NFollowingUnits" keeps the section "take all" and warns', () => {
-    const s = { ...section([[M31A], [P1A]]), advisements: [{ type: 'NFollowingUnits', amount: 4 }] }
-    const a = normalize([payload(DA, [title(0, 'Complete 4 units'), group(1, [s])], arts)])
-    expect((a.root.children[0] as ReqNode).type).toBe('AND')
-    expect(verifySchedule(new Set(['113:MATH 1']), a).isValid).toBe(false)
-    expect(warn.mock.calls.flat().join(' ')).toMatch(/NFollowingUnits not modelled.*Complete 4 units/)
+  it('"NFollowingUnits" with an unreadable amount keeps the section "take all" and warns', () => {
+    for (const amount of [0, -4, null, 'four']) {
+      const s = { ...section([[M31A], [P1A]]), advisements: [{ type: 'NFollowingUnits', amount }] }
+      const a = normalize([payload(DA, [title(0, 'Complete some units'), group(1, [s])], arts)])
+      expect((a.root.children[0] as ReqNode).type).toBe('AND')
+      expect(verifySchedule(new Set(['113:MATH 1']), a).isValid).toBe(false)
+    }
+    expect(warn.mock.calls.flat().join(' ')).toMatch(/NFollowingUnits not modelled.*Complete some units/)
   })
   it('an unknown group instruction joins sections by AND and warns', () => {
     const ins = { type: 'RequirementGroup', position: 0, sections: [section([[M31A]]), section([[P1A]])], instruction: { type: 'Mystery' } }
@@ -390,5 +392,45 @@ describe('normalize: unmodelled template content is never dropped (M-3)', () => 
     const a = normalize([payload(DA, [group(0, [section([[M31A, ge as never]])])], [art(M31A, [['MATH', '1']])])])
     expect(reqsOf(a.root).map((r) => r.label)).toContain('GeneralEducation cell GE2')
     expect(verifySchedule(new Set(['113:MATH 1']), a).isValid).toBe(true)
+  })
+})
+
+describe('normalize v5: "NFollowingUnits" is a units threshold (round 10)', () => {
+  // ASSIST shape: a section whose advisement reads "Complete a minimum of N units from the following"
+  const unitsSection = (rows: Cell[][], amount: number) => ({ ...section(rows), advisements: [{ type: 'NFollowingUnits', amount }] })
+  const C4 = cell('CHEM', '20A'), P5 = { type: 'Course', id: 'PHYSICS5', course: course('PHYSICS', '5', 5) }
+  const units = [art(M31A, [['MATH', '1']]), art(P1A, [['PHYS', '1']]), art(C4, [['CHEM', '1A']]), art(P5, [['PHYS', '5']], [['MATH', '1']])]
+  const build = (amount: number, extra: object[] = []) => normalize([payload(DA, [title(0, 'Complete 8 units from the following'), group(1, [unitsSection([[M31A], [P1A], [C4], [P5]], amount)])], [...units, ...extra])])
+  it('becomes a UNITS node over its rows, not "take all"', () => {
+    const g = build(8).root.children[0] as ReqNode
+    expect([g.type, g.n, g.children.length]).toEqual(['UNITS', 8, 4])
+    expect(warn.mock.calls.flat().join(' ')).not.toMatch(/NFollowingUnits not modelled/)
+  })
+  it('met when the chosen rows add up to N units', () => {
+    const a = build(8)
+    expect(verifySchedule(new Set(['113:MATH 1']), a).isValid).toBe(false) // counted as PHYSICS 5: 5 of 8
+    expect(verifySchedule(new Set(['113:MATH 1', '113:PHYS 1']), a).isValid).toBe(true) // 4 + 4
+    expect(verifySchedule(new Set(['113:PHYS 5', '113:CHEM 1A']), a).isValid).toBe(true) // 5 + 4
+    expect(verifySchedule(new Set(['113:MATH 1']), a).missing[0]).toMatch(/^3 more units of:/)
+  })
+  it('one course counts once: MATH 1 meets MATH 31A (4) and PHYSICS 5 (5), but only one of them', () => {
+    const a = build(9)
+    expect(verifySchedule(new Set(['113:MATH 1']), a).isValid).toBe(false)
+    expect(verifySchedule(new Set(['113:MATH 1', '113:PHYS 5']), a).isValid).toBe(true)
+  })
+  it('a row with unknown units never counts, and is warned about (fail closed)', () => {
+    const noUnits = { type: 'Course', id: 'MATH32A', course: { ...course('MATH', '32A'), minUnits: undefined } }
+    const a = normalize([payload(DA, [title(0, 'Complete 4 units'), group(1, [unitsSection([[noUnits as unknown as Cell], [P1A]], 4)])], [art(noUnits as unknown as Cell, [['MATH', '3']]), art(P1A, [['PHYS', '1']])])])
+    expect((a.root.children[0] as ReqNode).type).toBe('UNITS')
+    expect(verifySchedule(new Set(['113:MATH 3']), a).isValid).toBe(false)
+    expect(verifySchedule(new Set(['113:PHYS 1']), a).isValid).toBe(true)
+    expect(warn.mock.calls.flat().join(' ')).toMatch(/NFollowingUnits row with unknown units.*MATH 32A/)
+  })
+  it('several colleges: each articulation counts, in the UC course units', () => {
+    const fh = [art(M31A, [['MATH', '1A']]), art(P1A, [['PHYS', '4A']]), art(C4, []), art(P5, [])]
+    const a = normalize([payload(DA, [title(0, 'Complete 8 units from the following'), group(1, [unitsSection([[M31A], [P1A], [C4], [P5]], 8)])], units),
+      payload(FH, [title(0, 'Complete 8 units from the following'), group(1, [unitsSection([[M31A], [P1A], [C4], [P5]], 8)])], fh)])
+    expect(verifySchedule(new Set(['51:MATH 1A', '51:PHYS 4A']), a).isValid).toBe(true)
+    expect(verifySchedule(new Set(['51:MATH 1A']), a).isValid).toBe(false)
   })
 })

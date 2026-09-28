@@ -803,3 +803,70 @@ describe('M-4: the planner fills each slot of a "choose N" group with its own co
     expect(checked).toBeGreaterThan(1000)
   }, 600_000)
 })
+
+describe('"N units from the following" (UNITS, round 10): verifier and planner', () => {
+  const units = (n: number, ...children: (ReqNode | Requirement)[]): ReqNode => ({ kind: 'node', type: 'UNITS', n, required: true, children })
+  const row = (id: string, u: number, groups: string[][]): Requirement => ({ ...req(id, groups), units: u })
+  const cs: [string, number][] = [['1:A 1', 4], ['1:B 1', 3], ['1:C 1', 5], ['1:X 1', 3]]
+  it('met at N units of the rows; the planner plans the cheapest set that reaches them', () => {
+    const a = agreement(and(units(8, row('A', 4, [['1:A 1']]), row('B', 4, [['1:B 1']]), row('C', 5, [['1:C 1']]))), cs)
+    expect(verifySchedule(new Set(['1:A 1']), a).isValid).toBe(false)
+    expect(verifySchedule(new Set(['1:A 1', '1:B 1']), a).isValid).toBe(true)
+    const p = solve(new Set(), a, { allowed: [1], home: 1 })
+    expect(plannedOf(p).sort()).toEqual(['1:A 1', '1:B 1']) // 7 course units for 8 UC units (C + either costs more)
+    expect(p.optimal).toBe(true)
+    expect(p.result.isValid).toBe(true)
+  })
+  it('one course counts once: X meets A and B, but brings their units only once', () => {
+    const a = agreement(and(units(8, row('A', 4, [['1:X 1']]), row('B', 4, [['1:X 1'], ['1:B 1']]))), cs)
+    expect(verifySchedule(new Set(['1:X 1']), a).isValid).toBe(false)
+    const p = solve(new Set(['1:X 1']), a, { allowed: [1], home: 1 })
+    expect(plannedOf(p)).toEqual(['1:B 1'])
+    expect(p.result.isValid).toBe(true)
+  })
+  it('a row with unknown units never counts (fail closed)', () => {
+    const a = agreement(and(units(4, row('A', 0, [['1:A 1']]), row('B', 4, [['1:B 1']]))), cs)
+    expect(verifySchedule(new Set(['1:A 1']), a).isValid).toBe(false)
+    expect(plannedOf(solve(new Set(['1:A 1']), a, { allowed: [1], home: 1 }))).toEqual(['1:B 1'])
+    const only = agreement(and(units(4, row('A', Number.NaN, [['1:A 1']]))), cs)
+    const q = solve(new Set(), only, { allowed: [1], home: 1 })
+    expect(q.unsolvable.length).toBeGreaterThan(0)
+    expect(q.result.isValid).toBe(false)
+  })
+  it('UC-only rows make up only the units CC rows cannot', () => {
+    const a = agreement(and(units(8, row('A', 4, [['1:A 1']]), row('U', 4, []))), cs)
+    expect(verifySchedule(new Set(), a).isValid).toBe(false) // A is owed first
+    expect(verifySchedule(new Set(['1:A 1']), a)).toMatchObject({ isValid: true, deferred: ['U'] })
+    const p = solve(new Set(), a, { allowed: [1], home: 1 })
+    expect(plannedOf(p)).toEqual(['1:A 1'])
+    expect(p.result.isValid).toBe(true)
+  })
+  it('random cross-check with units groups: nothing unsolvable exactly when every course passes, and then the plan verifies', () => {
+    let s = 11
+    const rnd = () => ((s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 2 ** 32)
+    const int = (n: number) => Math.floor(rnd() * n)
+    let checked = 0
+    for (let t = 0; t < 1200; t++) {
+      const pool = Array.from({ length: 3 + int(4) }, (_, i) => `1:K ${i}`)
+      const rows = Array.from({ length: 2 + int(5) }, (_, i) => rnd() < 0.12 ? row(`U${i}`, 1 + int(4), [])
+        : row(`R${i}`, rnd() < 0.1 ? 0 : 1 + int(5), Array.from({ length: 1 + int(2) }, () => [...new Set([pool[int(pool.length)], ...(rnd() < 0.3 ? [pool[int(pool.length)]] : [])])])))
+      const node = (d: number): ReqNode | Requirement => {
+        if (d > 1 || rnd() < 0.4) return rows[int(rows.length)]
+        const k = 2 + int(3), kids = Array.from({ length: k }, () => node(d + 1))
+        const type = (['AND', 'N_OF', 'UNITS', 'UNITS', 'OR'] as const)[int(5)]
+        return { kind: 'node', type, n: type === 'N_OF' ? 1 + int(k) : type === 'UNITS' ? 1 + int(10) : undefined, required: true, children: kids }
+      }
+      const a = agreement(and(node(0), node(0)), pool.map((c): [string, number] => [c, 1 + int(4)]))
+      if (malformed(a.root)) continue
+      checked++
+      const taken = new Set(pool.filter(() => rnd() < 0.3))
+      for (const budget of [undefined, 0]) {
+        const p = solve(taken, a, { allowed: [1], home: 1, budget })
+        const ctx = `case ${t} budget ${budget}`
+        expect(p.unsolvable.length === 0, ctx).toBe(verifySchedule(new Set([...taken, ...pool]), a).isValid)
+        expect(p.result.isValid, ctx).toBe(p.unsolvable.length === 0)
+      }
+    }
+    expect(checked).toBeGreaterThan(800)
+  }, 600_000)
+})

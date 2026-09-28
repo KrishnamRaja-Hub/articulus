@@ -21,6 +21,8 @@
  *     the open routable children that could never be satisfied with CC courses alone. Owed first (open): s < C, or
  *     a' > 0; the missing rows are the open routable children's, plus every satisfied child's while one of them is
  *     left out. Otherwise it passes, UC-only rows filling the rest. With no course shared this is exactly rule 4.
+ *  4c. "N units from the following" (UNITS, FIXES round 10): rule 4b counted in units, each child worth the units of
+ *     the rows it spends (a row's units: a positive number, else 0). It is met at N units.
  *  5. Optional (recommended) subtrees are reported but never fail, satisfy or defer anything for their parent.
  *  6. Blocking vs warning: top down from a failing root, an AND needs every failing required child, an OR / N_OF every
  *     failing child that has a CC route. A split in a needed row is blocking; any other split is a warning.
@@ -180,7 +182,7 @@ function fold(n: Node, leaf: Leaf, conv: DeferConvention, inSlot = false): Fold 
       spend: l.state === 'O' ? [] : inSlot && l.state === 'S' ? l.spend : [[]], loose: [] }
   }
   const need = n.type === 'OR' ? 1 : n.n ?? 1
-  const slots = n.type === 'N_OF' && need >= 2
+  const slots = (n.type === 'N_OF' && need >= 2) || n.type === 'UNITS'
   const kids = n.children.map((k) => fold(k, leaf, conv, inSlot || slots))
   const cnt = kids.filter((k) => counted(k.node))
   const out = (state: State, def: string[], miss: string[], spend: string[][] = [[]], loose: Fold[] = []): Fold =>
@@ -205,6 +207,7 @@ function fold(n: Node, leaf: Leaf, conv: DeferConvention, inSlot = false): Fold 
     if (A.length) return out('O', [...S, ...(conv === 'slots' ? D.slice(0, uc) : [])].flatMap((k) => k.def), A.flatMap((k) => k.miss))
     return out('D', [...S, ...(conv === 'slots' ? D.slice(0, need - S.length) : D)].flatMap((k) => k.def), [])
   }
+  if (n.type === 'UNITS') return unitsFold(n, need, S, A, D, cnt, out, conv, inSlot)
   // rule 4b: which satisfied alternatives fill slots together (the first such set, in the order above)
   const fams = S.map((k) => k.spend)
   const m = mostTogether(fams, need)
@@ -226,6 +229,81 @@ function fold(n: Node, leaf: Leaf, conv: DeferConvention, inSlot = false): Fold 
   }
   return out('D', [...defOf([...chosen]), ...(conv === 'slots' ? D.slice(0, need - m) : D).flatMap((k) => k.def)], [],
     inSlot ? smallest(packings(fams, m).map((p) => p.spend)) : [[]])
+}
+
+/** Units of the rows under a subtree: a positive number, else 0 (unknown: never counts); a repeated id counts its smallest. */
+function unitsOf(n: Node): Map<string, number> {
+  const m = new Map<string, number>()
+  const walk = (x: Node): void => {
+    if (x.kind !== 'req') return x.children.forEach(walk)
+    const u = Number.isFinite(x.units) && x.units > 0 ? x.units : 0
+    m.set(x.id, Math.min(m.get(x.id) ?? Infinity, u))
+  }
+  walk(n)
+  return m
+}
+
+/**
+ * Rule 4c, "N units from the following" (UNITS): rule 4b counted in units. The satisfied children taken (the first way,
+ * in the order above, each child's heaviest ways first, to reach the most units up to N) must spend different ids;
+ * their units are the units of the rows they spend. C: the most units the children CC courses can meet could reach.
+ */
+function unitsFold(n: ReqNode, need: number, S: Fold[], A: Fold[], D: Fold[], cnt: Fold[], out: (state: State, def: string[], miss: string[], spend?: string[][], loose?: Fold[]) => Fold, conv: DeferConvention, inSlot: boolean): Fold {
+  const units = unitsOf(n)
+  const weight = (w: string[]) => w.reduce((t, x) => t + (x.startsWith('row:') ? units.get(x.slice(4)) ?? 0 : 0), 0)
+  /** Every assignment: which children, one way each, nothing spent twice, and their units. */
+  const assignments = (fams: string[][][]) => {
+    const out: { pick: number[]; spend: string[]; total: number }[] = []
+    const go = (i: number, pick: number[], spend: string[], total: number): void => {
+      if (i === fams.length) return void out.push({ pick, spend, total })
+      for (const w of fams[i]) if (weight(w) > 0 && !w.some((x) => spend.includes(x))) go(i + 1, [...pick, i], [...spend, ...w], total + weight(w))
+      go(i + 1, pick, spend, total)
+    }
+    go(0, [], [], 0)
+    return out
+  }
+  const fams = S.map((k) => k.spend), every = assignments(fams)
+  const top = Math.min(need, Math.max(0, ...every.map((x) => x.total)))
+  // the children taken: in order, each that can still be in an assignment reaching `top`, until those taken reach it
+  const taken: number[] = []
+  const reaches = (must: number[], may: number[]) => every.some((x) => x.total >= top && must.every((j) => x.pick.includes(j)) && x.pick.every((j) => must.includes(j) || may.includes(j)))
+  if (top > 0) for (let j = 0; j < fams.length; j++) {
+    if (reaches(taken, [])) break
+    if (reaches([...taken, j], fams.map((_, k) => k).filter((k) => k > j))) taken.push(j)
+  }
+  const m = top
+  const chosen = taken.map((j) => S[j])
+  const spend = inSlot ? smallest(every.filter((x) => x.total >= top && x.pick.length === taken.length && taken.every((j) => x.pick.includes(j))).map((x) => x.spend)) : [[]]
+  const defOf = (xs: Fold[]) => cnt.filter((k) => xs.includes(k)).flatMap((k) => k.def)
+  if (m >= need) {
+    // for a slot above: every set reaching N that needs all its members (one way each, nothing spent twice)
+    const all: string[][] = []
+    const each = (i: number, picked: string[][], total: number): void => {
+      if (total >= need) return void (picked.every((w) => total - weight(w) < need) && all.push(picked.flat()))
+      if (i === fams.length) return
+      for (const w of fams[i]) if (!w.some((x) => picked.flat().includes(x))) each(i + 1, [...picked, w], total + weight(w))
+      each(i + 1, picked, total)
+    }
+    if (inSlot) each(0, [], 0)
+    return out('S', defOf(chosen), [], inSlot ? smallest(all) : [[]])
+  }
+  const C = Math.max(m, Math.min(need, Math.max(0, ...assignments(cnt.filter((k) => hypState(k.node) === 'S').map((k) => hypSpend(k.node))).map((x) => x.total))))
+  const late = A.filter((k) => hypState(k.node) !== 'S')
+  // UC-only rows of the group itself make up the rest, each row once; a subtree passing through UC-only rows adds none
+  const ucRows = [...new Set(D.flatMap((k) => (k.node.kind === 'req' ? [k.node.id] : [])))]
+  const dU = ucRows.reduce((t, id) => t + (units.get(id) ?? 0), 0)
+  if (C + dU < need) return out('O', defOf(chosen), cnt.filter((k) => k.state !== 'S').flatMap((k) => k.miss))
+  // a satisfied child may still bring more units through another group: every one is named, and may be re-routed
+  if (m < C || late.length) return out('O', defOf(chosen), [...A.flatMap((k) => k.miss), ...S.flatMap((k) => rowsWithGroups(k.node))], [], S)
+  // UC-only children make up the rest ('slots': the first ones that do)
+  const fill: Fold[] = []
+  let u = m
+  for (const k of D) {
+    if (conv !== 'slots' || u >= need) break
+    fill.push(k)
+    if (k.node.kind === 'req') u += units.get(k.node.id) ?? 0
+  }
+  return out('D', [...defOf(chosen), ...(conv === 'slots' ? fill : D).flatMap((k) => k.def)], [], spend)
 }
 
 /** Rows with a CC group in a subtree (required paths only). */

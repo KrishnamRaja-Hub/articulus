@@ -28,7 +28,9 @@ export interface Requirement {
 
 export interface ReqNode {
   kind: 'node'
-  type: 'AND' | 'OR' | 'N_OF'
+  /** UNITS: "complete N units from the following" (ASSIST NFollowingUnits): met when the chosen alternatives, each
+   *  with courses of its own, add up to at least `n` units (the rows' `units`). */
+  type: 'AND' | 'OR' | 'N_OF' | 'UNITS'
   n?: number
   title?: string
   required: boolean

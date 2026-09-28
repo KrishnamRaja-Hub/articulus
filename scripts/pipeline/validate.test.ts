@@ -185,6 +185,23 @@ describe('M-4: "choose 2+ of" groups are checked by the engine', () => {
   })
 })
 
+describe('round 10: "N units from the following" (UNITS) groups', () => {
+  it('a positive amount the rows can reach passes; zero, or more than the rows hold, is an error', () => {
+    const errorsOf = (n: number) => {
+      const d = copy()
+      agreement(d, (a) => {
+        const base = req(a, 'MATH 51')
+        const row = (id: string): Requirement => ({ ...base, id, label: id, units: 4 })
+        a.root.children.push({ kind: 'node', type: 'UNITS', n, required: true, title: 'PICK 8 UNITS', children: [row('P1'), row('P2'), row('P3')] })
+      })
+      return validate(d).findings.filter((f) => f.check === 'tree.units' || f.check === 'tree.schema').map((f) => f.check)
+    }
+    expect(errorsOf(8)).toEqual([])
+    expect(errorsOf(0)).toEqual(['tree.units'])
+    expect(errorsOf(13)).toEqual(['tree.units'])
+  })
+})
+
 describe('round 7: unmodelled normalize content is a warning', () => {
   it('maps conjunction and unmodelled-template notes to warnings, never info', () => {
     const notes = { [BME]: [

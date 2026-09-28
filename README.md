@@ -24,7 +24,7 @@ The two colleges divide the physics topics differently, so the university only a
 
 ### Requirement tree
 
-`src/engine/normalize.ts` turns raw ASSIST payloads into an `Agreement`. The ASSIST `templateAssets` array holds `RequirementTitle` and `RequirementGroup` entries ordered by `position`; each group takes the nearest title before it. Each group becomes a `ReqNode` of type `AND`, `OR`, or `N_OF` (from the `NFollowing` advisement; a group whose only section is "N of" stays `N_OF`). Rows with several cells become `OR` nodes. Titles containing "RECOMMEND" mark the subtree as optional.
+`src/engine/normalize.ts` turns raw ASSIST payloads into an `Agreement`. The ASSIST `templateAssets` array holds `RequirementTitle` and `RequirementGroup` entries ordered by `position`; each group takes the nearest title before it. Each group becomes a `ReqNode` of type `AND`, `OR`, `N_OF` (from the `NFollowing` advisement; a group whose only section is "N of" stays `N_OF`), or `UNITS` (from the `NFollowingUnits` advisement: "complete N units from the following", met when the chosen rows, each with courses of its own, add up to N of their UC units; a row with unknown units never counts). Rows with several cells become `OR` nodes. Titles containing "RECOMMEND" mark the subtree as optional.
 
 Each leaf is a `Requirement`: one UC course or series (`PHYSICS 7B`, `MATH 51`) with a list of `CourseGroup`s. A group is a set of course ids tagged with a sending college (`{ institutionId: 113, courses: ["113:PHYS 4B", "113:PHYS 4C"] }`). ASSIST "Or" sending groups fan out into one group per course. Payloads from every sending college are merged into the same requirement, so one leaf lists the groups from all fifteen colleges.
 

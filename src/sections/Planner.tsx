@@ -46,11 +46,11 @@ const GREY = { chip: 'bg-bg text-ink-2 border-line', dot: 'bg-ink-3', text: 'tex
 const code = (id: CourseId) => id.slice(id.indexOf(':') + 1)
 const instOf = (id: CourseId) => Number(id.slice(0, id.indexOf(':')))
 
-interface Row { req: Requirement; section: string; optional: boolean; choose?: number }
-function flatten(n: ReqNode, section = '', choose?: number, acc: Row[] = []): Row[] {
+interface Row { req: Requirement; section: string; optional: boolean; choose?: number; units?: number }
+function flatten(n: ReqNode, section = '', choose?: number, acc: Row[] = [], units?: number): Row[] {
   for (const c of n.children) {
-    if (c.kind === 'req') acc.push({ req: c, section: n.title ?? section, optional: !n.required, choose })
-    else flatten(c, c.title ?? section, c.type === 'N_OF' ? c.n : c.type === 'OR' ? 1 : undefined, acc)
+    if (c.kind === 'req') acc.push({ req: c, section: n.title ?? section, optional: !n.required, choose, ...(units ? { units } : {}) })
+    else flatten(c, c.title ?? section, c.type === 'N_OF' ? c.n : c.type === 'OR' || c.type === 'UNITS' ? 1 : undefined, acc, c.type === 'UNITS' ? c.n : undefined)
   }
   return acc
 }
@@ -541,7 +541,7 @@ export default function Planner() {
                       </div>
                     )}
                     {r.choose && (!prev || prev.section !== r.section || prev.choose !== r.choose) && (
-                      <div className="mt-4 mb-2 text-[13px] text-ink-3">Choose {r.choose} of the following</div>
+                      <div className="mt-4 mb-2 text-[13px] text-ink-3">{r.units ? `Complete ${r.units} units of the following` : `Choose ${r.choose} of the following`}</div>
                     )}
                     <div className={`flex items-center gap-4 border-t border-line py-3.5 transition-colors duration-300 ${lit ? 'bg-white' : ''} ${r.optional && !g ? 'opacity-60' : ''}`}>
                       <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-white ${viol ? 'bg-alert' : warn ? 'bg-warn' : done ? 'bg-accent' : g ? 'border-2 border-ink/70 bg-transparent' : 'border border-line bg-transparent'}`}>

@@ -44,10 +44,13 @@ export interface SynthOptions {
   /** Name rows with UC subjects (MATH 0, PHYS 1, CHEM 2, R3, MATH 4, ...) so rows share subjects and form the
    *  planner's subject chains; off: R0, R1, ... (no subject, no chain). Draws no extra randomness. */
   subjects?: boolean
+  /** Share of choices drawn as "N units from the following" (UNITS, round 10), with row units 1-5 (some unknown: 0).
+   *  Off (0, the default): no extra randomness is drawn, so other generators' streams are unchanged. */
+  units?: number
 }
 
 export function randomAgreement(r: Rng, o: SynthOptions = {}): Agreement {
-  const { inherit = false, ucOnly = 0.1, noRecord = 0.08, maxDepth = 2, colleges: maxCol = 3, latentShapes = true, subjects = false } = o
+  const { inherit = false, ucOnly = 0.1, noRecord = 0.08, maxDepth = 2, colleges: maxCol = 3, latentShapes = true, subjects = false, units = 0 } = o
   const colleges = [1, 2, 3, 4].slice(0, 1 + r.int(maxCol))
   const nCourses = 3 + r.int(6)
   const catalog: Record<CourseId, Course> = {}
@@ -64,7 +67,7 @@ export function randomAgreement(r: Rng, o: SynthOptions = {}): Agreement {
     if (reuse.length && r.next() < 0.12) return r.pick(reuse) // the same row listed twice (Berkeley ME chemistry)
     const id = subjects && rid % 4 !== 3 ? `${['MATH', 'PHYS', 'CHEM'][rid % 4]} ${rid}` : `R${rid}`
     rid++
-    const req: Requirement = { kind: 'req', id, label: 'r', units: 3, groups: [] }
+    const req: Requirement = { kind: 'req', id, label: 'r', units: units ? (r.next() < 0.1 ? 0 : 1 + r.int(5)) : 3, groups: [] }
     const x = r.next()
     if (x < ucOnly && allow.has('uc')) req.noArticulation = { 1: r.pick(UC_REASONS) }
     else if (x >= ucOnly && x < ucOnly + noRecord && allow.has('none')) req.noArticulation = { 1: NO_RECORD, 2: NO_RECORD }
@@ -103,6 +106,7 @@ export function randomAgreement(r: Rng, o: SynthOptions = {}): Agreement {
     } else if (!latentShapes && inChoice) leafAllow = nodeAllow = new Set([...allow].filter((x) => x !== 'uc'))
     const children = Array.from({ length: k }, () => child(d + 1, required, leafAllow, nodeAllow, inChoice || type !== 'AND'))
     const n = type === 'N_OF' ? 1 + r.int(Math.max(1, k + (r.next() < 0.1 ? 1 : 0))) : undefined
+    if (units && type !== 'AND' && r.next() < units) return { kind: 'node', type: 'UNITS', n: 1 + r.int(4 * k), required, children }
     return { kind: 'node', type, n, required, children }
   }
   const root: ReqNode = { kind: 'node', type: 'AND', required: true, children: Array.from({ length: 1 + r.int(4) }, () => child(0, true, all, all, false)) }
