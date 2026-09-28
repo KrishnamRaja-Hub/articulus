@@ -204,6 +204,35 @@ describe('solve: prefer home college', () => {
     expect(p.fallbacks).toBeUndefined()
   })
 
+  it('B3: an away course is priced without prerequisites a home course stands in for', () => {
+    const IV = 124, t = 'Physics for Scientists and Engineers: '
+    const a = agreement(and(
+      req('P 2A', [[`${IV}:PHYS 4A`], [`${DA}:PHYS 4A`]]), req('P 2B', [[`${IV}:PHYS 4B`], [`${DA}:PHYS 4B`]]),
+      req('P 2C', [[`${IV}:PHYS 4C`], [`${DA}:PHYS 4C`]]), req('P 2D', [[`${DA}:PHYS 4D`], [`${SM}:PHYS 9`]]),
+    ), [[`${IV}:PHYS 4A`, 5], [`${IV}:PHYS 4B`, 5], [`${IV}:PHYS 4C`, 5], [`${DA}:PHYS 4A`, 5], [`${DA}:PHYS 4B`, 5], [`${DA}:PHYS 4C`, 5], [`${DA}:PHYS 4D`, 5], [`${SM}:PHYS 9`, 8]])
+    titled(a, { [`${IV}:PHYS 4A`]: t + 'Mechanics', [`${IV}:PHYS 4B`]: t + 'Electricity and Magnetism', [`${IV}:PHYS 4C`]: t + 'Waves',
+      [`${DA}:PHYS 4A`]: t + 'Mechanics', [`${DA}:PHYS 4B`]: t + 'Electricity and Magnetism', [`${DA}:PHYS 4C`]: t + 'Waves',
+      [`${DA}:PHYS 4D`]: t + 'Modern Physics', [`${SM}:PHYS 9`]: 'Modern Physics Survey' })
+    const p = solve(new Set(), a, { allowed: [IV, DA, SM], home: IV, preferHome: true })
+    expect(planned(p)).toEqual([`${DA}:PHYS 4D`, `${IV}:PHYS 4A`, `${IV}:PHYS 4B`, `${IV}:PHYS 4C`])
+    expect(p.totalUnits).toBe(20)
+  })
+
+  it('B4-B7 stay as confirmed: home finishes the series; choose-N and OR routes; a series started at an unselected college', () => {
+    const b4 = agreement(and(req('X 1', [[`${DA}:PHYS 4A`], [`${FH}:PHYS 4A`]]), req('Y 1', [[`${DA}:PHYS 4B`], [`${FH}:PHYS 4B`]])),
+      [[`${DA}:PHYS 4A`, 15], [`${DA}:PHYS 4B`, 15], [`${FH}:PHYS 4A`, 2], [`${FH}:PHYS 4B`, 2]])
+    expect(planned(solve(new Set(), b4, HOME))).toEqual([`${DA}:PHYS 4A`, `${DA}:PHYS 4B`])
+    const b5 = agreement({ kind: 'node', type: 'N_OF', n: 2, required: true, children: [req('A 1', [[`${DA}:A 1`], [`${FH}:A 1`]]), req('B 1', [[`${FH}:B 1`]]), req('C 1', [[`${SM}:C 1`]])] },
+      [[`${DA}:A 1`, 10], [`${FH}:A 1`, 1], [`${FH}:B 1`, 3], [`${SM}:C 1`, 2]])
+    expect(planned(solve(new Set(), b5, { allowed: [DA, FH, SM], home: DA, preferHome: true }))).toEqual([`${DA}:A 1`, `${SM}:C 1`])
+    const b6 = agreement(or(and(req('X 1', [[`${DA}:X 1`]]), req('Y 1', [[`${FH}:Y 1`]])), req('P 1', [[`${DA}:P 1`, `${DA}:P 2`]])),
+      [[`${DA}:X 1`, 1], [`${FH}:Y 1`, 1], [`${DA}:P 1`, 10], [`${DA}:P 2`, 10]])
+    expect(planned(solve(new Set(), b6, HOME))).toEqual([`${DA}:P 1`, `${DA}:P 2`])
+    const b7 = agreement(and(req('CALC', [[`${DA}:MATH 1A`, `${DA}:MATH 1B`], [`${SM}:MATH 1A`, `${SM}:MATH 1B`]])),
+      [[`${DA}:MATH 1A`, 5], [`${DA}:MATH 1B`, 5], [`${SM}:MATH 1A`, 5], [`${SM}:MATH 1B`, 5]])
+    expect(planned(solve(new Set([`${SM}:MATH 1A`]), b7, HOME))).toEqual([`${DA}:MATH 1A`, `${DA}:MATH 1B`])
+  })
+
   it('B1-B2: a series pull the plan uses names the row really planned there', () => {
     const p = solve(new Set(), B(and(X, req('Y 1', [[`${FH}:PHYS 4B`]]))), HOME)
     expect(planned(p)).toEqual([`${FH}:PHYS 4A`, `${FH}:PHYS 4B`])

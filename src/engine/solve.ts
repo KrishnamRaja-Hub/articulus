@@ -145,9 +145,16 @@ export function solve(taken: Set<CourseId>, a0: Agreement, opts: SolveOptions): 
   const homeFirst = !!opts.preferHome && home !== undefined && allowed.includes(home)
   const hf: HomeFirst = homeFirst ? preferHomeAgreement(a1, taken, home!, allowed, opts.noSeries) : { a: a1, started: new Set(), series: new Map() }
   const { a, started } = hf
-  // preferHome: a way includes the prerequisites it needs at its college, so its cost is what the student really takes
+  // preferHome: a way includes the prerequisites it needs at its college, so its cost is what the student really takes;
+  // not one a home course stands in for (home's own rows plan it there, or the whole-plan closure finds it covered)
   const graph0 = homeFirst ? prereqGraph(a.catalog, taken) : null
-  const withPre = (v: CourseId[]) => (graph0 ? [...v, ...prereqClosure(graph0, v, taken, a.catalog).added] : v)
+  const homeCat = Object.keys(a.catalog).filter((c) => instOf(c) === home), byHome = new Map<CourseId, boolean>()
+  const homeGives = (p: CourseId) => {
+    let v = byHome.get(p)
+    if (v === undefined) byHome.set(p, (v = instOf(p) === home || homeCat.some((q) => graph0!.equiv(p, q))))
+    return v
+  }
+  const withPre = (v: CourseId[]) => (graph0 ? [...v, ...prereqClosure(graph0, v, taken, a.catalog).added.filter((p) => !homeGives(p))] : v)
   // past the deadline, nodes jumps to Infinity: every budget check fails and the search reports incomplete
   const deadline = timeLimitMs === undefined ? Infinity : Date.now() + timeLimitMs
   const late = () => deadline !== Infinity && Date.now() > deadline && (nodes = Infinity) > 0
