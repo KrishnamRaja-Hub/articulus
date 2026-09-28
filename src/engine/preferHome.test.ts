@@ -175,4 +175,41 @@ describe('solve: prefer home college', () => {
       [[], [`${FH}:ENGR 1`], 'Prerequisite for ENGR 2 at Foothill; take ENGR 1 at Foothill.'],
     ])
   })
+
+  /* ---- regressions (tester round 2): series pulls ---- */
+
+  // De Anza PHYS 4A 15 units, Foothill 4A 2 units; Foothill 4B (needs Foothill 4A) is Foothill's only course for Y
+  const titled = (a: Agreement, titles: Record<string, string>) => { for (const [c, t] of Object.entries(titles)) a.catalog[c].title = t; return a }
+  const B = (root: ReqNode, more: [string, number][] = []) => titled(agreement(root,
+    [[`${DA}:PHYS 4A`, 15], [`${FH}:PHYS 4A`, 2], [`${FH}:PHYS 4B`, 10], [`${SM}:PHYS 2`, 1], ...more]),
+  { [`${DA}:PHYS 4A`]: 'Mechanics', [`${FH}:PHYS 4A`]: 'Kinetics', [`${FH}:PHYS 4B`]: 'Kinetics', [`${SM}:PHYS 2`]: 'Waves' })
+  const X = req('X 1', [[`${DA}:PHYS 4A`], [`${FH}:PHYS 4A`]])
+
+  it('B1: a row home covers goes back home when the row that pulled it away is planned at a third college', () => {
+    const p = solve(new Set(), B(and(X, req('Y 1', [[`${FH}:PHYS 4B`], [`${SM}:PHYS 2`]]))), { allowed: [DA, FH, SM], home: DA, preferHome: true })
+    expect(planned(p)).toEqual([`${DA}:PHYS 4A`, `${SM}:PHYS 2`])
+    expect(p.fallbacks?.map((f) => f.note)).toEqual(['Not offered at De Anza; take PHYS 2 at Santa Monica.'])
+  })
+
+  it('B2: a row the OR cut removes (home completes the other alternative) pulls nothing away', () => {
+    const p = solve(new Set(), B(and(X, or(req('Y 1', [[`${FH}:PHYS 4B`]]), req('Z 1', [[`${DA}:Z 1`]]))), [[`${DA}:Z 1`, 1]]), HOME)
+    expect(planned(p)).toEqual([`${DA}:PHYS 4A`, `${DA}:Z 1`])
+    expect(p.fallbacks).toBeUndefined()
+  })
+
+  it('B2b: a row in an optional subtree pulls nothing away', () => {
+    const optional: ReqNode = { kind: 'node', type: 'AND', required: false, children: [req('Y 1', [[`${FH}:PHYS 4B`]])] }
+    const p = solve(new Set(), B(and(X, optional)), HOME)
+    expect(planned(p)).toEqual([`${DA}:PHYS 4A`])
+    expect(p.fallbacks).toBeUndefined()
+  })
+
+  it('B1-B2: a series pull the plan uses names the row really planned there', () => {
+    const p = solve(new Set(), B(and(X, req('Y 1', [[`${FH}:PHYS 4B`]]))), HOME)
+    expect(planned(p)).toEqual([`${FH}:PHYS 4A`, `${FH}:PHYS 4B`])
+    expect(p.fallbacks?.map((f) => f.note)).toEqual([
+      'Not offered at De Anza; take PHYS 4B at Foothill.',
+      'De Anza cannot finish this series (it has no course for Y 1); take PHYS 4A at Foothill.',
+    ])
+  })
 })

@@ -29,6 +29,8 @@ export interface SolveOptions {
    *  preferHomeAgreement); another college only where home cannot, and then the usual cost decides among them.
    *  Each course planned away from home is named in `Plan.fallbacks`. Default false. */
   preferHome?: boolean
+  /** Internal (preferHome): series groups not to keep, `${row id}|${college}` (see preferHomeAgreement). */
+  noSeries?: string[]
 }
 
 
@@ -141,7 +143,7 @@ export function solve(taken: Set<CourseId>, a0: Agreement, opts: SolveOptions): 
   // missing from the catalog; a requirement it alone could complete lands in `unsolvable`
   const { a: a1, badUnits } = withValidUnits(a0)
   const homeFirst = !!opts.preferHome && home !== undefined && allowed.includes(home)
-  const hf: HomeFirst = homeFirst ? preferHomeAgreement(a1, taken, home!, allowed) : { a: a1, started: new Set(), series: new Map() }
+  const hf: HomeFirst = homeFirst ? preferHomeAgreement(a1, taken, home!, allowed, opts.noSeries) : { a: a1, started: new Set(), series: new Map() }
   const { a, started } = hf
   // preferHome: a way includes the prerequisites it needs at its college, so its cost is what the student really takes
   const graph0 = homeFirst ? prereqGraph(a.catalog, taken) : null
@@ -928,6 +930,13 @@ export function solve(taken: Set<CourseId>, a0: Agreement, opts: SolveOptions): 
   // preferHome: prerequisites the search planned inside its ways are not in `added`; any planned course no chosen group
   // lists is one
   if (homeFirst) prereqOnly = [...new Set([...prereqOnly, ...planned.filter((c) => !Object.values(chosen).some((g) => g.courses.includes(c)))])].sort()
+  if (homeFirst) {
+    // a row home covers was planned at X only for the series of a row home cannot cover: if the plan does not meet
+    // that row at X after all (it went to a third college), plan again with that row back at home
+    const idle = Object.keys(chosen).sort().map((id) => `${id}|${chosen[id].institutionId}`)
+      .filter((k) => hf.series.has(k) && !hf.series.get(k)!.some((x) => chosen[x]?.institutionId === Number(k.slice(k.lastIndexOf('|') + 1))))
+    if (idle.length) return solve(taken, a0, { ...opts, noSeries: [...(opts.noSeries ?? []), ...idle] })
+  }
   const fallbacks = homeFirst ? fallbackNotes(a1, hf, chosen, planned, taken, home!) : []
   for (const c of badUnits) if (L.some((r) => r.groups.some((g) => allowed.includes(g.institutionId) && g.courses.includes(c))))
     prereqWarnings.push(`${c} has no valid unit count in the agreement data; it is not planned.`)
@@ -1002,33 +1011,52 @@ export interface HomeFirst {
   a: Agreement
   /** Courses of kept groups away from home that the student started: no retake at home for those. */
   started: Set<CourseId>
-  /** `${row id}|${college}` -> the row home cannot cover whose series (with its prerequisites) there includes it. */
-  series: Map<string, string>
+  /** `${row id}|${college}` -> the rows home cannot cover whose series (with its prerequisites) there includes it. */
+  series: Map<string, string[]>
 }
 
 /**
  * preferHome: the agreement cut so that the home college covers everything it can.
  *
- * - A row home has a plannable group for keeps its home groups, every group the student already took a course of (at
- *   any college: a finished or started series is never retaken at home), and a group at an allowed college X that lies
- *   inside the series of a row home cannot cover: that row's group at X plus the prerequisites it needs there that no
- *   home course stands in for (De Anza PHYS 4D needs De Anza 4A-4C). Without that, home would take 4A-4C and X would take them again for 4D.
  * - A required OR / "choose N" keeps only the alternatives home can complete when there are enough of them; with fewer,
  *   those are required and the rest fill the remaining slots.
+ * - Then a row home has a plannable group for keeps its home groups, every group the student already took a course of
+ *   (at any college: a finished or started series is never retaken at home), and a group at an allowed college X that
+ *   lies inside the series of a required row home cannot cover (after the cuts above; optional subtrees do not count):
+ *   that row's group at X plus the prerequisites it needs there that no home course stands in for (De Anza PHYS 4D
+ *   needs De Anza 4A-4C). Without that, home would take 4A-4C and X would take them again for 4D. `noSeries`
+ *   (`${row id}|${college}`): series groups not to keep; solve lists one whose pulling rows the plan does not meet at
+ *   that college, and plans again.
  * Rows home cannot cover keep all their groups; the usual cost (units, extra colleges, split subjects) picks among them.
  */
-export function preferHomeAgreement(a: Agreement, taken: Set<CourseId>, home: number, allowed: readonly number[]): HomeFirst {
-  const rows = reqsOf(a.root), graph = prereqGraph(a.catalog, taken)
-  const started = new Set<CourseId>(), series = new Map<string, string>()
-  // what each row home cannot cover pulls in at each allowed away college: its group and that group's prerequisites
+export function preferHomeAgreement(a: Agreement, taken: Set<CourseId>, home: number, allowed: readonly number[], noSeries: readonly string[] = []): HomeFirst {
+  const graph = prereqGraph(a.catalog, taken)
+  const started = new Set<CourseId>(), series = new Map<string, string[]>()
+  const homeDone = (r: Requirement) => !!reqStatus(r, taken).satisfied || homeCovers(r, home, taken, a)
+  const cutNodes = (n: ReqNode | Requirement): ReqNode | Requirement => {
+    if (n.kind === 'req') return n
+    const children = n.children.map(cutNodes)
+    if (n.type === 'AND' || !n.required) return { ...n, children }
+    const need = n.type === 'OR' ? 1 : n.n ?? 1
+    const isKid = (c: ReqNode | Requirement) => c.kind === 'req' || c.required
+    const atHome = children.filter((c) => isKid(c) && treeState(c, homeDone) === 'sat')
+    if (!atHome.length || need <= 0) return { ...n, children }
+    if (atHome.length >= need) return { ...n, children: children.filter((c) => !isKid(c) || atHome.includes(c)) }
+    const rest = children.filter((c) => !atHome.includes(c)), left = need - atHome.length
+    const pick: ReqNode = { kind: 'node', type: left === 1 ? 'OR' : 'N_OF', ...(left === 1 ? {} : { n: left }), ...(n.title ? { title: n.title } : {}), required: true, children: rest }
+    return { kind: 'node', type: 'AND', ...(n.title ? { title: n.title } : {}), required: true, children: [...atHome, pick] }
+  }
+  const root = cutNodes(a.root) as ReqNode
+  const required = (n: ReqNode | Requirement): Requirement[] => (n.kind === 'req' ? [n] : n.required ? n.children.flatMap(required) : [])
+  // what each required row home cannot cover pulls in at each allowed away college: its group and that group's
+  // prerequisites there that no home course stands in for (same course, same ladder level)
   const pulls: { id: string; inst: number; courses: Set<CourseId> }[] = []
   const atHome = Object.keys(a.catalog).filter((c) => instOf(c) === home)
-  for (const r of rows) {
+  for (const r of required(root)) {
     if (homeCovers(r, home, taken, a) || reqStatus(r, taken).satisfied) continue
     for (const g of r.groups) {
       if (g.institutionId === home || !allowed.includes(g.institutionId) || !plannable(g, r, taken, a)) continue
       const todo = g.courses.filter((c) => !has(taken, c, honorsColleges(r)))
-      // a prerequisite a home course stands in for (same course, same ladder level) is not pulled: home can give it
       const pre = prereqClosure(graph, todo, taken, a.catalog).added.filter((p) => !atHome.some((q) => graph.equiv(p, q)))
       pulls.push({ id: r.id, inst: g.institutionId, courses: new Set([...todo, ...pre]) })
     }
@@ -1042,27 +1070,16 @@ export function preferHomeAgreement(a: Agreement, taken: Set<CourseId>, home: nu
         g.courses.forEach((c) => [c, `${c}H`, stripH(c)].forEach((x) => started.add(x)))
         return true
       }
-      const by = pulls.find((p) => p.inst === g.institutionId && g.courses.every((c) => has(taken, c, mix) || p.courses.has(c)))
-      if (by) series.set(`${r.id}|${g.institutionId}`, by.id)
-      return !!by
+      const key = `${r.id}|${g.institutionId}`
+      if (noSeries.includes(key)) return false
+      const by = pulls.filter((p) => p.inst === g.institutionId && g.courses.every((c) => has(taken, c, mix) || p.courses.has(c))).map((p) => p.id)
+      if (by.length) series.set(key, [...new Set([...(series.get(key) ?? []), ...by])])
+      return by.length > 0
     })
     return groups.length === r.groups.length ? r : { ...r, groups }
   }
-  const homeDone = (r: Requirement) => !!reqStatus(r, taken).satisfied || homeCovers(r, home, taken, a)
-  const cut = (n: ReqNode | Requirement): ReqNode | Requirement => {
-    if (n.kind === 'req') return cutRow(n)
-    const children = n.children.map(cut)
-    if (n.type === 'AND' || !n.required) return { ...n, children }
-    const need = n.type === 'OR' ? 1 : n.n ?? 1
-    const isKid = (c: ReqNode | Requirement) => c.kind === 'req' || c.required
-    const atHome = children.filter((c) => isKid(c) && treeState(c, homeDone) === 'sat')
-    if (!atHome.length || need <= 0) return { ...n, children }
-    if (atHome.length >= need) return { ...n, children: children.filter((c) => !isKid(c) || atHome.includes(c)) }
-    const rest = children.filter((c) => !atHome.includes(c)), left = need - atHome.length
-    const pick: ReqNode = { kind: 'node', type: left === 1 ? 'OR' : 'N_OF', ...(left === 1 ? {} : { n: left }), ...(n.title ? { title: n.title } : {}), required: true, children: rest }
-    return { kind: 'node', type: 'AND', ...(n.title ? { title: n.title } : {}), required: true, children: [...atHome, pick] }
-  }
-  return { a: { ...a, root: cut(a.root) as ReqNode }, started, series }
+  const cutRows = (n: ReqNode | Requirement): ReqNode | Requirement => (n.kind === 'req' ? cutRow(n) : { ...n, children: n.children.map(cutRows) })
+  return { a: { ...a, root: cutRows(root) as ReqNode }, started, series }
 }
 
 /**
@@ -1105,7 +1122,7 @@ function fallbackNotes(a: Agreement, hf: HomeFirst, chosen: Record<string, Cours
     else add(id, g.institutionId, todo, 'not-at-home', (w) => `Not offered at ${name(home)}; ${w}.`, `${id}`)
   }
   for (const { id, g, todo, r } of away.filter((x) => x.home)) {
-    const at = name(g.institutionId), by = hf.series.get(`${id}|${g.institutionId}`)
+    const at = name(g.institutionId), by = (hf.series.get(`${id}|${g.institutionId}`) ?? []).find((x) => chosen[x]?.institutionId === g.institutionId)
     if (r!.groups.some((x) => x.institutionId === g.institutionId && startedAt(x, r!, taken)))
       add(id, g.institutionId, todo, 'started', (w) => `Finish the series you started at ${at}: ${w}.`, `started|${id}`)
     else add(id, g.institutionId, todo, 'series', (w) => `${name(home)} cannot finish this series (it has no course for ${by ?? 'a later requirement'}); ${w}.`, `series|${g.institutionId}|${by}`)
