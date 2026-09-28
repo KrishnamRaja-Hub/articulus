@@ -44,13 +44,17 @@ export function prereqGraph(catalog: Record<CourseId, Course>, taken: Iterable<C
   return g
 }
 
-/** Pairs "a|b" of courses that ASSIST lists as single-course alternatives for the same UC row (any colleges). */
-function articulatedPairs(root: ReqNode): Set<string> {
+/** Pairs "a|b" of courses that ASSIST lists as single-course alternatives for the same UC row (any colleges): b may
+ *  stand for a. The row proves b is worth only its weakest alternative, so a must be the lowest of the row's
+ *  alternatives at a's college: UC Davis ECS 036A takes De Anza CIS 22A or Saddleback CS 1A or CS 1B, so CIS 22A
+ *  stands for CS 1A, never CS 1B (`before(r, a)`: r is an inferred prerequisite of a, directly or not). */
+function articulatedPairs(root: ReqNode, before: (r: CourseId, a: CourseId) => boolean): Set<string> {
   const out = new Set<string>()
   const walk = (n: ReqNode['children'][number]) => {
     if (n.kind === 'node') { n.children.forEach(walk); return }
     const singles = [...new Set(n.groups.filter((g) => g.courses.length === 1).map((g) => g.courses[0]))]
-    for (const a of singles) for (const b of singles) if (a !== b) out.add(`${a}|${b}`)
+    const lowest = singles.filter((a) => !singles.some((r) => inst(r) === inst(a) && stripH(r) !== stripH(a) && before(r, a)))
+    for (const a of lowest) for (const b of singles) if (a !== b) out.add(`${a}|${b}`)
   }
   walk(root)
   return out
@@ -86,7 +90,7 @@ function buildGraph(catalog: Record<CourseId, Course>, taken: CourseId[], root: 
   // Articulation-backed (round 10): ASSIST lists both as single-course alternatives for one UC row (De Anza PHYS 4B and
   // Saddleback PHYS 4B "General Physics" for UCSD PHYS 2B), unless the topics say they differ: a different ladder, kind
   // or level, or an off-ladder course (business calculus next to Calculus I for UCI MATH 2A).
-  const pairs = articulatedPairs(root)
+  const pairs = articulatedPairs(root, reach)
   const compatible = (a?: Topic, b?: Topic, p?: CourseId, q?: CourseId) => {
     if (a && b) return a.ladder === b.ladder && a.kind === b.kind && !a.lvl === !b.lvl && (!a.lvl || (a.lvl.lo === b.lvl!.lo && a.lvl.hi === b.lvl!.hi))
     return !(a && offLadder(q!, titleOf(q!))) && !(b && offLadder(p!, titleOf(p!)))

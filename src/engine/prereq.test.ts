@@ -159,6 +159,32 @@ describe('same-titled courses are different courses (Foothill "Calculus")', () =
   })
 })
 
+// Tester repro (round 10, bug 3): a row that accepts a first course at one college OR a first or second course at
+// another only proves the taken course is worth the lowest of them.
+describe('a taken course stands only for the lowest alternative a UC row lists at a college', () => {
+  const cs = [course('113:CIS 22A', 'Beginning Programming Methodologies in C++'), course('65:CS 1A', 'Introduction to Computer Science I'),
+    course('65:CS 1B', 'Introduction to Computer Science II'), course('65:CS 1C', 'Introduction to Computer Science III')]
+  const a = agreement([row('ECS 36A', ['113:CIS 22A'], ['65:CS 1A'], ['65:CS 1B']), row('ECS 36B', ['65:CS 1C'])], cs)
+
+  it('UC Davis ECS 036A: taken De Anza CIS 22A covers Saddleback CS 1A, not CS 1B', () => {
+    const p = solve(new Set(['113:CIS 22A']), a, { allowed: [65], home: 65 })
+    expect(planned(p)).toEqual(['65:CS 1B', '65:CS 1C'])
+    expect(termOf(p, '65:CS 1B')).toBeLessThan(termOf(p, '65:CS 1C'))
+    const g = prereqGraph(a.catalog, ['113:CIS 22A'], a.root)
+    expect(g.articulated('65:CS 1A', '113:CIS 22A')).toBe(true)
+    expect(g.articulated('65:CS 1B', '113:CIS 22A')).toBe(false)
+  })
+
+  it('a row listing only higher courses at a college: the lowest listed one is what the taken course proves', () => {
+    const b = agreement([row('COM SCI 31', ['124:CS 37'], ['65:CS 1B'], ['65:CS 1C']), row('X', ['65:CS 1D'])],
+      [...cs, course('124:CS 37', 'C++ Programming'), course('65:CS 1D', 'Introduction to Computer Science IV')])
+    const g = prereqGraph(b.catalog, ['124:CS 37'], b.root)
+    expect(g.articulated('65:CS 1B', '124:CS 37')).toBe(true)
+    expect(g.articulated('65:CS 1C', '124:CS 37')).toBe(false)
+    expect(planned(solve(new Set(['124:CS 37']), b, { allowed: [65], home: 65 }))).toEqual(['65:CS 1C', '65:CS 1D'])
+  })
+})
+
 // Tester repros on the real fixtures (cross-college transcripts): a course taken elsewhere that ASSIST articulates to the
 // same UC course is not planned again as a prerequisite.
 describe('a course taken at another college still counts (real agreements)', () => {
@@ -170,6 +196,15 @@ describe('a course taken at another college still counts (real agreements)', () 
     const a = Object.entries(files).find(([f]) => f.includes(`/${name}.json`))![1]
     const p = solve(new Set([took]), a, { allowed: [home], home, termSystem: systems[home], unitSystems: systems })
     expect(planned(p)).not.toContain(twin)
+  })
+
+  // bug 3: UC Davis / UC Irvine rows accept De Anza CIS 22A or Saddleback CS 1A or CS 1B; CS 1C still needs CS 1B first
+  it.each(['89-computer-science-b-s', '89-computer-science-engineering-b-s', '120-electrical-engineering-b-s'])('%s home Saddleback, taken De Anza CIS 22A: CS 1B before CS 1C', (name) => {
+    const a = Object.entries(files).find(([f]) => f.includes(`/${name}.json`))![1]
+    const p = solve(new Set(['113:CIS 22A']), a, { allowed: [65], home: 65, termSystem: systems[65], unitSystems: systems })
+    if (termOf(p, '65:CS 1C') < 0) return
+    expect(termOf(p, '65:CS 1B'), name).toBeGreaterThanOrEqual(0)
+    expect(termOf(p, '65:CS 1B')).toBeLessThan(termOf(p, '65:CS 1C'))
   })
 })
 
