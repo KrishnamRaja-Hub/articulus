@@ -136,6 +136,7 @@ export function solve(taken: Set<CourseId>, a0: Agreement, opts: SolveOptions): 
   const { a, badUnits } = withValidUnits(a0)
   // past the deadline, nodes jumps to Infinity: every budget check fails and the search reports incomplete
   const deadline = timeLimitMs === undefined ? Infinity : Date.now() + timeLimitMs
+  let nodes = 0
   const late = () => deadline !== Infinity && Date.now() > deadline && (nodes = Infinity) > 0
   const unitCap = opts.unitCap ?? (termSystem === 'semester' ? 12 : 16)
   const unitsOf = (c: CourseId, exact = false) => {
@@ -214,6 +215,7 @@ export function solve(taken: Set<CourseId>, a0: Agreement, opts: SolveOptions): 
   const spent = new WeakMap<CourseId[], string[]>()
   const slotWays = (i: number): CourseId[][] => {
     const r = L[i], mix = honorsColleges(r), out = new Map<string, CourseId[]>(), t = rowToken(r.id)
+    if (ucOnly(r)) { const none: CourseId[] = []; spent.set(none, [t]); return [none] } // nothing to plan; it spends itself
     for (const g of r.groups) {
       let vs: { add: CourseId[]; all: string[] }[] = [{ add: [], all: [] }]
       for (const c of g.courses) {
@@ -301,7 +303,14 @@ export function solve(taken: Set<CourseId>, a0: Agreement, opts: SolveOptions): 
     const art = ks.filter(canRoute), viaDef = art.length >= k && art.some(mayDef) ? art.filter((c) => !canPass(c)).length : INF
     const more = Math.min(k - ok.length, viaDef)
     const at = other.filter((x) => rest.some((c) => canSat(c, x)))
-    if (n.type === 'UNITS') return `${k} units of: ${[...new Set(ks.filter((c) => !isDeferrable(c)).map(names))].sort().join(', ')}${listed(at)}`
+    // every alternative can pass, just not in different slots (their courses clash, or a UC-only row is listed twice):
+    // the whole group is named, never a blank list
+    const every = () => ks.map((c) => (c.kind === 'req' ? c.id : names(c))).sort().join(', ')
+    if (n.type === 'UNITS') {
+      const cc = [...new Set(ks.filter((c) => !isDeferrable(c)).map(names))].sort()
+      return `${k} units of: ${cc.length ? cc.join(', ') : every()}${listed(at)}`
+    }
+    if (!rest.length) return `${k} of: ${every()}${listed(at)}`
     return `${more}${ok.length ? ' more' : ''} of: ${[...new Set(rest.map(names))].sort().join(', ')}${listed(at)}`
   }
 
@@ -320,17 +329,19 @@ export function solve(taken: Set<CourseId>, a0: Agreement, opts: SolveOptions): 
   const rowOf = (i: number) => (isOcc(i) ? occRow[i - L.length] : i)
   const pairOf = (x: number, y: number) => PAIR + Math.min(x, y) * SHIFT + Math.max(x, y)
   const pairParts = (p: number): [number, number] => [Math.floor((p - PAIR) / SHIFT), (p - PAIR) % SHIFT]
-  let overflow = false
+  let overflow = false, heavyDepth = 0
   /** Minimal sets only. Shortest first, a set is kept unless a kept one is inside it, so `out` only grows and is the
    *  answer so far: past CONFIGS it overflows whatever the order (and stops early). A set with fewer pairs is easier,
    *  so the same rule holds with pairs in the sets. */
   const norm = (cs: number[][]) => {
     // past the cap only the first (shortest) set is kept: find it without the quadratic pass
     if (overflow) return cs.length ? [cs.reduce((x, y) => (y.length < x.length ? y : x))] : []
-    const out: number[][] = []
+    const out: number[][] = [], rows: string[] = []
+    // under a units group a config with more rows brings more units: only one with the same rows is dominated
+    const rowsKey = (c: number[]) => (heavyDepth ? [...new Set(c.filter((i) => isRow(i) || isOcc(i)).map(rowOf))].sort((p, q) => p - q).join() : '')
     for (const c of [...new Map(cs.map((c) => [c.join(), c])).values()].sort((x, y) => x.length - y.length)) {
-      const s = new Set(c)
-      if (!out.some((o) => o.every((i) => s.has(i)))) out.push(c) // a superset config can never be cheaper
+      const s = new Set(c), rk = rowsKey(c)
+      if (!out.some((o, j) => rows[j] === rk && o.every((i) => s.has(i)))) { out.push(c); rows.push(rk) } // a superset config can never be cheaper
       if (out.length > CONFIGS) { overflow = true; break }
     }
     return overflow ? out.slice(0, 1) : out
@@ -369,9 +380,18 @@ export function solve(taken: Set<CourseId>, a0: Agreement, opts: SolveOptions): 
     const weight = (c: number[]) => [...new Set(c.filter((i) => isRow(i) || isOcc(i)).map(rowOf))].reduce((t, r) => t + (units.get(L[r].id) ?? 0), 0)
     const reach = (from: number[], want: number): Fam => {
       const out: number[][] = []
+      let tried = 0
       for (let size = 1; size <= from.length && !overflow; size++) {
         const pick = (i0: number, got: number[]): void => {
-          if (got.length === size) { out.push(...slotCross(got.map((j) => fs[j].S)).filter((c) => weight(c) >= want)); if (out.length > CONFIGS) overflow = true; return }
+          // every choice looked at counts, met or not: past CONFIGS (or the time limit) the search overflows
+          if (++tried > CONFIGS || late()) { overflow = true; return }
+          if (got.length === size) {
+            // weighed before any config with more rows is dropped as a superset
+            heavyDepth++
+            try { out.push(...slotCross(got.map((j) => fs[j].S)).filter((c) => weight(c) >= want)) } finally { heavyDepth-- }
+            if (out.length > CONFIGS) overflow = true
+            return
+          }
           for (let i = i0; i <= from.length - (size - got.length) && !overflow; i++) pick(i + 1, [...got, from[i]])
         }
         pick(0, [])
@@ -386,7 +406,9 @@ export function solve(taken: Set<CourseId>, a0: Agreement, opts: SolveOptions): 
     const hd = ks.flatMap((c, j) => (canRoute(c) && hypState(c) === 'def' ? [j] : []))
     if (C >= need || C + dU < need || !dU) return { S, P: S }
     const okH = ok.filter((j) => hypState(ks[j]) === 'sat'), R = C > 0 ? reach(okH, C) : [[]]
-    return { S, P: R.length ? norm([...S, ...cross([R, ...hd.map((j) => fs[j].P)])]) : S }
+    // (UC-only rows listed in the group only add units: they spend nothing here, as verify reads it)
+    const hdNodes = hd.filter((j) => ks[j].kind !== 'req')
+    return { S, P: R.length ? norm([...S, ...cross([R, ...hdNodes.map((j) => fs[j].P)])]) : S }
   }
   /** Minimal requirement sets that make the subtree `sat` (S) or pass (P). A row with no way at `allowed` is given up.
    *  `path` names the place in the tree; `inSlot`: below a slot of a "choose N" group, where rows are occurrences. */
@@ -395,11 +417,15 @@ export function solve(taken: Set<CourseId>, a0: Agreement, opts: SolveOptions): 
   const fams = (n: ReqNode | Requirement, path = '', inSlot = false, slotsAt = ''): { S: Fam; P: Fam } => {
     if (overflow) return { S: [[]], P: [[]] }
     if (n.kind === 'req') {
-      if (ucOnly(n)) return { S: [], P: [[]] }
+      // a UC-only row in a slot fills it once: it is a place of its own, spending the row (slotWays)
+      if (ucOnly(n)) return { S: [], P: [inSlot ? [occ(`${slotsAt}#${ix.get(n)}`, ix.get(n)!)] : []] }
       const id = inSlot ? occ(`${slotsAt}#${ix.get(n)}`, ix.get(n)!) : ix.get(n)!
       return { S: [[id]], P: [[id]] }
     }
-    const ks = kidsOf(n), slots = slotted(n) || n.type === 'UNITS', fs = ks.map((c, j) => fams(c, `${path}/${j}`, inSlot || slots, slots ? `${slotsAt}/${path}:${j}` : slotsAt))
+    const ks = kidsOf(n), slots = slotted(n) || n.type === 'UNITS'
+    if (n.type === 'UNITS') heavyDepth++
+    const fs = ks.map((c, j) => fams(c, `${path}/${j}`, inSlot || slots, slots ? `${slotsAt}/${path}:${j}` : slotsAt))
+    if (n.type === 'UNITS') heavyDepth--
     if (n.type === 'AND') {
       const P = cross(fs.map((f) => f.P))
       // `sat` once all pass, unless every child can pass as UC-only: then one of them must be `sat`
@@ -439,7 +465,17 @@ export function solve(taken: Set<CourseId>, a0: Agreement, opts: SolveOptions): 
     if (C >= k || C + hd.length < k || !hd.length) return { S, P: S }
     const okH = hs.filter((j) => ok.includes(j))
     if (okH.length < C) return { S, P: S } // the CC slots cannot all be filled here: the group stays open
-    return { S, P: norm([...S, ...cross([choose(okH, C), ...hd.map((j) => fs[j].P)])]) }
+    // C of them met and k - C of those only UC-only rows can pass, each slot spending its own; the others pass too
+    const binom = (n: number, r: number) => { let c = 1; for (let i = 0; i < r && c <= CONFIGS; i++) c = (c * (n - i)) / (i + 1); return c }
+    if (binom(okH.length, C) * binom(hd.length, k - C) > CONFIGS) { overflow = true; return { S, P: S } }
+    const out: number[][] = []
+    const picks = (from: number[], want: number): number[][] => want === 0 ? [[]] : from.flatMap((j, i) => picks(from.slice(i + 1), want - 1).map((r) => [j, ...r]))
+    for (const a of picks(okH, C)) for (const b of picks(hd, k - C)) {
+      if (overflow || out.length > CONFIGS || late()) { overflow = true; break }
+      // (a UC-only row not taking a slot needs nothing and spends nothing)
+      out.push(...cross([slotCross([...a.map((j) => fs[j].S), ...b.map((j) => fs[j].P)]), ...hd.filter((j) => !b.includes(j) && ks[j].kind !== 'req').map((j) => fs[j].P)]))
+    }
+    return { S, P: norm([...S, ...out]) }
   }
   const configs = a.root.required ? fams(a.root).P : [[]]
   // Occurrences get the ways of their row, each with what it spends (ways already taken included).
@@ -458,7 +494,6 @@ export function solve(taken: Set<CourseId>, a0: Agreement, opts: SolveOptions): 
   const flat = (x: Sol) => [...x.v, ...x.cs, ...idsOf(x.skip), x.cfg.length, ...idsOf(x.cfg),
     ...(x.got ?? []).map(([i, all]) => `${nameOf(i)}=${all.join('+')}`).sort()]
   const better = (x: Sol, y: Sol | null) => !y || lex(flat(x), flat(y)) < 0
-  let nodes = 0
   const memo = new Map<string, { cols: number[]; used: number[]; sol: Sol | null }[]>()
 
   /** Cheapest way to complete requirements `ls` (independent of everything else) with ways `W`. Cost: units plus
@@ -645,7 +680,8 @@ export function solve(taken: Set<CourseId>, a0: Agreement, opts: SolveOptions): 
   const solveConfig = (C0: number[], guarded: boolean, W: CourseId[][][], PW: Set<CourseId>[], pCh: number): Sol | null => {
     // an occurrence in no pair is just its row
     const paired = new Set(C0.filter(isPair).flatMap(pairParts))
-    const C = [...new Set(C0.map((i) => (isOcc(i) && !paired.has(i) ? rowOf(i) : i)))]
+    // (a UC-only row in no pair needs nothing)
+    const C = [...new Set(C0.map((i) => (isOcc(i) && !paired.has(i) ? rowOf(i) : i)))].filter((i) => !(isRow(i) && ucOnly(L[i])))
     const F =C.filter((i) => (isRow(i) && !sat0[i] && W[i].length) || (isOcc(i) && W[i].length)), inF = new Set(F)
     const forced = C.filter((i) => isPseudo(i) || (isRow(i) && !sat0[i] && !W[i].length) || (isOcc(i) && !W[i].length))
     // rows the config completes (an occurrence completes its row)
@@ -1056,7 +1092,9 @@ export function solve(taken: Set<CourseId>, a0: Agreement, opts: SolveOptions): 
     const run = () => {
     rounds = L.reduce((s, r) => s + 1 + r.groups.length, 1)
     before = splitIds(have())
-    for (;;) {
+    for (let round = 0; ; round++) {
+      // past the time limit: what is planned so far, after at least one pick (a plan the tree does not pass is reported)
+      if (round && late()) break
       const h = have()
       const todo: Todo[] = [], alt = new Set<Requirement>()
       stuck.length = 0
@@ -1091,7 +1129,7 @@ export function solve(taken: Set<CourseId>, a0: Agreement, opts: SolveOptions): 
     // Still short, one group at a time (which alternative fills which slot of a "choose N" or units group may have to
     // change): plan every course the tree could use, once, and start again; the pass below drops what is not needed.
     const every = withTaken(Object.keys(a.catalog).filter((c) => allowed.includes(instOf(c))))
-    if (a.root.required && !rootPasses(have()) && rootPasses(every) && !flooded.has(a.root) && flood(a.root, have())) { unsolvable.clear(); run() }
+    if (!late() && a.root.required && !rootPasses(have()) && rootPasses(every) && !flooded.has(a.root) && flood(a.root, have())) { unsolvable.clear(); run() }
 
     // Drop planned courses a later pick made redundant: every satisfied requirement stays satisfied, no new split,
     // and a tree that passes still passes (a course may be needed only so two slots use different courses, M-4).
@@ -1129,7 +1167,7 @@ export function solve(taken: Set<CourseId>, a0: Agreement, opts: SolveOptions): 
    *  pass, e.g. a course counted for two slots of a "choose N" group), then the search objective. */
   const score = (cs: CourseId[]): Sol => {
     const h = withTaken(cs), st = statOf(h)
-    let give = Math.min(...configs.map((C) => C.filter((i) => isPseudo(i) || (!isPair(i) && !st[rowOf(i)].satisfied)).length))
+    let give = Math.min(...configs.map((C) => C.filter((i) => isPseudo(i) || (!isPair(i) && !ucOnly(L[rowOf(i)]) && !st[rowOf(i)].satisfied)).length))
     // a plan the tree passes leaves nothing unmet, whichever config it follows
     if (a.root.required) give = rootPasses(h) ? 0 : Math.max(give, 1)
     const [u, away, hon, n] = sumV(cs.filter((c) => vec.has(c)))

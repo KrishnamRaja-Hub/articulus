@@ -496,7 +496,7 @@ describe('M-4: in a "choose N" group each course fills one slot', () => {
 
 describe('assignSlots (slots.ts): exact, first in candidate order', () => {
   it('bipartite: finds the matching a first-come assignment misses', () => {
-    expect(assignSlots([[['x'], ['y']], [['x']]], 2)).toEqual({ pick: [0, 1], ways: [['y'], ['x']] })
+    expect(assignSlots([[['x'], ['y']], [['x']]], 2)).toEqual({ pick: [0, 1], ways: [['y'], ['x']], exact: true })
   })
   it('general: ways spending several ids', () => {
     const r = assignSlots([[['x', 'y'], ['z']], [['x']], [['y']]], 3)

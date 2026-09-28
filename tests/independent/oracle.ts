@@ -153,10 +153,12 @@ const token = (id: string) => `row:${id}`
 /** A leaf's reading: its state, and the ways it spends when met (only asked for inside a slot). */
 type Leaf = (r: Requirement) => { state: State; spend: string[][] }
 
-/** Keep the smallest ways only (a way spending more is never needed), without duplicates. */
+/** Without duplicates, and without a way spending a superset of another with the same rows (never needed; one with
+ *  more rows is kept, since a row can add units to a units group above). */
 function smallest(ways: string[][]): string[][] {
   const sets = [...new Map(ways.map((w) => { const s = [...new Set(w)].sort(); return [s.join('|'), s] as const })).values()]
-  return sets.filter((s) => !sets.some((o) => o !== s && o.length < s.length && o.every((x) => s.includes(x))))
+  const rows = (w: string[]) => w.filter((x) => x.startsWith('row:')).join('|')
+  return sets.filter((s) => !sets.some((o) => o !== s && o.length < s.length && rows(o) === rows(s) && o.every((x) => s.includes(x))))
 }
 /** All ways to pick exactly k of `fams`, one way each, no id spent twice (their unions), in pick order. */
 function packings(fams: string[][][], k: number): { pick: number[]; spend: string[] }[] {
@@ -179,7 +181,7 @@ function fold(n: Node, leaf: Leaf, conv: DeferConvention, inSlot = false): Fold 
   if (n.kind === 'req') {
     const l = leaf(n)
     return { state: l.state, def: l.state === 'D' ? [n.id] : [], miss: l.state === 'O' ? [n.id] : [], kids: [], node: n,
-      spend: l.state === 'O' ? [] : inSlot && l.state === 'S' ? l.spend : [[]], loose: [] }
+      spend: l.state === 'O' ? [] : inSlot ? l.spend : [[]], loose: [] }
   }
   const need = n.type === 'OR' ? 1 : n.n ?? 1
   const slots = (n.type === 'N_OF' && need >= 2) || n.type === 'UNITS'
@@ -202,10 +204,10 @@ function fold(n: Node, leaf: Leaf, conv: DeferConvention, inSlot = false): Fold 
       const chosen = new Set(S.slice(0, need))
       return out('S', cnt.filter((k) => chosen.has(k)).flatMap((k) => k.def), [], inSlot ? smallest(S.flatMap((k) => k.spend)) : [[]])
     }
-    if (S.length + A.length + D.length < need) return out('O', S.flatMap((k) => k.def), cnt.filter((k) => k.state !== 'S').flatMap((k) => k.miss))
+    if (S.length + A.length + D.length < need) return out('O', S.flatMap((k) => k.def), unmet(cnt, S))
     const uc = Math.min(D.length, Math.max(0, need - S.length - A.length))
     if (A.length) return out('O', [...S, ...(conv === 'slots' ? D.slice(0, uc) : [])].flatMap((k) => k.def), A.flatMap((k) => k.miss))
-    return out('D', [...S, ...(conv === 'slots' ? D.slice(0, need - S.length) : D)].flatMap((k) => k.def), [])
+    return out('D', [...S, ...(conv === 'slots' ? D.slice(0, need - S.length) : D)].flatMap((k) => k.def), [], inSlot ? smallest(D.flatMap((k) => k.spend)) : [[]])
   }
   if (n.type === 'UNITS') return unitsFold(n, need, S, A, D, cnt, out, conv, inSlot)
   // rule 4b: which satisfied alternatives fill slots together (the first such set, in the order above)
@@ -220,15 +222,23 @@ function fold(n: Node, leaf: Leaf, conv: DeferConvention, inSlot = false): Fold 
   const hyp = cnt.filter((k) => hypState(k.node) === 'S')
   const C = Math.max(m, mostTogether(hyp.map((k) => hypSpend(k.node)), need))
   const late = A.filter((k) => hypState(k.node) !== 'S')
-  if (C + late.length + D.length < need) return out('O', defOf([...chosen]), cnt.filter((k) => k.state !== 'S').flatMap((k) => k.miss))
+  if (C + late.length + D.length < need) return out('O', defOf([...chosen]), unmet(cnt, S))
   const uc = Math.min(D.length, Math.max(0, need - C - late.length))
   const loose = S.length > chosen.size ? S : []
   if (m < C || late.length) {
     return out('O', [...defOf([...chosen]), ...(conv === 'slots' ? D.slice(0, uc) : []).flatMap((k) => k.def)],
       [...A.flatMap((k) => k.miss), ...loose.flatMap((k) => rowsWithGroups(k.node))], [], loose)
   }
+  // n slots: C satisfied children and UC-only ones, every one spending its own (a UC-only row: itself)
+  const mixed = packings([...fams, ...D.map((k) => k.spend)], need).filter((p) => p.pick.filter((j) => j < fams.length).length >= C)
+  if (!mixed.length) return out('O', defOf([...chosen]), unmet(cnt, S))
   return out('D', [...defOf([...chosen]), ...(conv === 'slots' ? D.slice(0, need - m) : D).flatMap((k) => k.def)], [],
-    inSlot ? smallest(packings(fams, m).map((p) => p.spend)) : [[]])
+    inSlot ? smallest(mixed.map((p) => p.spend)) : [[]])
+}
+/** What a choice that cannot be met still needs: its open children's rows, else its satisfied children's (they clash). */
+const unmet = (cnt: Fold[], S: Fold[]) => {
+  const unsat = cnt.filter((k) => k.state !== 'S')
+  return unsat.length ? unsat.flatMap((k) => k.miss) : S.flatMap((k) => rowsWithGroups(k.node))
 }
 
 /** Units of the rows under a subtree: a positive number, else 0 (unknown: never counts); a repeated id counts its smallest. */
@@ -273,26 +283,16 @@ function unitsFold(n: ReqNode, need: number, S: Fold[], A: Fold[], D: Fold[], cn
   }
   const m = top
   const chosen = taken.map((j) => S[j])
-  const spend = inSlot ? smallest(every.filter((x) => x.total >= top && x.pick.length === taken.length && taken.every((j) => x.pick.includes(j))).map((x) => x.spend)) : [[]]
+  // for a slot above: every assignment of the most units (passing through UC-only rows) or of N or more (met)
+  const spend = inSlot ? smallest(every.filter((x) => Math.abs(x.total - m) < 1e-9).map((x) => x.spend)) : [[]]
   const defOf = (xs: Fold[]) => cnt.filter((k) => xs.includes(k)).flatMap((k) => k.def)
-  if (m >= need) {
-    // for a slot above: every set reaching N that needs all its members (one way each, nothing spent twice)
-    const all: string[][] = []
-    const each = (i: number, picked: string[][], total: number): void => {
-      if (total >= need) return void (picked.every((w) => total - weight(w) < need) && all.push(picked.flat()))
-      if (i === fams.length) return
-      for (const w of fams[i]) if (!w.some((x) => picked.flat().includes(x))) each(i + 1, [...picked, w], total + weight(w))
-      each(i + 1, picked, total)
-    }
-    if (inSlot) each(0, [], 0)
-    return out('S', defOf(chosen), [], inSlot ? smallest(all) : [[]])
-  }
+  if (m >= need) return out('S', defOf(chosen), [], inSlot ? smallest(every.filter((x) => x.total >= need).map((x) => x.spend)) : [[]])
   const C = Math.max(m, Math.min(need, Math.max(0, ...assignments(cnt.filter((k) => hypState(k.node) === 'S').map((k) => hypSpend(k.node))).map((x) => x.total))))
   const late = A.filter((k) => hypState(k.node) !== 'S')
   // UC-only rows of the group itself make up the rest, each row once; a subtree passing through UC-only rows adds none
   const ucRows = [...new Set(D.flatMap((k) => (k.node.kind === 'req' ? [k.node.id] : [])))]
   const dU = ucRows.reduce((t, id) => t + (units.get(id) ?? 0), 0)
-  if (C + dU < need) return out('O', defOf(chosen), cnt.filter((k) => k.state !== 'S').flatMap((k) => k.miss))
+  if (C + dU < need) return out('O', defOf(chosen), unmet(cnt, S))
   // a satisfied child may still bring more units through another group: every one is named, and may be re-routed
   if (m < C || late.length) return out('O', defOf(chosen), [...A.flatMap((k) => k.miss), ...S.flatMap((k) => rowsWithGroups(k.node))], [], S)
   // UC-only children make up the rest ('slots': the first ones that do)
@@ -312,7 +312,7 @@ const rowsWithGroups = (n: Node): string[] => n.kind === 'req' ? (n.groups.lengt
 
 /** Every row with a CC group done (any group, any college), UC-only rows deferred, unrecorded rows open. */
 const hypLeaf: Leaf = (r) => r.groups.length ? { state: 'S', spend: r.groups.map((g) => [...g.courses, token(r.id)]) }
-  : { state: isUcOnly(r) ? 'D' : 'O', spend: [[]] }
+  : isUcOnly(r) ? { state: 'D', spend: [[token(r.id)]] } : { state: 'O', spend: [] }
 const hypMemo = [new WeakMap<Node, Fold>(), new WeakMap<Node, Fold>()]
 /** The fold with every CC row done; `spend` only when asked (it multiplies out every way of an AND). */
 const hypFold = (n: Node, spend = false): Fold => {
@@ -369,7 +369,8 @@ export function oracle(a: Agreement, taken: ReadonlySet<CourseId>, opts: OracleO
   // when taken, else its honors twin), and the row itself
   const root = fold(a.root, (r) => {
     const e = rowOf(r)
-    if (!e.sat) return { state: e.ucOnly ? 'D' : 'O', spend: [[]] }
+    // a UC-only row fills a slot once: it spends itself
+    if (!e.sat) return e.ucOnly ? { state: 'D', spend: [[token(r.id)]] } : { state: 'O', spend: [] }
     const tw = twinColleges(r)
     return { state: 'S', spend: e.satGroups.map((g) => [...g.courses.map((c) => standsFor(c, taken, tw)[0]), token(r.id)]) }
   }, opts.defer ?? 'slots')

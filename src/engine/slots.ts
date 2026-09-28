@@ -3,9 +3,12 @@
  * child uses to be met are spent on that slot: no other slot of the same group may use them again.
  *
  * A child's "ways" are the alternative sets of ids it would spend: the taken course ids of one satisfied group per row
- * in it, plus one token per row (rowToken), so a row listed twice in a group still fills only one slot. Which children
- * can fill slots together is an exact assignment problem: a bipartite matching when every clash is a single id, a
- * small exact search otherwise. Nothing here is greedy, so a valid assignment is never missed.
+ * in it, plus one token per row (rowToken, UC-only rows included), so a row listed twice in a group still fills only
+ * one slot. Which children can fill slots together is an exact assignment problem: a bipartite matching when every
+ * clash is a single id, a small exact search otherwise. Nothing here is greedy, so a valid assignment is never missed.
+ *
+ * Every search here is bounded (a work budget, `bounded`). Past it the search stops, and the caller reads the result
+ * so it can only fail closed: fewer slots filled, fewer ways, never a group met that is not.
  */
 
 export type Way = readonly string[]
@@ -16,85 +19,180 @@ export type Ways = readonly Way[]
 export const rowToken = (id: string) => `\u0001${id}`
 export const isRowToken = (x: string) => x.charCodeAt(0) === 1
 
-/** A child that consumes nothing (it passes through UC-only rows, or nothing is tracked). */
+/** A child that consumes nothing (nothing is tracked). */
 export const NOTHING: Ways = [[]]
 
-/**
- * Most alternative ways kept per subtree. Only a "choose several" group nested inside another one's slot can have
- * more; past the cap the extra ways are dropped, which can only make that nested group read as unmet (fail closed).
- */
+/** Most alternative ways kept per subtree; past it the extra ways are dropped (fail closed). */
 export const WAYS_CAP = 256
-/** Search nodes per enumeration of a nested group's ways (the same fail-closed cap). */
-const ENUM_BUDGET = 200_000
+
+/* ---- the work budget ---- */
+
+let work = 0, limit = Infinity, cutFlag = false
+/** Run `fn` with a work budget of its own (the caller's budget is untouched); `cut`: the budget ran out. */
+export function bounded<T>(max: number, fn: () => T): { value: T; cut: boolean } {
+  const saved = { work, limit, cutFlag }
+  work = 0; limit = max; cutFlag = false
+  try {
+    const value = fn()
+    return { value, cut: cutFlag }
+  } finally { ({ work, limit, cutFlag } = saved) }
+}
+/** Count `n` units of work; true once the budget is spent. */
+const spend = (n = 1): boolean => {
+  work += n
+  if (work > limit) cutFlag = true
+  return cutFlag
+}
+/** Whether the budget of the current `bounded` run is spent. */
+export const outOfWork = () => cutFlag
 
 const SEP = '\u0002'
 const keyOf = (w: Way) => w.join(SEP)
+const tokensKey = (s: readonly string[]) => s.filter(isRowToken).join(SEP)
 
-/** Minimal ways only (a way that spends a superset of another is never needed), deduplicated, sorted, capped. */
-export function minimal(ways: Iterable<Way>): string[][] {
+/**
+ * Minimal ways only, deduplicated, sorted, capped. A way spending a superset of another is never needed, except, with
+ * `heavy` (under a units group, where a row adds units), when it holds more rows: then it is kept.
+ */
+export function minimal(ways: Iterable<Way>, heavy = false): string[][] {
+  const list = Array.isArray(ways) ? (ways as Way[]) : [...ways]
+  if (list.length <= 1) return list.map((w) => [...new Set(w)].sort())
   const uniq = new Map<string, string[]>()
-  for (const w of ways) { const s = [...new Set(w)].sort(); uniq.set(keyOf(s), s) }
+  for (const w of list) { const s = [...new Set(w)].sort(); uniq.set(keyOf(s), s) }
+  spend(uniq.size)
   const sorted = [...uniq.entries()].sort(([x, a], [y, b]) => a.length - b.length || (x < y ? -1 : x > y ? 1 : 0)).map(([, s]) => s)
-  const out: string[][] = [], sets: Set<string>[] = []
+  const out: string[][] = [], toks: string[] = []
   for (const s of sorted) {
     if (out.length >= WAYS_CAP) break
-    if (sets.some((o) => o.size <= s.length && [...o].every((x) => s.includes(x)))) continue
-    out.push(s); sets.push(new Set(s))
+    const t = heavy ? tokensKey(s) : '', ss = new Set(s)
+    spend(out.length)
+    let dominated = false
+    for (let i = 0; i < out.length && !dominated; i++) {
+      if (out[i].length >= s.length || (heavy && toks[i] !== t)) continue
+      dominated = out[i].every((x) => ss.has(x))
+    }
+    if (dominated) continue
+    out.push(s); toks.push(t)
   }
   return out
 }
 
+/**
+ * Keeps the minimal distinct, filtered unions a search finds, as it finds them; stops early once the empty way is found
+ * (it spends nothing). Past WAYS_CAP kept ways, new ones are dropped (fail closed).
+ */
+class Collector {
+  private kept: { s: string[]; set: Set<string>; t: string }[] = []
+  private keys = new Set<string>()
+  empty = false
+  capped = false
+  private keep: ((x: string) => boolean) | null
+  private heavy: boolean
+  constructor(keep: ((x: string) => boolean) | null, heavy: boolean) { this.keep = keep; this.heavy = heavy }
+  add(ids: readonly string[]) {
+    const s = [...new Set(this.keep ? ids.filter(this.keep) : ids)].sort(), k = keyOf(s)
+    if (this.keys.has(k)) return
+    this.keys.add(k)
+    if (!s.length && !this.heavy) { this.empty = true; return }
+    const set = new Set(s), t = this.heavy ? tokensKey(s) : ''
+    spend(this.kept.length)
+    const sub = (a: { set: Set<string>; s: string[]; t: string }, b: { set: Set<string>; s: string[]; t: string }) =>
+      a.s.length <= b.s.length && (!this.heavy || a.t === b.t) && a.s.every((x) => b.set.has(x))
+    const me = { s, set, t }
+    if (this.kept.some((o) => sub(o, me))) return
+    this.kept = this.kept.filter((o) => !sub(me, o))
+    if (this.kept.length >= WAYS_CAP) { this.capped = true; return }
+    this.kept.push(me)
+  }
+  get full() { return this.empty || this.keys.size >= 16 * WAYS_CAP }
+  get size() { return this.kept.length + (this.empty ? 1 : 0) }
+  ways() { return this.empty ? [[]] : minimal(this.kept.map((x) => x.s), this.heavy) }
+}
+
 /** Every way to meet all of `list` at once (an AND): one way from each, their union. */
-export function crossWays(list: readonly Ways[]): string[][] {
+export function crossWays(list: readonly Ways[], heavy = false): string[][] {
   let acc: string[][] = [[]]
   for (const ws of list) {
-    acc = minimal(acc.flatMap((a) => ws.map((w) => [...a, ...w])))
+    if (spend(acc.length * ws.length)) return []
+    acc = minimal(acc.flatMap((a) => ws.map((w) => [...a, ...w])), heavy)
     if (!acc.length) return []
   }
   return acc
 }
 
 /**
- * Every way `k` of the candidates can fill k slots together: one way each, pairwise disjoint, their union. Minimal
- * ways only, capped (WAYS_CAP, ENUM_BUDGET).
+ * Every assignment of candidates to slots (one way each, pairwise disjoint) that `accept` takes, as their unions,
+ * filtered by `keep`. `accept(count, first, total)`: how many candidates, how many of the first `split` of them, and
+ * their weight. `size`: the assignments to look at hold exactly this many candidates (or any, when undefined).
  */
-export function unionsOf(fams: readonly Ways[], k: number): string[][] {
-  if (k <= 0) return [[]]
-  const out: string[][] = [], used = new Map<string, number>(), acc: string[] = []
-  let nodes = 0
-  const go = (i: number, got: number): void => {
-    if (out.length >= 4 * WAYS_CAP || ++nodes > ENUM_BUDGET) return
-    if (got === k) return void out.push([...acc])
-    if (fams.length - i < k - got) return
+function assignments(fams: readonly Ways[], opt: {
+  size?: number; split?: number; weight?: (w: Way) => number
+  accept: (count: number, first: number, total: number) => boolean
+  keep: ((x: string) => boolean) | null; heavy?: boolean; stopAfterOne?: boolean
+}): string[][] {
+  const out = new Collector(opt.keep, !!opt.heavy), used = new Set<string>(), acc: Way[] = []
+  const split = opt.split ?? fams.length, weight = opt.weight ?? (() => 0)
+  // candidates that can spend fewest kept ids first: the few distinct unions show up early (the empty one ends it)
+  const keep = opt.keep, cost = (j: number) => Math.min(...fams[j].map((w) => (keep ? w.filter(keep).length : 0)))
+  const order = [...fams.keys()].sort((x, y) => cost(x) - cost(y) || x - y)
+  const go = (k: number, count: number, first: number, total: number): void => {
+    const i = order[k]
+    if (out.full || spend()) return
+    if (opt.size !== undefined && count === opt.size) {
+      if (opt.accept(count, first, total)) out.add(acc.flat())
+      return
+    }
+    if (k === fams.length) {
+      if (opt.size === undefined && opt.accept(count, first, total)) out.add(acc.flat())
+      return
+    }
+    if (opt.size !== undefined && fams.length - k < opt.size - count) return
     for (const w of fams[i]) {
       if (w.some((x) => used.has(x))) continue
-      for (const x of w) used.set(x, (used.get(x) ?? 0) + 1)
-      acc.push(...w)
-      go(i + 1, got + 1)
-      acc.length -= w.length
-      for (const x of w) { const n = used.get(x)! - 1; if (n) used.set(x, n); else used.delete(x) }
+      w.forEach((x) => used.add(x)); acc.push(w)
+      go(k + 1, count + 1, first + (i < split ? 1 : 0), total + weight(w))
+      w.forEach((x) => used.delete(x)); acc.pop()
+      if (out.full || (opt.stopAfterOne && out.size)) return
     }
-    go(i + 1, got)
+    go(k + 1, count, first, total)
   }
-  go(0, 0)
-  return minimal(out)
+  go(0, 0, 0, 0)
+  return out.ways()
 }
+
+/** Every way `k` candidates fill k slots together (unions, filtered by `keep`). */
+export const unionsOf = (fams: readonly Ways[], k: number, keep: ((x: string) => boolean) | null = null, heavy = false): string[][] =>
+  k <= 0 ? [[]] : assignments(fams, { size: k, accept: () => true, keep, heavy })
+
+/**
+ * Every way `k` candidates fill k slots together with at least `min` of the first `split` among them ("choose N"
+ * passing through UC-only rows: C satisfied alternatives and UC-only ones for the rest). `any`: stop at the first.
+ */
+export const mixedUnions = (fams: readonly Ways[], k: number, split: number, min: number, keep: ((x: string) => boolean) | null, any = false): string[][] =>
+  assignments(fams, { size: k, split, accept: (_c, first) => first >= min, keep, stopAfterOne: any })
+
+/** Every way the candidates reach at least `need` units (units groups met), or exactly `need` when `exact`. */
+export const unitWays = (fams: readonly Ways[], weight: (w: Way) => number, need: number, keep: ((x: string) => boolean) | null, exact = false): string[][] =>
+  assignments(fams, { weight, accept: (_c, _f, total) => (exact ? Math.abs(total - need) < 1e-9 : total >= need), keep, heavy: true })
 
 export interface Assignment {
   /** chosen candidates, ascending */
   pick: number[]
   /** the way each chosen candidate takes (parallel to `pick`); pairwise disjoint */
   ways: Way[]
+  /** false: the work budget ran out, so more candidates might have fitted */
+  exact: boolean
 }
 
 /**
  * Exact slot assignment. `fams[j]`: the ways candidate j can fill a slot. Returns the largest number of candidates, at
  * most `cap`, that can each take one of their ways with no id spent twice; among the largest, the first in candidate
- * order (lexicographically smallest set of indices), so callers control preference by ordering the candidates.
+ * order (lexicographically smallest set of indices), so callers control preference by ordering the candidates. Out of
+ * budget: the best found so far (`exact` false).
  */
 export function assignSlots(fams: readonly Ways[], cap: number): Assignment {
   const n = fams.length
-  if (cap <= 0 || !n) return { pick: [], ways: [] }
+  if (cap <= 0 || !n) return { pick: [], ways: [], exact: true }
   // Only ids spent by two or more candidates can clash; each way is reduced to those, minimal ones only.
   const first = new Map<string, number>(), shared = new Set<string>()
   fams.forEach((f, j) => { for (const w of f) for (const x of w) { const o = first.get(x); if (o === undefined) first.set(x, j); else if (o !== j) shared.add(x) } })
@@ -111,7 +209,7 @@ export function assignSlots(fams: readonly Ways[], cap: number): Assignment {
   // No clash at all: the first `cap` usable candidates.
   if (!shared.size) {
     const pick = usable.slice(0, cap)
-    return { pick, ways: pick.map((j) => way(j, red[j][0])) }
+    return { pick, ways: pick.map((j) => way(j, red[j][0])), exact: true }
   }
   const singles = usable.every((j) => red[j].every((r) => r.length <= 1))
 
@@ -124,6 +222,7 @@ export function assignSlots(fams: readonly Ways[], cap: number): Assignment {
       const owner = new Map<string, number>(), took = new Map<number, string[]>()
       const tryC = (c: number, seen: Set<string>): boolean => {
         for (const r of red[c]) {
+          if (spend()) return false
           if (!r.length) { took.set(c, r); return true }
           const e = r[0]
           if (seen.has(e)) continue
@@ -148,7 +247,7 @@ export function assignSlots(fams: readonly Ways[], cap: number): Assignment {
         if (got > best) { best = got; bestTook = new Map(took) }
         return got >= cap
       }
-      if (got + (order.length - i) <= best) return false
+      if (spend() || got + (order.length - i) <= best) return false
       const c = order[i]
       for (const r of red[c]) {
         if (r.some((x) => used.has(x))) continue
@@ -167,11 +266,14 @@ export function assignSlots(fams: readonly Ways[], cap: number): Assignment {
   // The first candidates (in order) that still leave room for a largest assignment.
   const pick: number[] = []
   for (const [x, j] of usable.entries()) {
-    if (pick.length === m) break
+    if (pick.length === m || outOfWork()) break
     if (fit([...pick, j, ...usable.slice(x + 1)], pick.length + 1, m).count >= m) pick.push(j)
   }
-  const { took } = fit(pick, pick.length, pick.length)
-  return { pick, ways: pick.map((j) => way(j, took.get(j)!)) }
+  // out of budget: the candidates picked so far, if they fit (fail closed: fewer slots)
+  let { count, took } = fit(pick, pick.length, pick.length)
+  while (count < 0 && pick.length) { pick.pop(); ({ count, took } = fit(pick, pick.length, pick.length)) }
+  const ok = pick.filter((j) => took.has(j))
+  return { pick: ok, ways: ok.map((j) => way(j, took.get(j)!)), exact: !outOfWork() && ok.length === m }
 }
 
 export interface Weighted extends Assignment { total: number }
@@ -180,7 +282,8 @@ export interface Weighted extends Assignment { total: number }
  * "N units from the following" (NFollowingUnits): the most total weight (units) candidates can reach, each taking one
  * of its ways, no id spent twice, counted up to `cap`; exact search. The candidates taken: in candidate order, each one
  * that can still be part of an assignment reaching that total, until those taken reach it alone (so callers control
- * preference by ordering, and the choice does not depend on the order of any candidate's ways).
+ * preference by ordering, and the choice does not depend on the order of any candidate's ways). Out of budget: the
+ * heaviest found so far (`exact` false).
  */
 export function assignWeight(fams: readonly Ways[], weight: (w: Way) => number, cap: number): Weighted {
   const opts = fams.map((f) => f.map((w) => ({ w, u: weight(w) })).filter((x) => x.u > 0))
@@ -195,6 +298,7 @@ export function assignWeight(fams: readonly Ways[], weight: (w: Way) => number, 
         if (!hold.best || total > hold.best.total) hold.best = { total, pick: [...pick], ways: [...ways] }
         return total >= goal
       }
+      if (i === order.length || spend()) return false
       if (total + rest[i] < goal && hold.best && total + rest[i] <= hold.best.total) return false
       for (const { w, u } of opts[order[i]]) {
         if (w.some((x) => used.has(x))) continue
@@ -211,60 +315,15 @@ export function assignWeight(fams: readonly Ways[], weight: (w: Way) => number, 
   }
   const all = [...fams.keys()]
   const top = search([], all, cap)?.total ?? Math.min(cap, search([], all, Infinity)?.total ?? 0)
-  if (top <= 0) return { total: 0, pick: [], ways: [] }
+  if (top <= 0) return { total: 0, pick: [], ways: [], exact: !outOfWork() }
   const goal = Math.min(cap, top), taken: number[] = []
   for (const j of all) {
-    if (search(taken, [], goal)) break
+    if (outOfWork() || search(taken, [], goal)) break
     if (search([...taken, j], all.filter((k) => k > j), goal)) taken.push(j)
   }
-  const fit = search(taken, [], goal)!
+  // out of budget: the heaviest assignment of those taken (fail closed: fewer units)
+  const fit = search(taken, [], goal) ?? search(taken, [], Infinity) ?? { total: 0, pick: [], ways: [] }
   const order = taken.map((j) => fit.pick.indexOf(j))
-  return { total: fit.total, pick: taken, ways: order.map((k) => fit.ways[k]) }
-}
-
-/**
- * Every way a units group can be met, for a slot above it: each set of candidates (one way each, no id spent twice)
- * reaching `need` that needs all of its members, as the union of what they spend. Minimal ways only, capped (fail
- * closed, like unionsOf).
- */
-export function unitWays(fams: readonly Ways[], weight: (w: Way) => number, need: number): string[][] {
-  const out: string[][] = [], used = new Map<string, number>(), acc: Way[] = []
-  let nodes = 0
-  const go = (i: number, total: number): void => {
-    if (out.length >= 4 * WAYS_CAP || ++nodes > ENUM_BUDGET) return
-    if (total >= need) {
-      if (acc.every((w) => total - weight(w) < need)) out.push(acc.flat())
-      return
-    }
-    if (i === fams.length) return
-    for (const w of fams[i]) {
-      if (w.some((x) => used.has(x))) continue
-      for (const x of w) used.set(x, (used.get(x) ?? 0) + 1)
-      acc.push(w)
-      go(i + 1, total + weight(w))
-      acc.pop()
-      for (const x of w) { const n = used.get(x)! - 1; if (n) used.set(x, n); else used.delete(x) }
-    }
-    go(i + 1, total)
-  }
-  go(0, 0)
-  return minimal(out)
-}
-
-/** Every way the candidates `taken` together, one way each, no id spent twice, reach `goal`: their unions (minimal). */
-export function takenWays(fams: readonly Ways[], taken: readonly number[], weight: (w: Way) => number, goal: number): string[][] {
-  const out: string[][] = [], used = new Set<string>(), acc: Way[] = []
-  let nodes = 0
-  const go = (i: number, total: number): void => {
-    if (out.length >= 4 * WAYS_CAP || ++nodes > ENUM_BUDGET) return
-    if (i === taken.length) return void (total >= goal && out.push(acc.flat()))
-    for (const w of fams[taken[i]]) {
-      if (w.some((x) => used.has(x))) continue
-      w.forEach((x) => used.add(x)); acc.push(w)
-      go(i + 1, total + weight(w))
-      w.forEach((x) => used.delete(x)); acc.pop()
-    }
-  }
-  go(0, 0)
-  return minimal(out)
+  const ok = order.every((k) => k >= 0)
+  return { total: ok ? fit.total : 0, pick: ok ? taken : [], ways: ok ? order.map((k) => fit.ways[k]) : [], exact: !outOfWork() }
 }
