@@ -29,8 +29,46 @@ export interface SolveOptions {
    *  preferHomeAgreement); another college only where home cannot, and then the usual cost decides among them.
    *  Each course planned away from home is named in `Plan.fallbacks`. Default false. */
   preferHome?: boolean
-  /** Internal (preferHome): series groups not to keep, `${row id}|${college}` (see preferHomeAgreement). */
-  noSeries?: string[]
+}
+
+/** preferHome: one way to read the home-first rule; `solve` plans several and keeps the cheapest valid finished plan.
+ *  noSeries: series groups not to keep (`${row id}|${college}`); force: rows home cannot cover planned only at that
+ *  college; pricing 'home': a way away from home is priced without prerequisites a home course stands in for, 'full':
+ *  with all of them. */
+interface Candidate { noSeries: string[]; force: Record<string, number>; pricing: 'home' | 'full' }
+/** What `solve` needs to compare candidates: series groups the plan keeps without meeting a pulling row at that college
+ *  (`by`: those rows), and the finished plan's real cost (units + college and chain penalties). */
+interface Meta { idle: { key: string; col: number; by: string[] }[]; cost: number }
+const metaOf = new WeakMap<Plan, Meta>()
+const MAX_CANDIDATES = 8
+
+/**
+ * The plan (see solveOnce). With preferHome, candidates are planned (B3 pricing and full pricing; then, for a series
+ * group kept without its pulling row there, one without that group and one with the pulling row forced to that
+ * college), up to MAX_CANDIDATES within one shared timeLimitMs, and each finished plan (prerequisites included) is
+ * scored: fewest requirements left unmet, valid under the home-first rule (no idle series group), then real cost.
+ */
+export function solve(taken: Set<CourseId>, a0: Agreement, opts: SolveOptions): Plan {
+  const { allowed, home } = opts
+  if (!opts.preferHome || home === undefined || !allowed.includes(home)) return solveOnce(taken, a0, opts)
+  const t0 = Date.now(), limit = opts.timeLimitMs
+  const left = () => (limit === undefined ? undefined : Math.max(0, limit - (Date.now() - t0)))
+  const queue: Candidate[] = [{ noSeries: [], force: {}, pricing: 'home' }, { noSeries: [], force: {}, pricing: 'full' }]
+  const seen = new Set<string>(), done: { plan: Plan; meta?: Meta }[] = []
+  while (queue.length && done.length < MAX_CANDIDATES) {
+    const c = queue.shift()!, k = JSON.stringify([[...c.noSeries].sort(), Object.entries(c.force).sort(), c.pricing])
+    if (seen.has(k)) continue
+    seen.add(k)
+    if (done.length && left() === 0) break
+    const plan = solveOnce(taken, a0, { ...opts, timeLimitMs: left() }, c), meta = metaOf.get(plan)
+    done.push({ plan, meta })
+    for (const x of meta?.idle ?? []) {
+      queue.push({ ...c, noSeries: [...c.noSeries, x.key] })
+      for (const y of x.by) queue.push({ ...c, force: { ...c.force, [y]: x.col } })
+    }
+  }
+  const key = (d: { plan: Plan; meta?: Meta }) => [d.plan.unsolvable.length, d.plan.result.missing.length, d.meta?.idle.length ? 1 : 0, d.meta?.cost ?? d.plan.totalUnits]
+  return done.reduce((b, d) => (lex(key(d), key(b)) < 0 ? d : b)).plan
 }
 
 
@@ -133,7 +171,7 @@ const unwalkable = (n: unknown): boolean => {
   return !Array.isArray(x.children) || x.children.some(unwalkable)
 }
 
-export function solve(taken: Set<CourseId>, a0: Agreement, opts: SolveOptions): Plan {
+function solveOnce(taken: Set<CourseId>, a0: Agreement, opts: SolveOptions, cand: Candidate = { noSeries: [], force: {}, pricing: 'home' }): Plan {
   if (unwalkable(a0.root)) return { terms: [], chosen: {}, result: verifySchedule(taken, a0), totalUnits: 0,
     unsolvable: ['Agreement data is malformed; confirm with a counselor'] }
   const { allowed, home, termSystem = 'quarter', unitSystems = {}, budget = 200_000, timeLimitMs } = opts
@@ -143,7 +181,7 @@ export function solve(taken: Set<CourseId>, a0: Agreement, opts: SolveOptions): 
   // missing from the catalog; a requirement it alone could complete lands in `unsolvable`
   const { a: a1, badUnits } = withValidUnits(a0)
   const homeFirst = !!opts.preferHome && home !== undefined && allowed.includes(home)
-  const hf: HomeFirst = homeFirst ? preferHomeAgreement(a1, taken, home!, allowed, opts.noSeries) : { a: a1, started: new Set(), series: new Map() }
+  const hf: HomeFirst = homeFirst ? preferHomeAgreement(a1, taken, home!, allowed, cand.noSeries, cand.force) : { a: a1, started: new Set(), series: new Map() }
   const { a, started } = hf
   // preferHome: a way includes the prerequisites it needs at its college, so its cost is what the student really takes;
   // not one a home course stands in for (home's own rows plan it there, or the whole-plan closure finds it covered)
@@ -154,7 +192,7 @@ export function solve(taken: Set<CourseId>, a0: Agreement, opts: SolveOptions): 
     if (v === undefined) byHome.set(p, (v = instOf(p) === home || homeCat.some((q) => graph0!.equiv(p, q))))
     return v
   }
-  const withPre = (v: CourseId[]) => (graph0 ? [...v, ...prereqClosure(graph0, v, taken, a.catalog).added.filter((p) => !homeGives(p))] : v)
+  const withPre = (v: CourseId[]) => (graph0 ? [...v, ...prereqClosure(graph0, v, taken, a.catalog).added.filter((p) => cand.pricing === 'full' || !homeGives(p))] : v)
   // past the deadline, nodes jumps to Infinity: every budget check fails and the search reports incomplete
   const deadline = timeLimitMs === undefined ? Infinity : Date.now() + timeLimitMs
   const late = () => deadline !== Infinity && Date.now() > deadline && (nodes = Infinity) > 0
@@ -937,22 +975,24 @@ export function solve(taken: Set<CourseId>, a0: Agreement, opts: SolveOptions): 
   // preferHome: prerequisites the search planned inside its ways are not in `added`; any planned course no chosen group
   // lists is one
   if (homeFirst) prereqOnly = [...new Set([...prereqOnly, ...planned.filter((c) => !Object.values(chosen).some((g) => g.courses.includes(c)))])].sort()
+  let idle: Meta['idle'] = []
   if (homeFirst) {
     // a row home covers was planned at X only for the series of a row home cannot cover: if the plan does not meet
     // that row at X after all (it went to a third college), plan again with that row back at home
-    const idle = Object.keys(chosen).sort().map((id) => `${id}|${chosen[id].institutionId}`)
-      .filter((k) => hf.series.has(k) && !hf.series.get(k)!.some((x) => chosen[x]?.institutionId === Number(k.slice(k.lastIndexOf('|') + 1))))
-    if (idle.length) return solve(taken, a0, { ...opts, noSeries: [...(opts.noSeries ?? []), ...idle] })
+    idle = Object.keys(chosen).sort().map((id) => ({ key: `${id}|${chosen[id].institutionId}`, col: chosen[id].institutionId, by: hf.series.get(`${id}|${chosen[id].institutionId}`) ?? [] }))
+      .filter((x) => x.by.length && !x.by.some((y) => chosen[y]?.institutionId === x.col))
   }
   const fallbacks = homeFirst ? fallbackNotes(a1, hf, chosen, planned, taken, home!) : []
   for (const c of badUnits) if (L.some((r) => r.groups.some((g) => allowed.includes(g.institutionId) && g.courses.includes(c))))
     prereqWarnings.push(`${c} has no valid unit count in the agreement data; it is not planned.`)
   // unsolvable in a fixed order (tree order would follow the input)
-  return {
+  const plan: Plan = {
     terms, chosen, result, totalUnits: half(planned.reduce((s, c) => s + unitsOf(c, true), 0)), unsolvable: [...unsolvable].sort(), optimal,
     ...(prereqOnly.length ? { prereqOnly } : {}), ...(prereqWarnings.length ? { prereqWarnings } : {}),
     ...(fallbacks.length ? { fallbacks } : {}),
   }
+  if (homeFirst) metaOf.set(plan, { idle, cost: planned.reduce((s, c) => s + unitsOf(c, true), 0) + pCollege * colleges(planned) + pChain * chains(planned) })
+  return plan
 
   /** Enrollment prerequisites (TESTER1 H-1, prereq.ts): each planned course's unmet prerequisites at its own college
    *  are added and counted. Then a searched course is dropped while the plan, prerequisites included, costs fewer units
@@ -1032,11 +1072,11 @@ export interface HomeFirst {
  *   lies inside the series of a required row home cannot cover (after the cuts above; optional subtrees do not count):
  *   that row's group at X plus the prerequisites it needs there that no home course stands in for (De Anza PHYS 4D
  *   needs De Anza 4A-4C). Without that, home would take 4A-4C and X would take them again for 4D. `noSeries`
- *   (`${row id}|${college}`): series groups not to keep; solve lists one whose pulling rows the plan does not meet at
- *   that college, and plans again.
+ *   (`${row id}|${college}`): series groups not to keep; `force`: rows home cannot cover kept to one college's groups
+ *   (solve's candidates, when the plan keeps a series group without meeting its pulling row there).
  * Rows home cannot cover keep all their groups; the usual cost (units, extra colleges, split subjects) picks among them.
  */
-export function preferHomeAgreement(a: Agreement, taken: Set<CourseId>, home: number, allowed: readonly number[], noSeries: readonly string[] = []): HomeFirst {
+export function preferHomeAgreement(a: Agreement, taken: Set<CourseId>, home: number, allowed: readonly number[], noSeries: readonly string[] = [], force: Readonly<Record<string, number>> = {}): HomeFirst {
   const graph = prereqGraph(a.catalog, taken)
   const started = new Set<CourseId>(), series = new Map<string, string[]>()
   const homeDone = (r: Requirement) => !!reqStatus(r, taken).satisfied || homeCovers(r, home, taken, a)
@@ -1069,6 +1109,10 @@ export function preferHomeAgreement(a: Agreement, taken: Set<CourseId>, home: nu
     }
   }
   const cutRow = (r: Requirement): Requirement => {
+    if (force[r.id] !== undefined && !homeCovers(r, home, taken, a)) {
+      const groups = r.groups.filter((g) => g.institutionId === force[r.id])
+      return groups.length ? { ...r, groups } : r
+    }
     if (!homeCovers(r, home, taken, a)) return r
     const mix = honorsColleges(r)
     const groups = r.groups.filter((g) => {

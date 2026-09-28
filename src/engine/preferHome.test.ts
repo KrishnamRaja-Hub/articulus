@@ -186,9 +186,57 @@ describe('solve: prefer home college', () => {
   const X = req('X 1', [[`${DA}:PHYS 4A`], [`${FH}:PHYS 4A`]])
 
   it('B1: a row home covers goes back home when the row that pulled it away is planned at a third college', () => {
-    const p = solve(new Set(), B(and(X, req('Y 1', [[`${FH}:PHYS 4B`], [`${SM}:PHYS 2`]]))), { allowed: [DA, FH, SM], home: DA, preferHome: true })
+    const a = B(and(X, req('Y 1', [[`${FH}:PHYS 4B`], [`${SM}:PHYS 2`]])))
+    a.catalog[`${FH}:PHYS 4B`].units = 30 // Foothill 4A + 4B (32) now costs more than De Anza 4A + Santa Monica PHYS 2 (16)
+    const p = solve(new Set(), a, { allowed: [DA, FH, SM], home: DA, preferHome: true })
     expect(planned(p)).toEqual([`${DA}:PHYS 4A`, `${SM}:PHYS 2`])
     expect(p.fallbacks?.map((f) => f.note)).toEqual(['Not offered at De Anza; take PHYS 2 at Santa Monica.'])
+  })
+
+  it('R1: dropping a series pull does not lose the cheaper plan with both rows at the series college', () => {
+    const a = B(and(X, req('Y 1', [[`${FH}:PHYS 4B`], [`${SM}:PHYS 2`]])))
+    for (const extra of [{}, { collegePenalty: 0, chainPenalty: 0 }]) for (const allowed of [[DA, FH], [DA, FH, SM]]) {
+      const p = solve(new Set(), a, { allowed, home: DA, preferHome: true, ...extra })
+      expect(planned(p)).toEqual([`${FH}:PHYS 4A`, `${FH}:PHYS 4B`])
+      expect(p.totalUnits).toBe(12)
+      expect(p.fallbacks?.map((f) => f.note)).toEqual([
+        'Not offered at De Anza; take PHYS 4B at Foothill.',
+        'De Anza cannot finish this series (it has no course for Y 1); take PHYS 4A at Foothill.',
+      ])
+    }
+  })
+
+  it('candidates share one time limit: an exhausted limit still returns the first finished plan', () => {
+    const p = solve(new Set(), B(and(X, req('Y 1', [[`${FH}:PHYS 4B`], [`${SM}:PHYS 2`]]))), { allowed: [DA, FH, SM], home: DA, preferHome: true, timeLimitMs: 0 })
+    expect(p.result.isValid).toBe(true)
+  })
+
+  const PSE = 'Physics for Scientists and Engineers: '
+  const physics = (more: [string, number][]) => (root: ReqNode) => titled(agreement(root, [
+    [`124:PHYS 4A`, 5], [`124:PHYS 4B`, 5], [`124:PHYS 4C`, 5], [`${DA}:PHYS 4A`, 5], [`${DA}:PHYS 4B`, 5], [`${DA}:PHYS 4C`, 5], [`${DA}:PHYS 4D`, 5], [`${SM}:PHYS 9`, 8], ...more]),
+  { '124:PHYS 4A': PSE + 'Mechanics', '124:PHYS 4B': PSE + 'Electricity and Magnetism', '124:PHYS 4C': PSE + 'Waves',
+    [`${DA}:PHYS 4A`]: PSE + 'Mechanics', [`${DA}:PHYS 4B`]: PSE + 'Electricity and Magnetism', [`${DA}:PHYS 4C`]: PSE + 'Waves',
+    [`${DA}:PHYS 4D`]: PSE + 'Modern Physics', [`${SM}:PHYS 9`]: 'Modern Physics Survey' })
+  const P2D = req('P 2D', [[`${DA}:PHYS 4D`], [`${SM}:PHYS 9`]])
+  const IVH = { allowed: [124, DA, SM], home: 124, preferHome: true }
+
+  it('R2: a prerequisite whose home stand-in is never planned is priced in full (Santa Monica PHYS 9, 8 units, not De Anza 4A-4D)', () => {
+    const optional: ReqNode = { kind: 'node', type: 'AND', required: false, children: [req('OPT', [['124:PHYS 4A', '124:PHYS 4B', '124:PHYS 4C']])] }
+    const p = solve(new Set(), physics([])(and(P2D, optional)), IVH)
+    expect(planned(p)).toEqual([`${SM}:PHYS 9`])
+    expect(p.totalUnits).toBe(8)
+  })
+
+  it('R3: the stand-in only partly planned: the finished plan with the lowest real cost wins, prerequisites included', () => {
+    // ALT A (Irvine Valley PHYS 4C) is home's route through the OR, and needs PHYS 4A + 4B first. Santa Monica PHYS 9
+    // would cost 4C + 4A + 4B at Irvine Valley + PHYS 9 = 23 units; De Anza 4D, whose 4A + 4B also serve Irvine
+    // Valley 4C, costs 20.
+    const a = physics([[`${SM}:Q 1`, 1]])(and(P2D, or(req('ALT A', [['124:PHYS 4C']]), req('ALT B', [[`${SM}:Q 1`]]))))
+    const p = solve(new Set(), a, IVH)
+    expect(p.totalUnits).toBe(20)
+    expect(planned(p)).toContain('124:PHYS 4C')
+    expect(planned(p)).toContain(`${DA}:PHYS 4D`)
+    expect(p.totalUnits).toBeLessThan(solve(new Set(), a, { ...IVH, allowed: [124, SM] }).totalUnits)
   })
 
   it('B2: a row the OR cut removes (home completes the other alternative) pulls nothing away', () => {
