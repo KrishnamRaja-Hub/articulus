@@ -365,7 +365,7 @@ Testers covered verdicts, the planner, the data pipeline, the GitHub workflows a
 - **The ASSIST conjunction field names are unconfirmed.** They are our best knowledge, and a mismatch fails closed. Confirm on the first real fetch.
 - **Choose-N:** a full fix (each course fills one slot, in verify and the solver) is still to do. The safety net covers it until then.
 - **Known plan-quality issues:**
-  - Same-titled courses are treated as equal (Foothill "Calculus").
+  - Same-titled courses are treated as equal (Foothill "Calculus"). Fixed in round 10.
   - Scheduling doesn't put the longest prerequisite chain first.
   - Duplicate course content across colleges.
   - No re-optimization after prerequisites are added.
@@ -404,6 +404,49 @@ Testers covered verdicts, the planner, the data pipeline, the GitHub workflows a
 - A covered plan that runs past two years keeps its green badge, with a red "talk to a counselor about your timeline" warning under the schedule.
 - Dry runs are not refused on unreadable previous data. They publish nothing and decide review.
 
+---
+
+## Round 10: same-titled courses
+
+| Issue | Fix |
+|---|---|
+| Same-titled courses were treated as equal (Foothill "Calculus"). Foothill titles MATH 1A-1D all "Calculus" and PHYS 4A-4D all "General Physics (Calculus)"; West Valley MATH 003A and 003B are both "Calculus and Analytic Geometry". The enrollment-prerequisite check (`equiv` in `src/engine/prereq.ts`) counted any two courses with the same title as the same course, so a taken or planned Calculus I "covered" Calculus II. Real repro: UCLA ME at Foothill planned PHYS 4B (E&M) with MATH 1A only, plus a misleading "prerequisite only at El Camino" warning. At West Valley the plan added honors 003BH instead of 003B. | A title identifies a course only when no other course at its college carries it (honors twins aside). A leveled topic ("Calculus", level from the letter) is decided by its level, never by the shared title. Course identity stays college + prefix + number everywhere. Foothill UCLA ME now plans MATH 1B before PHYS 4B, and West Valley plans 003B. |
+| Could title-based order confuse two same-titled courses? | Checked, and it can't. `sequence.ts` reads a generic title's level from the course letter, never orders two courses at the same level, and matches a lab to a lecture by title only when exactly one lecture fits. New tests cover Foothill 1A < 1B < 1C < 1D and 4A-4D with no dropped (cyclic) edge, same-level twins with no edge, and same-titled plain numbers with no order. |
+| Regression in the first fix (independent tester): a course taken at another college stopped counting, so the plan took it again. UCSD MAE at Saddleback with De Anza PHYS 4B taken added Saddleback PHYS 4B (38 to 43 units, one more term). 178 of 11,390 plans in the tester's cross-college grid changed, 151 of them by repeating a taken course. The old code only covered these through the title bug ("General Physics" 4B and 4C have no topic). | Articulation-backed equivalence: when ASSIST lists two courses (any colleges) as single-course alternatives for the same UC row, and their topics don't disagree, a taken course covers the other one and anything before it. Topics disagree when they differ in ladder, kind or level, or when one is off the ladders (business or short calculus, introductory chemistry: `offLadder` in `sequence.ts`). This counts for taken courses only. Packing does not know it, so a planned course could land after the course that needs it. `solve.ts` passes the tree (a one-line change). |
+| Regression in the first fix: cross-listed courses at one college were treated as different courses. Irvine Valley CS 6A and MATH 6A are both "Computer Discrete Mathematics I", and a plan for CS 6B added both. | Same college, same number, same title and a different prefix counts as one course. A title shared by cross-listed courses still counts as distinctive. Foothill C S 18 and MATH 22 have different numbers, so they match other colleges only through ASSIST evidence. |
+| Regression in the second fix (tester, bug 3): a taken lower course stood in for a higher course the same UC row accepts. UC Davis ECS 036A accepts De Anza CIS 22A, or Saddleback CS 1A, or CS 1B. With CIS 22A taken at home Saddleback, the plan put CS 1C in term 2 with no CS 1B. This happened in UC Davis CS and CSE and UC Irvine EE. | A row only proves the taken course is worth its weakest alternative. So a taken course stands only for the lowest of the row's alternatives at each college, where lower means an inferred prerequisite of the other. CIS 22A now stands for CS 1A, never CS 1B. The Saddleback / De Anza PHYS 4B case still works, because that row has one course per college. |
+
+Audit of every title use in `src/` and `scripts/`. Only `prereq.ts` `equiv` used a title as identity. These stay as they are, because they are legitimate: sequence inference (`sequence.ts` topic ladders, ordinal and title rules, lab-to-lecture), section classification (`classifyTitle`, validator and canary checks), the honors-calculus note, search ranking in the Planner, and display. Verify, the solver, dedupe, hints, the search results and the transcript all key on course ids. The pipeline keys majors by report label, and fails on a conflicting duplicate.
+
+**Final checks:**
+- `tsc -b` and `tsc -p tests/independent`: clean.
+- vitest: 1046 pass. 21 new tests: 16 in `prereq.test.ts` and 5 in `sequence.test.ts`. On the code before this round (6a15651), 10 fail. On the first fix (c7e68c2), 6 fail.
+- Independent suite: 333 pass.
+- Build: clean.
+- `validate:data:ci`: exit 0.
+- The tester's cross-college grid (22 agreements; homes Foothill, West Valley, De Anza, Saddleback, Irvine Valley, Berkeley City and San Jose City; one MATH, PHYS or CS course taken at another college; 11,390 solves), compared with round 9 (6a15651):
+  - First fix: 178 plans changed, 0 with fewer units, 165 with more. 151 repeated a course ASSIST articulates to the same UC course as the one taken.
+  - Now: 499 plans changed, 468 with fewer units, 16 with more.
+  - The 468 are mostly courses the old plan repeated. The old code covered a taken course only through an equal title, and missed it when the titles differed.
+  - The 16 with more units:
+    - 9 are Foothill UCLA ME, which now adds Calculus II before PHYS 4B.
+    - 3 are business calculus taken at De Anza, which now adds the home college's Calculus I, as intended since round 8.
+    - 4 are UC Davis at San Jose City with Saddleback PHYS 4C taken, which now adds San Jose City PHYS 004A. See below.
+  - 32 changed plans still add a course that ASSIST lists for the same UC row as the taken course. None is a repeat:
+    - 26 swap Berkeley City CIS 6 for CIS 25 as the pair to CIS 27 for UCLA COM SCI 32. Both are COM SCI 31 courses, so the old plan had the same overlap, and the new one is 1 unit less.
+    - 6 are business calculus next to Calculus I.
+  - Prerequisite violations, measured with this round's graph: 43 in the round 9 plans, 0 in the first fix, 0 now.
+- After the bug 3 fix, merged with the schedule-order branch, compared with 6a15651 on course sets. Home-only grid: 4,861 solves, each home college alone, empty transcript or one of its own MATH, PHYS, CHEM or CS courses taken. Cross-college grid: 11,390 solves.
+  - Home-only: 78 plans changed, 63 with fewer units, 7 with more (Foothill UCLA ME adding Calculus II). 0 add the taken course or its honors twin. Prerequisite violations went from 155 to 126.
+  - Cross-college: 499 plans changed, 468 with fewer units, 16 with more. 0 add the taken course or its honors twin. Prerequisite violations went from 43 to 0.
+  - 20 cross-college plans add Berkeley City CIS 25, the lowest COM SCI 31 alternative the taken course proves. UCLA COM SCI 32 only accepts CIS 25 + CIS 27 or CIS 6 + CIS 27, so round 9 took CIS 6 for the same reason.
+  - New check: a changed plan drops a same-college prerequisite that round 9 planned. It found 9 home-only and 111 cross-college cases. In every one, the taken course, or the course it stands for, comes after the dropped course (for example, taken Data Structures drops Intro to Programming). This is the rule since round 8, that a taken course covers anything before it. None is unexplained.
+- vitest after bug 3 and the merge: 1,079 pass. The 5 new bug-3 tests fail on 2c0b0fb.
+
+**Still open:**
+- UC Davis at San Jose City with only Saddleback PHYS 4C taken now adds PHYS 004A, 5 units. Nothing in the agreement ties Saddleback 4C to a mechanics course. UC Davis lists 4A + 4C only as a pair, and generic "General Physics" 4C has no topic, so this is conservative. Giving generic "General Physics" letters a topic would change an existing sequence test on purpose, so it is left for a decision.
+- Out of scope, reported by the tester: Orange Coast MATH A182H and PHYS A185 in the same term, and CS A250 without CS A150.
+- The other plan-quality items from round 8.
 
 ---
 

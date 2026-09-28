@@ -63,7 +63,7 @@ const ordinals = (w: string[]) => {
 const isLab = (t: string) => /\blab(oratory)?\b/i.test(t) && !/\bwith lab/i.test(t)
 
 type Lvl = { lo: number; hi: number }
-type Topic = { ladder: 'math' | 'physics' | 'chem' | 'cs' | 'engr'; kind: string; lvl?: Lvl; calc?: boolean }
+export type Topic = { ladder: 'math' | 'physics' | 'chem' | 'cs' | 'engr'; kind: string; lvl?: Lvl; calc?: boolean }
 
 /** Level from the title's ordinals; for a generic title, from the course letter (MATH 1C "Calculus" -> 3). */
 const level = (id: CourseId, w: string[], generic: boolean): Lvl | undefined => {
@@ -121,6 +121,14 @@ export const topic = (id: CourseId, title: string): Topic | undefined => {
     if (/\bcircuits?\b|\bnetwork analysis\b/.test(t)) return { ladder: 'engr', kind: 'circ' }
   }
   return undefined
+}
+
+/** A course the ladders deliberately leave out (business / life-science / short calculus, introductory or survey
+ *  chemistry): never the same course as a ladder course, even when ASSIST lists both for one UC row. */
+export const offLadder = (id: CourseId, title: string): boolean => {
+  const p = PREFIX(id), t = words(title).join(' ')
+  if (/^MATH?$|^MTH$/.test(p)) return /\bcalculus\b/.test(t) && /\b(for|business|life|social|management|biolog\w*|short|seminar|intermediate)\b/.test(t)
+  return /^CH/.test(p) && /\bchemistry\b/.test(t) && /\b(introduct\w*|preparat\w*|fundamentals?|survey)\b/.test(t)
 }
 
 const below = (a?: Lvl, b?: Lvl) => !!a && !!b && a.hi < b.lo
