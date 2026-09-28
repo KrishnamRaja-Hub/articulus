@@ -13,6 +13,14 @@
  *  4. AND: every required child passes. OR / N_OF(n): with s satisfied, a open-but-routable, d UC-only children:
  *     s >= n satisfied; s + a + d < n cannot be met; a > 0 the CC alternatives are owed first (UC-only rows would fill
  *     only max(0, n - s - a) slots); otherwise it passes with the UC-only rows deferred.
+ *  4b. One course, one slot (FIXES round 10, M-4), for N_OF(n) with n >= 2: each satisfied child fills one slot and
+ *     spends what meets it (per row: the taken ids of one complete group, and the row itself), and no two slots spend
+ *     the same thing. s is then the most satisfied children that can fill slots together (the first such set, children
+ *     taken in order of fewest deferred rows). The CC route is counted from the agreement: C = the most children that
+ *     could fill slots together if every row with a CC group were done. Cannot be met: max(s, C) + a' + d < n, with a'
+ *     the open routable children that could never be satisfied with CC courses alone. Owed first (open): s < C, or
+ *     a' > 0; the missing rows are the open routable children's, plus every satisfied child's while one of them is
+ *     left out. Otherwise it passes, UC-only rows filling the rest. With no course shared this is exactly rule 4.
  *  5. Optional (recommended) subtrees are reported but never fail, satisfy or defer anything for their parent.
  *  6. Blocking vs warning: top down from a failing root, an AND needs every failing required child, an OR / N_OF every
  *     failing child that has a CC route. A split in a needed row is blocking; any other split is a warning.
@@ -121,7 +129,12 @@ export function splitHiddenByBestPartial(e: RowEval, taken: ReadonlySet<CourseId
 /* ---- the fold ---- */
 
 type State = 'S' | 'D' | 'O' // satisfied with CC courses / passes only with UC-only rows deferred / open
-interface Fold { state: State; route: boolean; def: string[]; miss: string[]; kids: Fold[]; node: Node }
+/**
+ * `spend`: inside a slot of a "choose N" group (rule 4b), every way the subtree can be met, as the ids it spends (taken
+ * course ids, one "row:" token per row); [[]] elsewhere, [] when it does not pass. `loose`: in an open choice, the
+ * satisfied alternatives that could still take another group (rule 4b); their rows are named as missing.
+ */
+interface Fold { state: State; def: string[]; miss: string[]; kids: Fold[]; node: Node; spend: string[][]; loose: Fold[] }
 
 /**
  * `deferred` convention for choices with several UC-only alternatives (the rules name how many slots UC-only rows
@@ -134,66 +147,107 @@ export type DeferConvention = 'slots' | 'app-low3'
 export interface OracleOptions { defer?: DeferConvention }
 
 const counted = (n: Node) => n.kind === 'req' || n.required
+const token = (id: string) => `row:${id}`
+/** A leaf's reading: its state, and the ways it spends when met (only asked for inside a slot). */
+type Leaf = (r: Requirement) => { state: State; spend: string[][] }
 
-function fold(n: Node, leaf: (r: Requirement) => State, conv: DeferConvention): Fold {
-  if (n.kind === 'req') {
-    const state = leaf(n)
-    return { state, route: n.groups.length > 0 || isUcOnly(n), def: state === 'D' ? [n.id] : [], miss: state === 'O' ? [n.id] : [], kids: [], node: n }
+/** Keep the smallest ways only (a way spending more is never needed), without duplicates. */
+function smallest(ways: string[][]): string[][] {
+  const sets = [...new Map(ways.map((w) => { const s = [...new Set(w)].sort(); return [s.join('|'), s] as const })).values()]
+  return sets.filter((s) => !sets.some((o) => o !== s && o.length < s.length && o.every((x) => s.includes(x))))
+}
+/** All ways to pick exactly k of `fams`, one way each, no id spent twice (their unions), in pick order. */
+function packings(fams: string[][][], k: number): { pick: number[]; spend: string[] }[] {
+  const out: { pick: number[]; spend: string[] }[] = []
+  const go = (i: number, pick: number[], spent: string[]) => {
+    if (pick.length === k) return void out.push({ pick, spend: spent })
+    for (let j = i; j < fams.length; j++) for (const w of fams[j]) if (!w.some((x) => spent.includes(x))) go(j + 1, [...pick, j], [...spent, ...w])
   }
-  const kids = n.children.map((k) => fold(k, leaf, conv))
-  const route = hasRoute(n)
+  go(0, [], [])
+  return out
+}
+/** The most of `fams` (at most `cap`) that can be picked together. */
+function mostTogether(fams: string[][][], cap: number): number {
+  let m = 0
+  while (m < cap && packings(fams, m + 1).length) m++
+  return m
+}
+
+function fold(n: Node, leaf: Leaf, conv: DeferConvention, inSlot = false): Fold {
+  if (n.kind === 'req') {
+    const l = leaf(n)
+    return { state: l.state, def: l.state === 'D' ? [n.id] : [], miss: l.state === 'O' ? [n.id] : [], kids: [], node: n,
+      spend: l.state === 'O' ? [] : inSlot && l.state === 'S' ? l.spend : [[]], loose: [] }
+  }
+  const need = n.type === 'OR' ? 1 : n.n ?? 1
+  const slots = n.type === 'N_OF' && need >= 2
+  const kids = n.children.map((k) => fold(k, leaf, conv, inSlot || slots))
   const cnt = kids.filter((k) => counted(k.node))
+  const out = (state: State, def: string[], miss: string[], spend: string[][] = [[]], loose: Fold[] = []): Fold =>
+    ({ state, def, miss, kids, node: n, spend: state === 'O' ? [] : spend, loose })
   if (n.type === 'AND') {
     const open = cnt.filter((k) => k.state === 'O')
     // an AND with no required children imposes nothing (COUNSELOR_REPORT LOW-2 documents this shape)
     const state: State = open.length ? 'O' : cnt.some((k) => k.state === 'S') || cnt.length === 0 ? 'S' : 'D'
-    return { state, route, def: cnt.flatMap((k) => k.def), miss: open.flatMap((k) => k.miss), kids, node: n }
+    const spend = inSlot ? smallest(cnt.reduce<string[][]>((acc, k) => acc.flatMap((a) => k.spend.map((w) => [...a, ...w])), [[]])) : [[]]
+    return out(state, cnt.flatMap((k) => k.def), open.flatMap((k) => k.miss), spend)
   }
-  const need = n.type === 'OR' ? 1 : n.n ?? 1
-  const S = cnt.filter((k) => k.state === 'S'), A = cnt.filter((k) => k.state === 'O' && k.route), D = cnt.filter((k) => k.state === 'D')
-  if (S.length >= need) {
-    // rely on the satisfied alternatives that leave the least for the university (stable)
-    const pick = S.map((k, i) => ({ k, i })).sort((x, y) => x.k.def.length - y.k.def.length || x.i - y.i).slice(0, need).map((x) => x.k)
-    const chosen = new Set(pick)
-    return { state: 'S', route, def: S.filter((k) => chosen.has(k)).flatMap((k) => k.def), miss: [], kids, node: n }
+  // rely on the satisfied alternatives that leave the least for the university (stable)
+  const S = cnt.filter((k) => k.state === 'S').map((k, i) => ({ k, i })).sort((x, y) => x.k.def.length - y.k.def.length || x.i - y.i).map((x) => x.k)
+  const A = cnt.filter((k) => k.state === 'O' && hasRoute(k.node)), D = cnt.filter((k) => k.state === 'D')
+  if (!slots) {
+    if (S.length >= need) {
+      const chosen = new Set(S.slice(0, need))
+      return out('S', cnt.filter((k) => chosen.has(k)).flatMap((k) => k.def), [], inSlot ? smallest(S.flatMap((k) => k.spend)) : [[]])
+    }
+    if (S.length + A.length + D.length < need) return out('O', S.flatMap((k) => k.def), cnt.filter((k) => k.state !== 'S').flatMap((k) => k.miss))
+    const uc = Math.min(D.length, Math.max(0, need - S.length - A.length))
+    if (A.length) return out('O', [...S, ...(conv === 'slots' ? D.slice(0, uc) : [])].flatMap((k) => k.def), A.flatMap((k) => k.miss))
+    return out('D', [...S, ...(conv === 'slots' ? D.slice(0, need - S.length) : D)].flatMap((k) => k.def), [])
   }
-  if (S.length + A.length + D.length < need) {
-    return { state: 'O', route, def: S.flatMap((k) => k.def), miss: cnt.filter((k) => k.state !== 'S').flatMap((k) => k.miss), kids, node: n }
+  // rule 4b: which satisfied alternatives fill slots together (the first such set, in the order above)
+  const fams = S.map((k) => k.spend)
+  const m = mostTogether(fams, need)
+  // the first set in that order: the smallest indices, compared one by one
+  const first = packings(fams, m).sort((x, y) => { const i = x.pick.findIndex((v, j) => v !== y.pick[j]); return i < 0 ? 0 : x.pick[i] - y.pick[i] })[0]
+  const chosen = new Set(first.pick.map((j) => S[j]))
+  const defOf = (xs: Fold[]) => cnt.filter((k) => xs.includes(k)).flatMap((k) => k.def)
+  if (m >= need) return out('S', defOf([...chosen]), [], inSlot ? smallest(packings(fams, need).map((p) => p.spend)) : [[]])
+  // C: the most slots the alternatives that CC courses can meet could fill together, from the agreement alone
+  const hyp = cnt.filter((k) => hypState(k.node) === 'S')
+  const C = Math.max(m, mostTogether(hyp.map((k) => hypSpend(k.node)), need))
+  const late = A.filter((k) => hypState(k.node) !== 'S')
+  if (C + late.length + D.length < need) return out('O', defOf([...chosen]), cnt.filter((k) => k.state !== 'S').flatMap((k) => k.miss))
+  const uc = Math.min(D.length, Math.max(0, need - C - late.length))
+  const loose = S.length > chosen.size ? S : []
+  if (m < C || late.length) {
+    return out('O', [...defOf([...chosen]), ...(conv === 'slots' ? D.slice(0, uc) : []).flatMap((k) => k.def)],
+      [...A.flatMap((k) => k.miss), ...loose.flatMap((k) => rowsWithGroups(k.node))], [], loose)
   }
-  const slots = Math.min(D.length, Math.max(0, need - S.length - A.length))
-  if (A.length) {
-    const fill = conv === 'slots' ? D.slice(0, slots) : []
-    return { state: 'O', route, def: [...S, ...fill].flatMap((k) => k.def), miss: A.flatMap((k) => k.miss), kids, node: n }
-  }
-  const fill = conv === 'slots' ? D.slice(0, need - S.length) : D
-  return { state: 'D', route, def: [...S, ...fill].flatMap((k) => k.def), miss: [], kids, node: n }
+  return out('D', [...defOf([...chosen]), ...(conv === 'slots' ? D.slice(0, need - m) : D).flatMap((k) => k.def)], [],
+    inSlot ? smallest(packings(fams, m).map((p) => p.spend)) : [[]])
 }
 
-const routeMemo = new WeakMap<ReqNode, boolean>()
+/** Rows with a CC group in a subtree (required paths only). */
+const rowsWithGroups = (n: Node): string[] => n.kind === 'req' ? (n.groups.length ? [n.id] : [])
+  : [...new Set(n.children.filter(counted).flatMap(rowsWithGroups))]
+
+/** Every row with a CC group done (any group, any college), UC-only rows deferred, unrecorded rows open. */
+const hypLeaf: Leaf = (r) => r.groups.length ? { state: 'S', spend: r.groups.map((g) => [...g.courses, token(r.id)]) }
+  : { state: isUcOnly(r) ? 'D' : 'O', spend: [[]] }
+const hypMemo = [new WeakMap<Node, Fold>(), new WeakMap<Node, Fold>()]
+/** The fold with every CC row done; `spend` only when asked (it multiplies out every way of an AND). */
+const hypFold = (n: Node, spend = false): Fold => {
+  const memo = hypMemo[spend ? 1 : 0]
+  let f = memo.get(n)
+  if (!f) memo.set(n, (f = fold(n, hypLeaf, 'slots', spend)))
+  return f
+}
+const hypState = (n: Node) => hypFold(n).state
+const hypSpend = (n: Node) => hypFold(n, true).spend
 /** Would the subtree pass if every row with a CC group were done (UC-only rows deferred, no-record rows open)? */
 export function hasRoute(n: Node): boolean {
-  if (n.kind === 'req') return n.groups.length > 0 || isUcOnly(n)
-  let v = routeMemo.get(n)
-  if (v === undefined) {
-    const kids = n.children.filter(counted).map((k): { state: State; route: boolean } => {
-      if (k.kind === 'req') return { state: k.groups.length ? 'S' : isUcOnly(k) ? 'D' : 'O', route: hasRoute(k) }
-      const r = hasRoute(k)
-      return { state: r ? (allDeferred(k) ? 'D' : 'S') : 'O', route: r }
-    })
-    if (n.type === 'AND') v = kids.every((k) => k.state !== 'O')
-    else {
-      const need = n.type === 'OR' ? 1 : n.n ?? 1
-      const s = kids.filter((k) => k.state === 'S').length, d = kids.filter((k) => k.state === 'D').length
-      // hypothetically every routable child is done, so a = 0
-      v = s + d >= need
-    }
-    routeMemo.set(n, v)
-  }
-  return v
-}
-/** In the all-CC-done hypothesis, does the (routable) subtree pass only through deferral? */
-function allDeferred(n: ReqNode): boolean {
-  return fold(n, (r) => (r.groups.length ? 'S' : isUcOnly(r) ? 'D' : 'O'), 'slots').state === 'D'
+  return hypState(n) !== 'O'
 }
 
 export interface OracleResult {
@@ -207,6 +261,9 @@ export interface OracleResult {
   deferred: Set<string>
   /** requirement ids the root still needs (the rows the app's `missing` strings should name) */
   missing: Set<string>
+  /** rows of satisfied alternatives, in a choice the root still needs, that could take another group so the choice's
+   *  slots use different courses (rule 4b); a plan may have to complete one of them again */
+  reroute: Set<string>
 }
 
 /** Rule 8. */
@@ -230,13 +287,21 @@ export function oracle(a: Agreement, taken: ReadonlySet<CourseId>, opts: OracleO
     }
     return e
   }
-  const root = fold(a.root, (r) => { const e = rowOf(r); return e.sat ? 'S' : e.ucOnly ? 'D' : 'O' }, opts.defer ?? 'slots')
+  // rule 4b: a satisfied row spends, per complete group, the taken ids standing for its courses (the course itself
+  // when taken, else its honors twin), and the row itself
+  const root = fold(a.root, (r) => {
+    const e = rowOf(r)
+    if (!e.sat) return { state: e.ucOnly ? 'D' : 'O', spend: [[]] }
+    const tw = twinColleges(r)
+    return { state: 'S', spend: e.satGroups.map((g) => [...g.courses.map((c) => standsFor(c, taken, tw)[0]), token(r.id)]) }
+  }, opts.defer ?? 'slots')
   const rootPass = root.state !== 'O'
-  const needed = new Set<string>()
+  const needed = new Set<string>(), reroute = new Set<string>()
   const mark = (f: Fold) => {
     if (f.node.kind === 'req') return void needed.add(f.node.id)
     const and = f.node.type === 'AND'
-    for (const k of f.kids) if (counted(k.node) && k.state === 'O' && (and || k.route)) mark(k)
+    for (const k of f.loose) for (const id of rowsWithGroups(k.node)) reroute.add(id)
+    for (const k of f.kids) if (counted(k.node) && k.state === 'O' && (and || hasRoute(k.node))) mark(k)
   }
   if (!rootPass) mark(root)
   const splits = new Set([...rows.values()].filter((e) => e.split).map((e) => e.req.id))
@@ -247,6 +312,7 @@ export function oracle(a: Agreement, taken: ReadonlySet<CourseId>, opts: OracleO
     satisfied: new Set([...rows.values()].filter((e) => e.sat).map((e) => e.req.id)),
     deferred: new Set(root.def),
     missing: new Set(rootPass || !a.root.required ? [] : root.miss),
+    reroute,
   }
 }
 

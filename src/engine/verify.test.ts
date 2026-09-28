@@ -10,6 +10,7 @@ import dme from '../../data/agreements/89-mechanical-engineering-b-s.json'
 import index from '../../data/index.json'
 import type { Agreement, ReqNode, Requirement, ValidationResult } from './types'
 import { blockingSplits, has, honorsColleges, honorsMix, isDeferrable, malformed, reqStatus, ucOnly, verifySchedule } from './verify'
+import { assignSlots } from './slots'
 
 const ME = me as unknown as Agreement, MAE = mae as unknown as Agreement, MCS = mcs as unknown as Agreement, CSE = cse as unknown as Agreement
 const DA = 113, FH = 51
@@ -436,26 +437,78 @@ describe('degenerate trees fail closed (TESTER2 M-3)', () => {
   })
 })
 
-describe('M-4 safety net: "choose 2+ of" groups are flagged for review', () => {
-  // X is one course that articulates to both rows A and B: today it fills two slots, so the result must carry `review`
-  const X = (id: string): Requirement => ({ kind: 'req', id, label: id, units: 4, groups: [{ institutionId: 1, courses: ['1:X'] }] })
-  it('flags a required choose-2 group, even when one course fills both slots', () => {
+describe('M-4: in a "choose N" group each course fills one slot', () => {
+  // X(id): a row whose only group is the one course 1:X, so X articulates to every such row
+  const X = (id: string, ...more: string[][]): Requirement =>
+    ({ kind: 'req', id, label: id, units: 4, groups: [['1:X'], ...more].map((courses) => ({ institutionId: 1, courses })) })
+  it('a course that could fill two rows is counted once', () => {
     const a = ag({ ...NOF(2, X('A'), X('B'), C('D')), title: 'Choose 2' })
     const r = v(a, 'X')
-    expect(r.review).toEqual(['"Choose 2"'])
+    expect(r.isValid).toBe(false)
+    // both rows still read as satisfied on their own; the group needs one more slot
+    expect(Object.keys(r.satisfied).sort()).toEqual(['A', 'B'])
+    expect(r.missing).toEqual(['1 of: A, B, D'])
+    expect(v(a, 'X', 'D')).toMatchObject({ isValid: true, missing: [] })
   })
-  it('flags an untitled choose-2 group and one nested under a required AND', () => {
-    expect(v(ag(AND(NOF(2, C('A'), C('B'), C('D')))), 'A', 'B').review).toEqual(['choose 2 of 3'])
+  it('exact assignment where greedy fails: A (X or Y) and B (X) with X and Y taken', () => {
+    // Greedy in row order gives X to A and leaves B nothing; the assignment gives A its Y and B the X.
+    const a = ag(NOF(2, X('A', ['1:Y']), X('B')))
+    expect(v(a, 'X', 'Y')).toMatchObject({ isValid: true, missing: [] })
+    expect(v(a, 'X').isValid).toBe(false)
   })
-  it('does not flag choose-1 groups, OR groups, or choose-2 groups inside optional sections', () => {
-    expect(v(ag(NOF(1, C('A'), C('B')), OR(C('D'), C('E'))), 'A', 'D').review).toBeUndefined()
-    expect(v(ag(C('Z'), opt(NOF(2, C('A'), C('B'), C('D')))), 'Z').review).toBeUndefined()
+  it('exact assignment with series: A (X + Y, or Z), B (X), D (Y)', () => {
+    const a = ag(NOF(3, { ...C('A'), groups: [{ institutionId: 1, courses: ['1:X', '1:Y'] }, { institutionId: 1, courses: ['1:Z'] }] },
+      { ...C('B'), groups: [{ institutionId: 1, courses: ['1:X'] }] }, { ...C('D'), groups: [{ institutionId: 1, courses: ['1:Y'] }] }))
+    expect(v(a, 'X', 'Y', 'Z').isValid).toBe(true)
+    expect(v(a, 'X', 'Y').isValid).toBe(false)
   })
-  it('no bundled agreement has a required choose-2+ group today (the net is dormant on current data)', () => {
-    for (const a of [me, mae, mcs, cse, cs, ime, ece, dme] as unknown as Agreement[]) expect(verifySchedule(new Set(), a).review).toBeUndefined()
+  it('the same row listed twice fills one slot', () => {
+    const a = ag(NOF(2, C('A'), C('A'), C('B')))
+    expect(v(a, 'A').isValid).toBe(false)
+    expect(v(a, 'A', 'B').isValid).toBe(true)
+  })
+  it('a slot filled by several rows spends all their courses; inside one slot rows may share a course', () => {
+    expect(v(ag(NOF(2, AND(C('A'), X('B')), X('D'))), 'A', 'X').isValid).toBe(false)
+    expect(v(ag(NOF(2, AND(X('A'), X('B')), C('D'))), 'X', 'D').isValid).toBe(true)
+  })
+  it('a UC-only row fills a slot no CC course can: two rows that only share one course', () => {
+    const a = ag(NOF(2, X('A'), X('B'), UC('U')))
+    expect(v(a, 'X')).toMatchObject({ isValid: true, missing: [], deferred: ['U'] })
+    expect(v(a)).toMatchObject({ isValid: false, missing: ['1 of: A, B'] })
+  })
+  it('the CC route is still owed first when another group can free the slot', () => {
+    const a = ag(NOF(2, X('A', ['1:Y']), X('B'), UC('U')))
+    expect(v(a, 'X')).toMatchObject({ isValid: false, missing: ['1 of: A, B'], deferred: [] })
+    expect(v(a, 'X', 'Y')).toMatchObject({ isValid: true, missing: [], deferred: [] })
+  })
+  it('choose-1 groups and OR groups are unchanged: one course may meet the one slot through two rows', () => {
+    expect(v(ag(NOF(1, X('A'), X('B'))), 'X').isValid).toBe(true)
+    expect(v(ag(OR(X('A'), X('B'))), 'X').isValid).toBe(true)
+  })
+  it('no bundled agreement changes verdict with nothing taken or with everything taken', () => {
+    for (const a of [me, mae, mcs, cse, cs, ime, ece, dme] as unknown as Agreement[]) {
+      expect(verifySchedule(new Set(), a).isValid).toBe(false)
+      const all = verifySchedule(new Set(Object.keys(a.catalog)), a)
+      expect(all.missing.filter((m) => /^\d+ of:/.test(m))).toEqual([])
+    }
   })
 })
 
+describe('assignSlots (slots.ts): exact, first in candidate order', () => {
+  it('bipartite: finds the matching a first-come assignment misses', () => {
+    expect(assignSlots([[['x'], ['y']], [['x']]], 2)).toEqual({ pick: [0, 1], ways: [['y'], ['x']] })
+  })
+  it('general: ways spending several ids', () => {
+    const r = assignSlots([[['x', 'y'], ['z']], [['x']], [['y']]], 3)
+    expect(r.pick).toEqual([0, 1, 2])
+    expect(r.ways).toEqual([['z'], ['x'], ['y']])
+  })
+  it('the largest assignment, preferring earlier candidates; capped', () => {
+    expect(assignSlots([[['x']], [['x']], [['y']]], 3).pick).toEqual([0, 2])
+    expect(assignSlots([[['x']], [['y']], [['z']]], 2).pick).toEqual([0, 1])
+    expect(assignSlots([[], [['x']]], 2).pick).toEqual([1])
+  })
+})
 describe('round 7 M-1: only an allowlisted ASSIST reason makes a row UC-only', () => {
   const row = (noArticulation: Record<number, unknown>): Requirement =>
     ({ kind: 'req', id: 'D', label: 'D', units: 4, groups: [], noArticulation: noArticulation as Record<number, string> })

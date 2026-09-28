@@ -3,7 +3,8 @@
  *
  * Finds a cheapest set of catalog courses at the allowed colleges whose addition makes the root pass under the
  * oracle. Branching: an unsatisfied mandatory row (reached from the root through required ANDs only) if there is
- * one, else every row the oracle marks as needed. Each move completes one group of that row (honors twins swapped
+ * one, else every row the oracle marks as needed or as a row to re-route (a satisfied row whose course another slot
+ * of the same "choose N" group spends, rule 4b). Each move completes one group of that row (honors twins swapped
  * in only at colleges that list a twin). This is complete: any passing plan satisfies some needed row by one of its
  * groups, and that group's missing courses are one of the moves.
  *
@@ -132,7 +133,8 @@ export function bruteMin(a: Agreement, taken: ReadonlySet<CourseId>, o: BruteOpt
       lb += Math.min(...moves.map(units))
     }
     if (best && here.cost + lb > best.cost - EPS) return
-    const branch = open.length ? [open[0]] : [...res.needed].map((id) => byId.get(id)!).filter((r) => r.groups.length)
+    // with no mandatory row open: a needed row, or a satisfied row of a choice whose slots need different courses (4b)
+    const branch = open.length ? [open[0]] : [...new Set([...res.needed, ...res.reroute])].map((id) => byId.get(id)!).filter((r) => r.groups.length)
     const moves: CourseId[][] = []
     for (const r of branch) for (const s of options.get(r.id)!) {
       const m = s.filter((c) => !have.has(c))

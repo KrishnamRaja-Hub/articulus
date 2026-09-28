@@ -329,8 +329,6 @@ export function validateData(dataDir: string, o: ValidateOptions): Report {
       const req = n.children.filter((c) => c.kind === 'req' || c.required).length
       err(req > 0, 'tree.no-required-children', `${n.title ? `"${n.title}"` : `${n.type} node`}: required, but none of its ${n.children.length} children is`)
       if (n.type === 'N_OF') err(isInt(n.n) && n.n! >= 1 && n.n! <= req, 'tree.n-of-required', `${n.title ? `"${n.title}"` : 'N_OF node'}: choose ${n.n} of ${req} required children`)
-      // M-4 safety net: the engine may still count one course in two slots here, so the page sends students to a counselor
-      if (n.type === 'N_OF') warn(!(isInt(n.n) && n.n! >= 2), 'tree.choose-n-review', `${n.title ? `"${n.title}"` : 'N_OF node'}: choose ${n.n} of ${req}; one course may fill two slots (M-4), so a complete verdict shows "confirm with a counselor"`)
     }
     const secs = new Map(sections(a.root))
     for (const [n, r] of secs) {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Plan, ValidationResult, Violation } from '../engine/types'
-import { badgeStatus, CAUTION_TITLE, CAVEAT, completedSplits, COMPLETE_NOTE, deferredOf, noMatchNote, optimalExplain, optimalNote, PREREQ_TAG, PLAN_FAILED_TITLE, prereqOnlySet, REVIEW_TITLE, unmetNames, scheduleCaveat, scheduleNote, splitUnsolvable, UNCONFIRMED_TITLE } from './plannerStatus'
+import { badgeStatus, CAUTION_TITLE, CAVEAT, completedSplits, COMPLETE_NOTE, deferredOf, noMatchNote, optimalExplain, optimalNote, PREREQ_TAG, PLAN_FAILED_TITLE, prereqOnlySet, unmetNames, scheduleCaveat, scheduleNote, splitUnsolvable, UNCONFIRMED_TITLE } from './plannerStatus'
 import type { TrustLevel } from '../data-trust'
 import { dataTrust } from '../data-trust'
 import { NORMALIZE_VERSION as NORMALIZE_VERSION_FOR_TEST } from '../engine/normalize'
@@ -376,39 +376,28 @@ describe('start term (M-5)', () => {
   })
 })
 
-describe('M-4 safety net: a "choose several" group is never green', () => {
-  it('turns a would-be green amber with the counselor caveat and names the group', () => {
-    const s = badgeStatus(result({ review: ['"Choose 2"'] }), plan({}, { review: ['"Choose 2"'] }), 'UCLA')
-    expect(s).toMatchObject({ ok: false, tone: 'caution', title: REVIEW_TITLE, caveat: CAVEAT.review })
-    expect(s.details).toContain('Check: "Choose 2"')
+describe('M-4: a "choose several" group is judged by the engine, with no blanket counselor badge', () => {
+  // choose 2 of: A (X or Y), B (X): X alone fills one slot only
+  const cat = (id: string) => ({ id, institutionId: 1, prefix: 'C', number: id.slice(4), title: id, units: 4 })
+  const row = (id: string, ...gs: string[][]) => ({ kind: 'req' as const, id, label: id, units: 4, groups: gs.map((courses) => ({ institutionId: 1, courses })) })
+  const a: Agreement = {
+    receivingId: 1, major: 'm', year: 'y', sendingIds: [1],
+    root: { kind: 'node', type: 'AND', required: true, children: [{ kind: 'node', type: 'N_OF', n: 2, title: 'Choose 2', required: true, children: [row('A', ['1:C X'], ['1:C Y']), row('B', ['1:C X'])] }] },
+    catalog: { '1:C X': cat('1:C X'), '1:C Y': cat('1:C Y') },
+  }
+  it('one course counted for two slots is not covered; two courses are, and show green', () => {
+    const once = verifySchedule(new Set(['1:C X']), a)
+    expect(once.isValid).toBe(false)
+    expect(badgeStatus(once, plan({}, { isValid: false }), 'UCLA').tone).toBe('problem')
+    const both = verifySchedule(new Set(['1:C X', '1:C Y']), a)
+    expect(both.isValid).toBe(true)
+    expect(badgeStatus(both, plan({}, both), 'UCLA')).toMatchObject({ ok: true, tone: 'ok', title: 'Every requirement covered' })
   })
-  it('is amber when only the plan result carries the flag', () => {
-    expect(badgeStatus(result(), plan({}, { review: ['x'] }), 'UCLA').tone).toBe('caution')
-  })
-  it('red stays red, and untrusted stays unconfirmed', () => {
-    expect(badgeStatus(result({ isValid: false }), plan({}, { isValid: false, review: ['x'] }), 'UCLA').tone).toBe('problem')
-    expect(badgeStatus(result({ review: ['x'] }), plan({}, { review: ['x'] }), 'UCLA', 'untrusted').tone).toBe('unconfirmed')
-  })
-  it('with prior-year data too, the caveat keeps both the review and the prior-year sentences (round 7 L-5)', () => {
-    const t = { level: 'aging' as const, yearNote: "2026-27 agreements aren't published on ASSIST yet" }
-    const s = badgeStatus(result({ review: ['"Choose 2"'] }), plan({}, { review: ['"Choose 2"'] }), 'UCLA', t)
-    expect(s).toMatchObject({ ok: false, tone: 'caution', title: REVIEW_TITLE, caveat: CAVEAT.reviewPriorYear })
-    expect(s.caveat).toMatch(/choose several of these/)
-    expect(s.caveat).toMatch(/prior academic year's agreements/)
-    expect(s.caveat?.match(/Confirm with a counselor/g)).toHaveLength(1)
-    expect(s.details).toContain('Check: "Choose 2"')
-    // without a year note, the review caveat alone, as before
-    expect(badgeStatus(result({ review: ['x'] }), plan({}, { review: ['x'] }), 'UCLA', { level: 'aging', yearNote: null }).caveat).toBe(CAVEAT.review)
-    // a failed plan still wins over both
-    const failed = { ...plan({}, { review: ['x'] }), error: 'timed out' } as Plan
-    expect(badgeStatus(result({ review: ['x'] }), failed, 'UCLA', t)).toMatchObject({ tone: 'problem', title: PLAN_FAILED_TITLE })
-  })
-  it('the schedule note never says complete, and names the choose-several reason', () => {
-    const p = plan({}, { review: ['x'] })
-    const note = scheduleNote(badgeStatus(result({ review: ['x'] }), p, 'UCLA'), p)
-    expect(note?.tone).toBe('warn')
-    expect(note?.text).toMatch(/choose several/)
-    expect(note?.text).not.toBe(COMPLETE_NOTE)
+  it('the planner schedules the second course', () => {
+    const p = solve(new Set(['1:C X']), a, { allowed: [1], home: 1 })
+    expect(p.terms.flatMap((t) => t.courses)).toEqual(['1:C Y'])
+    expect(p.unsolvable).toEqual([])
+    expect(p.result.isValid).toBe(true)
   })
 })
 

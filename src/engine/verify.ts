@@ -1,5 +1,6 @@
 import type { Agreement, CourseGroup, CourseId, Partial, ReqNode, Requirement, ValidationResult, Violation } from './types'
 import { isUcOnlyProof } from './normalize.ts'
+import { assignSlots, crossWays, minimal, NOTHING, rowToken, unionsOf, type Way, type Ways } from './slots.ts'
 
 export interface ReqStatus { satisfied?: CourseGroup; partials: Partial[] }
 
@@ -84,57 +85,132 @@ const isSplit = (p: Partial[]) =>
  * transfer). `open`: the student still needs CC courses.
  */
 type St = 'sat' | 'def' | 'open'
-/** art: canRoute — CC courses (plus UC-only rows) could make it pass. miss: what it still needs. def: UC-only rows it relies on. */
-interface Res { st: St; art: boolean; miss: string[]; def: string[]; kids: Res[]; node: ReqNode | Requirement }
+/** A row's state and, when `track` asks for them, the ways it is met (slots.ts): what filling a slot with it spends. */
+interface Leaf { st: St; uses: Ways }
+type LeafFn = (r: Requirement, track: boolean) => Leaf
+/**
+ * Inside a slot of a "choose several" group: the ids worth keeping in a way, those that can clash with another slot
+ * (they belong to another alternative of an enclosing group). Dropping the rest changes no assignment and keeps the
+ * number of ways small. null: not in a slot.
+ */
+type Keep = ((x: string) => boolean) | null
+const uniMemo = new WeakMap<object, Set<string>>()
+/** Every id a subtree could ever spend: its courses with their honors twins, and its rows' tokens. */
+const universe = (n: ReqNode | Requirement): Set<string> => {
+  if (!isObj(n)) return new Set()
+  let u = uniMemo.get(n)
+  if (!u) {
+    u = new Set()
+    uniMemo.set(n, u)
+    if (n.kind === 'req') {
+      u.add(rowToken(n.id))
+      for (const g of groupsOf(n)) for (const c of g.courses) u.add(c).add(`${c}H`).add(stripH(c))
+    } else for (const c of Array.isArray(n.children) ? n.children : []) for (const x of universe(c)) u.add(x)
+  }
+  return u
+}
+/** For each child of a "choose several" group: keep what the parent keeps and whatever another child could spend. */
+const keepsFor = (kids: (ReqNode | Requirement)[], keep: Keep): ((x: string) => boolean)[] => {
+  const us = kids.map(universe), count = new Map<string, number>()
+  for (const u of us) for (const x of u) count.set(x, (count.get(x) ?? 0) + 1)
+  return us.map((u) => (x: string) => (count.get(x) ?? 0) - (u.has(x) ? 1 : 0) > 0 || (!!keep && keep(x)))
+}
+const keepOnly = (ways: Ways, keep: (x: string) => boolean) => minimal(ways.map((w) => w.filter(keep)))
+/** art: canRoute — CC courses (plus UC-only rows) could make it pass. miss: what it still needs. def: UC-only rows it
+ *  relies on. uses: the ways it passes (tracked subtrees only; NOTHING elsewhere; [] when it does not pass). */
+interface Res { st: St; art: boolean; miss: string[]; def: string[]; kids: Res[]; node: ReqNode | Requirement; uses: Ways }
 
 const passes = (r: Res) => r.st !== 'open'
 /** Required children only: optional (recommended) subtrees never fail, satisfy, or defer anything for their parent. */
 // A `required` that is not `false` counts (M-2: fail closed; malformed() reports the non-boolean).
 const counted = (r: Res) => !isObj(r.node) || r.node.kind === 'req' || r.node.required !== false
+const countedNode = (c: unknown) => isObj(c) && (c.kind === 'req' || c.required !== false)
 const uniq = (ids: string[]) => [...new Set(ids)]
+/** The rows with CC groups under a subtree: how a satisfied alternative whose courses already fill another slot is named. */
+const rowsOf = (n: ReqNode | Requirement): string[] => !isObj(n) ? []
+  : n.kind === 'req' ? (groupsOf(n).length ? [n.id] : [])
+  : uniq((Array.isArray(n.children) ? n.children : []).filter(countedNode).flatMap(rowsOf))
+/** What an alternative still lacks, by row. */
+const lacks = (r: Res) => (r.st === 'sat' ? rowsOf(r.node) : r.miss)
 // "(B + C)" names an alternative by what it still lacks; a UC-only one (listed only when a node cannot be met) by its rows
 const alt = (rs: Res[]) => rs.map((r) => {
-  const m = r.miss.length ? r.miss : r.def
+  const m = r.st === 'sat' ? rowsOf(r.node) : r.miss.length ? r.miss : r.def
   return m.length > 1 ? `(${m.join(' + ')})` : m[0]
 }).join(', ')
+const needOf = (n: ReqNode) => (n.type === 'OR' ? 1 : (n.n ?? 1))
+/** A "choose N" group whose slots must use different courses: N_OF with N of 2 or more (M-4). */
+export const slotted = (n: ReqNode) => n.type === 'N_OF' && needOf(n) >= 2
 
 /**
- * Fold one subtree; `leafSt` decides each row. Children are all evaluated, so optional rows are still reported.
+ * Fold one subtree; `leaf` decides each row. Children are all evaluated, so optional rows are still reported. `keep`:
+ * the subtree fills a slot of a "choose several" group above it, so the ways it passes are kept (slots.ts), with only
+ * the ids that can clash.
+ *
+ * OR / N_OF(n), with S the satisfied alternatives, A the open ones with a CC route and D the UC-only ones:
+ * - One course, one slot (M-4): the slots S can fill together, m, is an exact assignment (assignSlots), preferring the
+ *   alternatives that leave least for the university. m >= n: satisfied.
+ * - The CC route is owed first: UC-only rows fill only the slots CC courses cannot. For n >= 2 those are counted from
+ *   the agreement alone: C, the most slots its CC alternatives can fill together (capOf). While m < C, or an open
+ *   alternative can only ever pass through UC-only rows (it is owed like any other), the group stays open; otherwise it
+ *   passes with UC-only rows deferred, if there are enough of them. With no course shared between alternatives this is
+ *   exactly the earlier count rule (s >= n satisfied; s + a + d < n cannot be met; a > 0 owed first).
  */
-function fold(n: ReqNode | Requirement, leafSt: (r: Requirement) => St): Res {
+function fold(n: ReqNode | Requirement, leaf: LeafFn, keep: Keep = null): Res {
+  const track = !!keep
   // not a node or row at all (M-2): never passes; malformed() reports it
-  if (!isObj(n)) return { st: 'open', art: false, miss: [], def: [], kids: [], node: n }
+  if (!isObj(n)) return { st: 'open', art: false, miss: [], def: [], kids: [], node: n, uses: [] }
   if (n.kind === 'req') {
-    const st = leafSt(n)
-    return { st, art: canRoute(n), miss: st === 'open' ? [n.id] : [], def: st === 'def' ? [n.id] : [], kids: [], node: n }
+    const l = leaf(n, track)
+    return { st: l.st, art: canRoute(n), miss: l.st === 'open' ? [n.id] : [], def: l.st === 'def' ? [n.id] : [], kids: [], node: n,
+      uses: l.st === 'open' ? [] : keep && l.st === 'sat' ? keepOnly(l.uses, keep) : NOTHING }
   }
-  const kids = (Array.isArray(n.children) ? n.children : []).map((c) => fold(c, leafSt))
+  const slots = slotted(n)
+  const all = Array.isArray(n.children) ? n.children : [], keeps = slots ? keepsFor(all, keep) : null
+  const kids = all.map((c, j) => fold(c, leaf, keeps ? keeps[j] : keep))
   const req = kids.filter(counted)
   const sat = req.filter((r) => r.st === 'sat')
-  // among satisfied alternatives, rely on the ones that leave the least for the university (stable)
-  const fewest = (k: number) => new Set([...sat].sort((x, y) => x.def.length - y.def.length).slice(0, k))
   const inOrder = (s: Set<Res>) => req.filter((r) => s.has(r)).flatMap((r) => r.def)
-  const res = (st: St, miss: string[], def: string[]): Res =>
-    ({ st, art: canRoute(n), miss, def, kids, node: n })
+  const res = (st: St, miss: string[], def: string[], uses: Ways = NOTHING): Res =>
+    ({ st, art: canRoute(n), miss, def, kids, node: n, uses: st === 'open' ? [] : uses })
 
   if (n.type === 'AND') {
     const open = req.filter((r) => !passes(r))
     const def = req.flatMap((r) => r.def) // an open child still commits its own deferrals
-    return res(open.length ? 'open' : sat.length || !req.length ? 'sat' : 'def', open.flatMap((r) => r.miss), def)
+    const st: St = open.length ? 'open' : sat.length || !req.length ? 'sat' : 'def'
+    return res(st, open.flatMap((r) => r.miss), def, track && st !== 'open' ? crossWays(req.map((r) => r.uses)) : NOTHING)
   }
   // an unknown type ('and', undefined, ...) is not read as choose-1 (M-2): it never passes; malformed() reports it
   if (n.type !== 'OR' && n.type !== 'N_OF') return res('open', req.flatMap((r) => r.miss), [])
-  const need = n.type === 'OR' ? 1 : (n.n ?? 1)
+  const need = needOf(n)
   // a: still open but reachable with CC courses; d: passes only as UC-only. A row ASSIST never mentions is neither.
   const a = req.filter((r) => r.st === 'open' && r.art), d = req.filter((r) => r.st === 'def')
-  if (sat.length >= need) return res('sat', [], inOrder(fewest(need)))
-  const pick = (rs: Res[], left: number) => (left === rs.length ? rs.flatMap((r) => r.miss) : [`${n.type === 'OR' ? 'One' : left} of: ${alt(rs)}`])
-  // UC-only rows fill only the slots CC routes cannot: while any CC alternative is open, it is owed first.
+  // among satisfied alternatives, rely on the ones that leave the least for the university (stable)
+  const S = [...sat].sort((x, y) => x.def.length - y.def.length)
+  const pick = (rs: Res[], left: number) => (left === rs.length ? rs.flatMap(lacks) : [`${n.type === 'OR' ? 'One' : left} of: ${alt(rs)}`])
   const rest = req.filter((r) => r.st !== 'sat')
-  if (sat.length + a.length + d.length < need) return res('open', pick(rest, need - sat.length), inOrder(new Set(sat))) // cannot be met
-  const slots = Math.min(d.length, Math.max(0, need - sat.length - a.length))
-  if (a.length) return res('open', pick(a, need - sat.length - slots), inOrder(new Set(sat)))
-  return res('def', [], inOrder(new Set([...sat, ...d])))
+  if (!slots) {
+    // one slot (or a malformed count): any satisfied alternative fills it, nothing to share
+    if (sat.length >= need) return res('sat', [], inOrder(new Set(S.slice(0, Math.max(0, need)))), track ? minimal(S.flatMap((r) => r.uses)) : NOTHING)
+    if (sat.length + a.length + d.length < need) return res('open', pick(rest, need - sat.length), inOrder(new Set(sat))) // cannot be met
+    // UC-only rows fill only the slots CC routes cannot: while any CC alternative is open, it is owed first.
+    const uc = Math.min(d.length, Math.max(0, need - sat.length - a.length))
+    if (a.length) return res('open', pick(a, need - sat.length - uc), inOrder(new Set(sat)))
+    return res('def', [], inOrder(new Set([...sat, ...d])))
+  }
+  const fit = assignSlots(S.map((r) => r.uses), need)
+  const chosen = new Set(fit.pick.map((i) => S[i])), m = chosen.size
+  if (m >= need) return res('sat', [], inOrder(chosen), keep ? keepOnly(unionsOf(S.map((r) => r.uses), need), keep) : NOTHING)
+  const C = Math.max(m, capOf(n))
+  // open alternatives that can only ever pass through UC-only rows: owed like any other CC alternative
+  const late = a.filter((r) => hypState(r.node) !== 'sat')
+  if (C + late.length + d.length < need) return res('open', pick(rest, need - m), inOrder(chosen)) // cannot be met
+  const uc = Math.min(d.length, Math.max(0, need - C - late.length))
+  // Satisfied alternatives left out share courses with the chosen ones; while any is, another group of any satisfied
+  // alternative may free a slot, so all of them are named ("1 of: A, B").
+  const loose = S.some((r) => !chosen.has(r))
+  const owed = req.filter((r) => a.includes(r) || (loose && r.st === 'sat'))
+  if (m < C || late.length) return res('open', pick(owed, need - m - uc), inOrder(chosen))
+  return res('def', [], inOrder(new Set([...chosen, ...d])), keep ? keepOnly(unionsOf(S.map((r) => r.uses), m), keep) : NOTHING)
 }
 
 /**
@@ -146,17 +222,46 @@ function fold(n: ReqNode | Requirement, leafSt: (r: Requirement) => St): Res {
 export const ucOnly = (r: Requirement) =>
   Array.isArray(r.groups) && r.groups.length === 0 && isObj(r.noArticulation) && Object.values(r.noArticulation).some(isUcOnlyProof)
 
-const routable = new WeakMap<ReqNode | Requirement, boolean>()
+/** Every CC row done (any group at any college), UC-only rows left for the university. */
+const hypLeaf: LeafFn = (r) => {
+  const gs = groupsOf(r)
+  if (gs.length) return { st: 'sat', uses: minimal(gs.map((g) => [...g.courses, rowToken(r.id)])) }
+  return ucOnly(r) ? { st: 'def', uses: NOTHING } : { st: 'open', uses: [] }
+}
+const hypMemo = new WeakMap<object, St>()
+/** How a subtree stands once every CC row is done: 'sat' it can be met with CC courses, 'def' only through UC-only rows. */
+export function hypState(n: ReqNode | Requirement): St {
+  if (!isObj(n)) return 'open'
+  if (n.kind === 'req') return hypLeaf(n, false).st
+  let v = hypMemo.get(n)
+  if (v === undefined) {
+    hypMemo.set(n, 'open') // the fold asks for n's own art, which this pass discards; guard the recursion
+    hypMemo.set(n, (v = fold(n, hypLeaf).st))
+  }
+  return v
+}
+/** The ways a subtree can be met once every CC row is done (its groups as listed), keeping only `keep`'s ids. */
+const hypUses = (n: ReqNode | Requirement, keep: (x: string) => boolean): Ways => fold(n, hypLeaf, keep).uses
+const capMemo = new WeakMap<ReqNode, number>()
+/**
+ * C of a "choose several" group (M-4): the most slots its required alternatives that CC courses can meet can fill
+ * together, each with courses of its own (at most N). It depends only on the agreement.
+ */
+export function capOf(n: ReqNode): number {
+  let v = capMemo.get(n)
+  if (v === undefined) {
+    const all = Array.isArray(n.children) ? n.children : [], keeps = keepsFor(all, null)
+    const hs = all.flatMap((c, j) => (countedNode(c) && hypState(c) === 'sat' ? [hypUses(c, keeps[j])] : []))
+    capMemo.set(n, (v = assignSlots(hs, needOf(n)).pick.length))
+  }
+  return v
+}
+
 /** True iff taking the CC courses the agreement lists (leaving UC-only rows for the university) would make it pass. */
 export function canRoute(n: ReqNode | Requirement): boolean {
   if (!isObj(n)) return false
   if (n.kind === 'req') return groupsOf(n).length > 0 || ucOnly(n)
-  let v = routable.get(n)
-  if (v === undefined) {
-    routable.set(n, false) // the fold asks for n's own art, which this pass discards; guard the recursion
-    routable.set(n, (v = passes(fold(n, (r) => (groupsOf(r).length ? 'sat' : ucOnly(r) ? 'def' : 'open')))))
-  }
-  return v
+  return hypState(n) !== 'open'
 }
 
 const deferrable = new WeakMap<ReqNode | Requirement, boolean>()
@@ -168,8 +273,40 @@ export function isDeferrable(n: ReqNode | Requirement): boolean {
   if (!isObj(n)) return false
   if (n.kind === 'req') return ucOnly(n)
   let v = deferrable.get(n)
-  if (v === undefined) deferrable.set(n, (v = passes(fold(n, (r) => (ucOnly(r) ? 'def' : 'open')))))
+  if (v === undefined) deferrable.set(n, (v = passes(fold(n, (r) => (ucOnly(r) ? { st: 'def', uses: NOTHING } : { st: 'open', uses: [] })))))
   return v
+}
+
+/**
+ * The ways `taken` meets a row: per satisfied group, the taken ids standing for its courses (an honors twin where the
+ * row mixes) and the row's token. Empty when the row is not satisfied.
+ */
+export function rowUses(req: Requirement, taken: Set<CourseId>): string[][] {
+  const mix = honorsColleges(req), t = rowToken(req.id)
+  return minimal(groupsOf(req).filter((g) => g.courses.every((c) => has(taken, c, mix))).map((g) => [...g.courses.map((c) => takenAs(taken, c, mix)!), t]))
+}
+
+const doneLeaf = (done: (r: Requirement) => boolean | Ways): LeafFn => (r) => {
+  const u = done(r)
+  if (u === true) return { st: 'sat', uses: [[rowToken(r.id)]] }
+  if (u && u.length) return { st: 'sat', uses: u }
+  return ucOnly(r) ? { st: 'def', uses: NOTHING } : { st: 'open', uses: [] }
+}
+/**
+ * The tree's state under verify's rules (M-4 included), for the planner. `done(r)`: the row's ways (rowUses), `true`
+ * for a row taken as done with nothing known of its courses (only its row token is spent), false or [] when not done.
+ */
+export function treeStatus(n: ReqNode | Requirement, done: (r: Requirement) => boolean | Ways): St {
+  return fold(n, doneLeaf(done)).st
+}
+
+/** For the planner's fallback: the required alternatives of an OR / N_OF that fill its slots now, and the ways they spend. */
+export function slotFill(n: ReqNode, done: (r: Requirement) => boolean | Ways): { kids: (ReqNode | Requirement)[]; ways: Way[] } {
+  const all = Array.isArray(n.children) ? n.children : [], keeps = keepsFor(all, null)
+  const S = all.flatMap((c, j) => (countedNode(c) ? [{ c, r: fold(c, doneLeaf(done), keeps[j]) }] : []))
+    .filter((x) => x.r.st === 'sat').sort((x, y) => x.r.def.length - y.r.def.length)
+  const fit = assignSlots(S.map((x) => x.r.uses), Math.max(0, needOf(n)))
+  return { kids: fit.pick.map((i) => S[i].c), ways: fit.ways }
 }
 
 /** Splits the plan depends on; the others are warnings (those courses earn no credit toward that row). */
@@ -224,27 +361,12 @@ export function malformed(root: ReqNode): string | null {
   return why ?? (rows ? null : 'the requirement tree has no required rows')
 }
 
-/**
- * Safety net for M-4: required "choose N of" groups asking for 2 or more, reached through required nodes. One course
- * may still fill two slots in such a group, so the badge sends the student to a counselor instead of showing green.
- */
-export function chooseMany(root: ReqNode): string[] {
-  const out: string[] = []
-  const walk = (n: ReqNode | Requirement) => {
-    if (!isObj(n) || n.kind === 'req' || !Array.isArray(n.children)) return
-    if (n.type === 'N_OF' && (n.n ?? 1) >= 2) out.push(n.title ? `"${n.title}"` : `choose ${n.n} of ${n.children.length}`)
-    n.children.filter((c) => isObj(c) && (c.kind === 'req' || c.required)).forEach(walk)
-  }
-  if (isObj(root) && root.required) walk(root)
-  return out
-}
-
 /** Evaluate every requirement, then fold the tree. */
 export function verifySchedule(taken: Set<CourseId>, agreement: Agreement): ValidationResult {
   const out: ValidationResult = { isValid: true, satisfied: {}, missing: [], incomplete: {}, splitSeriesViolations: [], deferred: [] }
   const seen = new Set<string>()
 
-  const leafSt = (req: Requirement): St => {
+  const leaf: LeafFn = (req, track) => {
     const st = reqStatus(req, taken)
     if (!seen.has(req.id)) {
       seen.add(req.id)
@@ -252,9 +374,10 @@ export function verifySchedule(taken: Set<CourseId>, agreement: Agreement): Vali
       else if (isSplit(st.partials)) out.splitSeriesViolations.push({ requirementId: req.id, label: req.label, partials: st.partials, blocking: false })
       else if (st.partials.length) out.incomplete[req.id] = st.partials.sort((a, b) => b.have.length - a.have.length)[0]
     }
-    return st.satisfied ? 'sat' : ucOnly(req) ? 'def' : 'open'
+    if (st.satisfied) return { st: 'sat', uses: track ? rowUses(req, taken) : NOTHING }
+    return ucOnly(req) ? { st: 'def', uses: NOTHING } : { st: 'open', uses: [] }
   }
-  const root = fold(agreement.root, leafSt)
+  const root = fold(agreement.root, leaf)
 
   // Needed rows, top down from a failing root: AND needs every failing child, OR / N_OF every failing CC alternative.
   const needed = new Set<string>()
@@ -272,7 +395,5 @@ export function verifySchedule(taken: Set<CourseId>, agreement: Agreement): Vali
   out.isValid = passes(root) && !out.splitSeriesViolations.some((v) => v.blocking)
   const bad = malformed(agreement.root)
   if (bad) { out.isValid = false; out.missing = [...out.missing, `Agreement data is malformed (${bad}); check ASSIST`] }
-  const review = chooseMany(agreement.root)
-  if (review.length) out.review = review
   return out
 }

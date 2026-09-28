@@ -4,7 +4,7 @@ import mae from '../../data/agreements/7-mae-mechanical-engineering-b-s.json'
 import institutions from '../../data/institutions.json'
 import type { Agreement, Course, CourseId, Institution, Plan, ReqNode, Requirement } from './types'
 import { solve, treeState, type SolveOptions } from './solve'
-import { has, honorsColleges, malformed, reqStatus, verifySchedule } from './verify'
+import { canRoute, capOf, has, honorsColleges, hypState, malformed, reqStatus, rowUses, verifySchedule } from './verify'
 import { isUcOnlyProof, NOT_LISTED } from './normalize'
 
 const ME = me as unknown as Agreement, MAE = mae as unknown as Agreement
@@ -385,14 +385,45 @@ type St = 'sat' | 'def' | 'open'
 const kidsOf = (n: ReqNode) => n.children.filter((c) => c.kind === 'req' || c.required)
 const need = (n: ReqNode) => (n.type === 'OR' ? 1 : n.n ?? 1)
 const isUcOnly = (r: Requirement) => !r.groups.length && Object.values(r.noArticulation ?? {}).some(isUcOnlyProof)
-/** The rules as stated (FIXES round 3), written out again: `sat`, `def` (passes as UC-only), `open`. */
-const stateOf = (n: N, ok: (r: Requirement) => boolean): St => {
-  if (n.kind === 'req') return ok(n) ? 'sat' : isUcOnly(n) ? 'def' : 'open'
-  const s = kidsOf(n).map((c) => stateOf(c, ok)), sat = s.filter((x) => x === 'sat').length
-  if (n.type === 'AND') return s.includes('open') ? 'open' : sat || !s.length ? 'sat' : 'def'
-  const art = kidsOf(n).filter((c, j) => s[j] === 'open' && routes(c)).length, def = s.filter((x) => x === 'def').length
-  return sat >= need(n) ? 'sat' : art || sat + def < need(n) ? 'open' : 'def'
+/**
+ * The rules as stated (FIXES rounds 3 and 10), written out again: `sat`, `def` (passes as UC-only), `open`. A slot of a
+ * "choose N" group (N_OF, N >= 2) spends what meets it; here a row is only known as done, so it spends itself: the same
+ * row fills one slot. `ways`: the sets of rows a subtree can pass with. With ways by course, see solve.ts / verify.ts.
+ */
+const foldOf = (n: N, ok: (r: Requirement) => boolean): { st: St; ways: string[][] } => {
+  if (n.kind === 'req') return ok(n) ? { st: 'sat', ways: [[n.id]] } : isUcOnly(n) ? { st: 'def', ways: [[]] } : { st: 'open', ways: [] }
+  const ks = kidsOf(n).map((c) => ({ c, ...foldOf(c, ok) }))
+  if (n.type === 'AND') {
+    const st: St = ks.some((x) => x.st === 'open') ? 'open' : ks.some((x) => x.st === 'sat') || !ks.length ? 'sat' : 'def'
+    return { st, ways: st === 'open' ? [] : ks.reduce<string[][]>((acc, x) => acc.flatMap((a) => x.ways.map((w) => [...a, ...w])), [[]]) }
+  }
+  const k = need(n), sat = ks.filter((x) => x.st === 'sat'), def = ks.filter((x) => x.st === 'def').length
+  const art = ks.filter((x) => x.st === 'open' && routes(x.c))
+  if (!(n.type === 'N_OF' && k >= 2)) {
+    const st: St = sat.length >= k ? 'sat' : art.length || sat.length + def < k ? 'open' : 'def'
+    return { st, ways: st === 'open' ? [] : st === 'sat' ? sat.flatMap((x) => x.ways) : [[]] }
+  }
+  /** Every choice of m of `fams`, one way each, no row spent twice: its union. */
+  const packs = (fams: string[][][], m: number): string[][] => {
+    const out: string[][] = []
+    const go = (i: number, got: number, used: string[]) => {
+      if (got === m) return void out.push(used)
+      for (let j = i; j < fams.length; j++) for (const w of fams[j]) if (!w.some((x) => used.includes(x))) go(j + 1, got + 1, [...used, ...w])
+    }
+    go(0, 0, [])
+    return out
+  }
+  const most = (fams: string[][][]) => { let m = 0; while (m < k && packs(fams, m + 1).length) m++; return m }
+  const m = most(sat.map((x) => x.ways))
+  if (m >= k) return { st: 'sat', ways: packs(sat.map((x) => x.ways), k) }
+  // C: the slots rows with CC groups could fill together; alternatives that can only pass through UC-only rows are owed too
+  const hyp = (c: N) => foldOf(c, (r) => r.groups.length > 0)
+  const C = Math.max(m, most(ks.filter((x) => hyp(x.c).st === 'sat').map((x) => hyp(x.c).ways)))
+  const late = art.filter((x) => hyp(x.c).st !== 'sat').length
+  const st: St = C + late + def < k || m < C || late ? 'open' : 'def'
+  return { st, ways: st === 'open' ? [] : packs(sat.map((x) => x.ways), m) }
 }
+const stateOf = (n: N, ok: (r: Requirement) => boolean): St => foldOf(n, ok).st
 /** Articulable: passes once every row with a CC group is done. */
 const routes = (n: N) => stateOf(n, (r) => r.groups.length > 0) !== 'open'
 const canDef = (n: N): boolean => n.kind === 'req' ? isUcOnly(n)
@@ -468,8 +499,9 @@ function penaltyCounts(a: Agreement, taken: Set<CourseId>, P: CourseId[], home: 
 const penalties = (a: Agreement, taken: Set<CourseId>, P: CourseId[], home: number) => penaltyCounts(a, taken, P, home).reduce((x, y) => x + y, 0)
 
 /** Every subset of plannable courses, scored: unmet (fewest over all ways to pass the tree; an OR / N_OF with too few
- *  completable alternatives is one unmet entry), units + penalties, new splits, units away from home, honors,
- *  courses, ids. Plans that open a split the verifier calls blocking are out. */
+ *  completable alternatives is one unmet entry, and so is each place in a slot of a "choose N" group given up because
+ *  its courses already fill another slot), units + penalties, new splits, units away from home, honors, courses, ids.
+ *  Plans that open a split the verifier calls blocking are out. */
 function oracle(taken: Set<CourseId>, a: Agreement, allowed: number[], home: number, units: (c: CourseId) => number, pc = 5, pch = 5) {
   const leaves = [...new Map(leavesOf(a.root).map((r) => [r.id, r])).values()]
   const U = Object.keys(a.catalog).filter((c) => allowed.includes(a.catalog[c].institutionId) && !taken.has(c)).sort()
@@ -477,38 +509,80 @@ function oracle(taken: Set<CourseId>, a: Agreement, allowed: number[], home: num
   const all = sat(new Set([...taken, ...U]))
   let marks = 0
   const cross = (ls: string[][][]) => ls.reduce<string[][]>((acc, l) => acc.flatMap((x) => l.map((y) => [...x, ...y])), [[]])
-  // S: ways to make the subtree `sat`; P: ways to make it pass (also: every articulable alternative passes)
-  const sels = (n: N): { S: string[][]; P: string[][] } => {
-    if (n.kind === 'req') return isUcOnly(n) ? { S: [], P: [[]] } : { S: [[n.id]], P: [[n.id]] }
-    const ks = kidsOf(n), fs = ks.map(sels)
+  // Ids: a row id; `@path`, a row's place in a slot of a "choose N" group (N >= 2), met by a way of its own (M-4); `#k`,
+  // a shortfall; `~x~y`, two places in different slots of one group, whose ways spend different courses.
+  const placeRow = new Map<string, Requirement>()
+  const slotCross = (ls: string[][][]) => ls
+    .reduce<{ s: string[]; by: string[][] }[]>((acc, l) => acc.flatMap((x) => l.map((y) => ({ s: [...x.s, ...y], by: [...x.by, y.filter((i) => i.startsWith('@'))] }))), [{ s: [], by: [] }])
+    .map(({ s, by }) => [...s, ...by.flatMap((p, x) => by.slice(x + 1).flatMap((q) => p.flatMap((o) => q.map((o2) => `~${[o, o2].sort().join('~')}`))))])
+  // S: ways to make the subtree `sat`; P: ways to make it pass (also: through UC-only rows, verify's rule)
+  const sels = (n: N, path = '', inSlot = false): { S: string[][]; P: string[][] } => {
+    if (n.kind === 'req') {
+      if (isUcOnly(n)) return { S: [], P: [[]] }
+      const id = inSlot ? `@${path}` : n.id
+      if (inSlot) placeRow.set(id, n)
+      return { S: [[id]], P: [[id]] }
+    }
+    const ks = kidsOf(n), slots = n.type === 'N_OF' && need(n) >= 2, fs = ks.map((c, j) => sels(c, `${path}/${j}`, inSlot || slots))
     if (n.type === 'AND') {
       const P = cross(fs.map((f) => f.P))
       return { S: ks.length && ks.every(canDef) ? fs.flatMap((f) => cross([f.S, P])) : P, P }
     }
     const k = need(n)
     if (k <= 0) return { S: [[]], P: [[]] }
-    const ok = ks.flatMap((c, j) => (stateOf(c, all) === 'sat' ? [j] : []))
-    const S: string[][] = []
-    if (ok.length < k) S.push(...cross([...ok.map((j) => fs[j].S), [[`#${marks++}`]]]))
-    else {
-      const pick = (from: number, got: number[]): void => {
-        if (got.length === k) { S.push(...cross(got.map((j) => fs[j].S))); return }
-        for (let i = from; i < ok.length; i++) pick(i + 1, [...got, ok[i]])
+    const join = slots ? slotCross : cross
+    const ok = ks.flatMap((c, j) => (treeState(c, all) === 'sat' ? [j] : []))
+    const choose = (from: number[], m: number) => {
+      const out: string[][] = []
+      const pick = (i0: number, got: number[]): void => {
+        if (got.length === m) return void out.push(...join(got.map((j) => fs[j].S)))
+        for (let i = i0; i < from.length; i++) pick(i + 1, [...got, from[i]])
       }
       pick(0, [])
+      return out
     }
-    const art = ks.flatMap((c, j) => (routes(c) ? [j] : []))
-    return { S, P: art.length >= k && art.some((j) => canDef(ks[j])) ? [...S, ...cross(art.map((j) => fs[j].P))] : S }
+    const S = ok.length < k ? cross([join(ok.map((j) => fs[j].S)), [[`#${marks++}`]]]) : choose(ok, k)
+    if (!slots) {
+      const art = ks.flatMap((c, j) => (canRoute(c) ? [j] : []))
+      return { S, P: art.length >= k && art.some((j) => canDef(ks[j])) ? [...S, ...cross(art.map((j) => fs[j].P))] : S }
+    }
+    // the CC alternatives fill the C slots they can, and every alternative that can only pass through UC-only rows passes
+    const C = capOf(n), hd = ks.flatMap((c, j) => (canRoute(c) && hypState(c) === 'def' ? [j] : []))
+    const okH = ok.filter((j) => hypState(ks[j]) === 'sat')
+    if (C >= k || C + hd.length < k || !hd.length || okH.length < C) return { S, P: S }
+    return { S, P: [...S, ...cross([choose(okH, C), ...hd.map((j) => fs[j].P)])] }
   }
   const S = a.root.required ? sels(a.root).P.map((s) => [...new Set(s)]) : [[]]
   const split0 = new Set(leaves.filter((r) => splitIn(r, taken)).map((r) => r.id))
   const byId = new Map(leaves.map((r) => [r.id, r]))
+  /** Places to give up so the others take ways (verify.rowUses) with no course spent in both places of a pair. */
+  const dropped = (places: string[], pairs: string[][], h: Set<CourseId>) => {
+    const ways = new Map(places.map((p) => [p, rowUses(placeRow.get(p)!, h)]))
+    const fits = (keep: string[]) => {
+      const got = new Map<string, string[]>()
+      const go = (i: number): boolean => i === keep.length || ways.get(keep[i])!.some((w) => {
+        if (pairs.some(([x, y]) => (x === keep[i] || y === keep[i]) && [x, y].some((o) => o !== keep[i] && got.get(o)?.some((c) => w.includes(c))))) return false
+        got.set(keep[i], w)
+        const ok = go(i + 1)
+        got.delete(keep[i])
+        return ok
+      })
+      return go(0)
+    }
+    for (let d = 0; d <= places.length; d++) {
+      const subsets = (from: number, left: number, out: string[]): boolean =>
+        left === 0 ? fits(places.filter((p) => !out.includes(p))) : places.slice(from).some((p, i) => subsets(from + i + 1, left - 1, [...out, p]))
+      if (subsets(0, d, [])) return d
+    }
+    return places.length
+  }
   let best: { key: (number | string)[]; P: CourseId[] } | null = null
   for (let m = 0; m < 1 << U.length; m++) {
     const P = U.filter((_, i) => m & (1 << i)), h = new Set([...taken, ...P]), ok = sat(h)
     const fresh = leaves.filter((r) => !split0.has(r.id) && splitIn(r, h))
     if (fresh.length && verifySchedule(h, a).splitSeriesViolations.some((v) => v.blocking && !split0.has(v.requirementId))) continue
-    const unmet = Math.min(...S.map((s) => s.filter((x) => x.startsWith('#') || !ok(byId.get(x)!)).length))
+    const unmet = Math.min(...S.map((s) => s.filter((x) => x.startsWith('#') || (!/^[@~]/.test(x) && !ok(byId.get(x)!))).length
+      + dropped(s.filter((x) => x.startsWith('@')), s.filter((x) => x.startsWith('~')).map((x) => x.slice(1).split('~')), h)))
     const [cols, chains] = penaltyCounts(a, taken, P, home)
     const u = P.reduce((t, c) => t + units(c), 0), away = P.reduce((t, c) => t + (a.catalog[c].institutionId === home ? 0 : units(c)), 0)
     const key = [unmet, u + pc * cols + pch * chains, fresh.length, away, P.filter((c) => /H$/.test(c)).length, P.length, ...P]

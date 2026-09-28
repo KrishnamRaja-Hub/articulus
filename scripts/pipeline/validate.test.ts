@@ -171,19 +171,17 @@ describe('round 7 M-1: noArticulation reasons', () => {
   })
 })
 
-describe('M-4 safety net', () => {
-  it('warns on a required "choose 2+ of" group, and not on a choose-1 group', () => {
+describe('M-4: "choose 2+ of" groups are checked by the engine', () => {
+  it('a required "choose 2+ of" group raises no review warning (one course fills one slot, round 10)', () => {
     const d = copy()
     agreement(d, (a) => {
       const base = req(a, 'MATH 51')
       const row = (id: string): Requirement => ({ ...base, id, label: id })
       a.root.children.push({ kind: 'node', type: 'N_OF', n: 2, required: true, title: 'PICK TWO', children: [row('P1'), row('P2'), row('P3')] })
     })
-    const w = validate(d).findings.filter((f) => f.check === 'tree.choose-n-review')
-    expect(w).toHaveLength(1)
-    expect(w[0].severity).toBe('warning')
-    expect(w[0].message).toContain('"PICK TWO"')
-    expect(warnings(validate(good))).not.toContain('tree.choose-n-review')
+    const r = validate(d)
+    expect(r.findings.filter((f) => f.check === 'tree.choose-n-review')).toEqual([])
+    expect(r.findings.filter((f) => /two slots|M-4/.test(f.message))).toEqual([])
   })
 })
 
