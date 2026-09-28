@@ -119,6 +119,58 @@ describe('same-titled courses are different courses (Foothill "Calculus")', () =
     expect(g.equiv('51:MATH 1A', '51:MATH 1AH')).toBe(true)
     expect(g.equiv('51:MATH 1B', '51:MATH 1AH')).toBe(false)
   })
+
+  // Tester regressions on the first round-10 fix: identity must not be lost where titles do not show it.
+  it('articulation-backed: a course ASSIST lists beside it for the same UC row covers it (De Anza PHYS 4B for Saddleback 4B)', () => {
+    const phys = [course('113:PHYS 4B', 'Physics for Scientists and Engineers: Electricity and Magnetism'),
+      ...['A', 'B', 'C'].map((l) => course(`65:PHYS 4${l}`, 'General Physics'))]
+    const a = agreement([row('PHYS 2B', ['113:PHYS 4B'], ['65:PHYS 4B']), row('PHYS 2C', ['65:PHYS 4C'])], phys)
+    const p = solve(new Set(['113:PHYS 4B']), a, { allowed: [65], home: 65 })
+    expect(planned(p)).toEqual(['65:PHYS 4C'])
+    expect(p.prereqOnly).toBeUndefined()
+  })
+
+  it('articulation-backed equivalence never makes business calculus Calculus I', () => {
+    const a = agreement([row('MATH 2A', ['113:MATH 12'], ['51:MATH 1A']), row('MATH 2B', ['51:MATH 1B'])],
+      [course('113:MATH 12', 'Introductory Calculus for Business and Social Science'), course('51:MATH 1A', 'Calculus'), course('51:MATH 1B', 'Calculus')])
+    const p = solve(new Set(['113:MATH 12']), a, foothill)
+    expect(planned(p)).toEqual(['51:MATH 1A', '51:MATH 1B'])
+    expect(prereqGraph(a.catalog, [], a.root).articulated('51:MATH 1A', '113:MATH 12')).toBe(false)
+  })
+
+  it('cross-listed courses (same number and title, another prefix) are one course: Irvine Valley CS 6A / MATH 6A', () => {
+    const cs = [course('124:CS 6A', 'Computer Discrete Mathematics I'), course('124:MATH 6A', 'Computer Discrete Mathematics I'),
+      course('124:CS 6B', 'Computer Discrete Mathematics II'), course('124:MATH 6B', 'Computer Discrete Mathematics II')]
+    const a = agreement([row('X', ['124:CS 6B'])], cs), ivc = { allowed: [124], home: 124 }
+    expect(planned(solve(new Set(), a, ivc))).toEqual(['124:CS 6A', '124:CS 6B'])
+    expect(planned(solve(new Set(['124:MATH 6A']), a, ivc))).toEqual(['124:CS 6B'])
+    const g = prereqGraph(a.catalog, [])
+    expect(g.equiv('124:CS 6A', '124:MATH 6A')).toBe(true)
+    expect(g.equiv('124:CS 6A', '124:MATH 6B')).toBe(false)
+  })
+
+  it('a title shared at one college matches across colleges only with ASSIST evidence (Foothill C S 18 / MATH 22)', () => {
+    const cs = [course('113:MATH 22', 'Discrete Mathematics'), course('51:C S 18', 'Discrete Mathematics'), course('51:MATH 22', 'Discrete Mathematics')]
+    const a = agreement([row('CSE 20', ['113:MATH 22'], ['51:C S 18'])], cs)
+    const g = prereqGraph(a.catalog, [], a.root)
+    expect(g.articulated('113:MATH 22', '51:C S 18')).toBe(true)
+    expect(g.articulated('113:MATH 22', '51:MATH 22') || g.equiv('113:MATH 22', '51:MATH 22')).toBe(false)
+    expect(prereqGraph(a.catalog, []).articulated('113:MATH 22', '51:C S 18')).toBe(false)
+  })
+})
+
+// Tester repros on the real fixtures (cross-college transcripts): a course taken elsewhere that ASSIST articulates to the
+// same UC course is not planned again as a prerequisite.
+describe('a course taken at another college still counts (real agreements)', () => {
+  const files = import.meta.glob('../../data/agreements/*.json', { eager: true, import: 'default' }) as Record<string, Agreement>
+  const systems = Object.fromEntries((institutions as Institution[]).map((i) => [i.id, i.terms]))
+  const cases: [string, number, string, string][] = [['7-mae-mechanical-engineering-b-s', 65, '113:PHYS 4B', '65:PHYS 4B'],
+    ['120-electrical-engineering-b-s', 51, '113:PHYS 4C', '51:PHYS 4C'], ['120-electrical-engineering-b-s', 124, '51:PHYS 4B', '124:PHYS 4B']]
+  it.each(cases)('%s home %i, taken %s: %s is not planned', (name, home, took, twin) => {
+    const a = Object.entries(files).find(([f]) => f.includes(`/${name}.json`))![1]
+    const p = solve(new Set([took]), a, { allowed: [home], home, termSystem: systems[home], unitSystems: systems })
+    expect(planned(p)).not.toContain(twin)
+  })
 })
 
 // Real 2025-26 fixtures: West Valley titles MATH 003A and 003B both "Calculus and Analytic Geometry" and Foothill MATH

@@ -918,7 +918,7 @@ export function solve(taken: Set<CourseId>, a0: Agreement, opts: SolveOptions): 
    *  Calculus II). The search's optimum ignores prerequisites, so it is a lower bound: `optimal` survives only when the
    *  final plan scores no worse than the searched one (every added course priced by the search). */
   function withPrereqs(searched: CourseId[], chosen: Record<string, CourseGroup>, optimal: boolean) {
-    const graph = prereqGraph(a.catalog, taken)
+    const graph = prereqGraph(a.catalog, taken, a.root)
     const nameOf = (c: CourseId) => shortName.get(instOf(c)) ?? String(instOf(c))
     const close = (cs: CourseId[]) => { const k = prereqClosure(graph, cs, taken, a.catalog, nameOf); return { cs: [...cs, ...k.added], ...k } }
     const units = (cs: CourseId[]) => cs.reduce((s, c) => s + unitsOf(c, true), 0)
