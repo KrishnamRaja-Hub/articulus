@@ -1,4 +1,4 @@
-import type { Agreement, CourseGroup, CourseId, Institution, Partial, Plan, ReqNode, Requirement } from './types'
+import type { Agreement, CourseGroup, CourseId, Fallback, Institution, Partial, Plan, ReqNode, Requirement } from './types'
 import { canRoute, has, honorsColleges, isDeferrable, reqStatus, ucOnly, verifySchedule, type ReqStatus } from './verify.ts'
 import institutions from '../../data/institutions.json' with { type: 'json' }
 import { checkStartTerm, nextOpenTerm } from './calendar.ts'
@@ -25,7 +25,16 @@ export interface SolveOptions {
   collegePenalty?: number
   /** Cost of each subject chain (see `solve`) planned across two or more colleges, in quarter units. Default 5. */
   chainPenalty?: number
+  /** Prefer the home college (needs `home` in `allowed`): a requirement row home has a plannable group for is planned
+   *  at home; another college is used only for a row home cannot cover (or to finish a group the student already
+   *  started there). Every course away from home also costs AWAY, so an OR / N_OF picks a route home covers when one
+   *  exists. Each such course is named in `Plan.fallbacks`. Default false. */
+  preferHome?: boolean
 }
+
+/** preferHome: the extra cost of one course away from home, in home-system units; larger than any plan's units, so
+ *  the plan first uses as few courses away from home as it can. */
+const AWAY = 1000
 
 const half = (u: number) => Math.round(u * 2) / 2
 
@@ -134,7 +143,11 @@ export function solve(taken: Set<CourseId>, a0: Agreement, opts: SolveOptions): 
   const startTerm = checkStartTerm(opts.startTerm ?? nextOpenTerm(new Date(), termSystem))
   // N-3: a course whose units are not a finite number >= 0 (NaN, missing, "5", negative) is not plannable, like a course
   // missing from the catalog; a requirement it alone could complete lands in `unsolvable`
-  const { a, badUnits } = withValidUnits(a0)
+  const { a: a1, badUnits } = withValidUnits(a0)
+  const homeFirst = !!opts.preferHome && home !== undefined && allowed.includes(home)
+  const { a, started } = homeFirst ? preferHomeAgreement(a1, taken, home!, allowed) : { a: a1, started: new Set<CourseId>() }
+  /** preferHome: a course that costs AWAY (away from home and not finishing a group the student started there). */
+  const awayCost = (c: CourseId) => (homeFirst && instOf(c) !== home && !started.has(c) ? AWAY : 0)
   // past the deadline, nodes jumps to Infinity: every budget check fails and the search reports incomplete
   const deadline = timeLimitMs === undefined ? Infinity : Date.now() + timeLimitMs
   const late = () => deadline !== Infinity && Date.now() > deadline && (nodes = Infinity) > 0
@@ -203,7 +216,7 @@ export function solve(taken: Set<CourseId>, a0: Agreement, opts: SolveOptions): 
   const pool = poolOf(ways)
   /** Additive cost of one course: units, units away from home, honors, count. */
   const vec = new Map<CourseId, number[]>()
-  pool.forEach((s) => s.forEach((c) => { const u = unitsOf(c, true); vec.set(c, [u, instOf(c) === home ? 0 : u, /H$/.test(c) ? 1 : 0, 1]) }))
+  pool.forEach((s) => s.forEach((c) => { const u = unitsOf(c, true); vec.set(c, [u + awayCost(c), instOf(c) === home || started.has(c) ? 0 : u, /H$/.test(c) ? 1 : 0, 1]) }))
   const sumV = (cs: Iterable<CourseId>) => {
     let u = 0, away = 0, hon = 0, n = 0
     for (const c of cs) { const v = vec.get(c)!; u += v[0]; away += v[1]; hon += v[2]; n += v[3] }
@@ -741,7 +754,7 @@ export function solve(taken: Set<CourseId>, a0: Agreement, opts: SolveOptions): 
         if (need.some((c) => !a.catalog[c])) continue
         // Marginal home-system units to complete the group given what is already taken or planned; a new college costs.
         const fresh = need.length && g.institutionId !== home && !at.has(g.institutionId) ? pCollege : 0
-        const cand = { g, cost: need.reduce((s, c) => s + unitsOf(c), 0) + fresh + (splitting.has(g) ? SPLIT : 0) }
+        const cand = { g, cost: need.reduce((s, c) => s + unitsOf(c) + awayCost(c), 0) + fresh + (splitting.has(g) ? SPLIT : 0) }
         if (!best || cmp(rank(cand), rank(best)) < 0) best = cand
       }
       return best
@@ -906,12 +919,14 @@ export function solve(taken: Set<CourseId>, a0: Agreement, opts: SolveOptions): 
   const terms = pack([...planned], (c) => unitsOf(c, true), unitCap, startTerm, termSystem, (c) => a.catalog[c]?.title ?? '',
     (c) => (a.catalog[c] ? unitSystems[a.catalog[c].institutionId] : undefined) ?? termSystem, { summer: opts.summer === true })
   const result = verifySchedule(withTaken(planned), a0)
+  const fallbacks = homeFirst ? fallbackNotes(a1, chosen, taken, home!) : []
   for (const c of badUnits) if (L.some((r) => r.groups.some((g) => allowed.includes(g.institutionId) && g.courses.includes(c))))
     prereqWarnings.push(`${c} has no valid unit count in the agreement data; it is not planned.`)
   // unsolvable in a fixed order (tree order would follow the input)
   return {
     terms, chosen, result, totalUnits: half(planned.reduce((s, c) => s + unitsOf(c, true), 0)), unsolvable: [...unsolvable].sort(), optimal,
     ...(prereqOnly.length ? { prereqOnly } : {}), ...(prereqWarnings.length ? { prereqWarnings } : {}),
+    ...(fallbacks.length ? { fallbacks } : {}),
   }
 
   /** Enrollment prerequisites (TESTER1 H-1, prereq.ts): each planned course's unmet prerequisites at its own college
@@ -959,4 +974,52 @@ function withValidUnits(a: Agreement): { a: Agreement; badUnits: CourseId[] } {
   const catalog = { ...a.catalog }
   for (const c of bad) delete catalog[c]
   return { a: { ...a, catalog }, badUnits: bad }
+}
+
+/* ---- prefer home ---- */
+
+const reqsOf = (n: ReqNode | Requirement): Requirement[] => (n.kind === 'req' ? [n] : n.children.flatMap(reqsOf))
+/** A group the planner could complete: every course taken or in the catalog. */
+const plannable = (g: CourseGroup, r: Requirement, taken: Set<CourseId>, a: Agreement) =>
+  g.courses.every((c) => has(taken, c, honorsColleges(r)) || !!a.catalog[c])
+/** Groups at another college where the student already took one of the courses: a series started there. */
+const startedAt = (g: CourseGroup, r: Requirement, taken: Set<CourseId>) => g.courses.some((c) => has(taken, c, honorsColleges(r)))
+
+/**
+ * preferHome: the agreement with every row home can cover (a plannable home group) cut down to its home groups, plus
+ * any group at another allowed college the student already started (finishing it avoids retaking a course at home and
+ * a split series). Rows home cannot cover keep all their groups. `started`: the courses of those kept started groups.
+ */
+export function preferHomeAgreement(a: Agreement, taken: Set<CourseId>, home: number, allowed: readonly number[]) {
+  const started = new Set<CourseId>()
+  const cut = (n: ReqNode | Requirement): ReqNode | Requirement => {
+    if (n.kind === 'node') return { ...n, children: n.children.map(cut) }
+    if (!n.groups.some((g) => g.institutionId === home && plannable(g, n, taken, a))) return n
+    const groups = n.groups.filter((g) => g.institutionId === home || (allowed.includes(g.institutionId) && startedAt(g, n, taken)))
+    groups.filter((g) => g.institutionId !== home).forEach((g) => g.courses.forEach((c) => [c, `${c}H`, stripH(c)].forEach((x) => started.add(x))))
+    return groups.length === n.groups.length ? n : { ...n, groups }
+  }
+  return { a: { ...a, root: cut(a.root) as ReqNode }, started }
+}
+
+/**
+ * preferHome: one plain note per chosen group away from home that plans a course, e.g. "Not offered at De Anza; take
+ * MATH 1A at Foothill." (home has no plannable group for the row) or "Finish the series you started at Foothill: take
+ * MATH 1B at Foothill." Sorted by requirement id.
+ */
+function fallbackNotes(a: Agreement, chosen: Record<string, CourseGroup>, taken: Set<CourseId>, home: number): Fallback[] {
+  const rows = reqsOf(a.root), name = (i: number) => shortName.get(i) ?? `college ${i}`
+  const out: Fallback[] = []
+  for (const id of Object.keys(chosen).sort()) {
+    const g = chosen[id]
+    if (g.institutionId === home) continue
+    const r = rows.find((x) => x.id === id)
+    const todo = g.courses.filter((c) => !has(taken, c, r ? honorsColleges(r) : false))
+    if (!todo.length) continue
+    const homeCovers = !!r && r.groups.some((x) => x.institutionId === home && plannable(x, r, taken, a))
+    const what = `take ${todo.map((c) => c.slice(c.indexOf(':') + 1)).join(' + ')} at ${name(g.institutionId)}`
+    out.push({ requirementId: id, institutionId: g.institutionId, courses: todo, reason: homeCovers ? 'started' : 'not-at-home',
+      note: homeCovers ? `Finish the series you started at ${name(g.institutionId)}: ${what}.` : `Not offered at ${name(home)}; ${what}.` })
+  }
+  return out
 }

@@ -236,6 +236,11 @@ describe('helpers', () => {
     expect(optimalExplain(plan({ optimal: false }))).toMatch(/better plan may exist/)
   })
 
+  it('with "Prefer home college" on, explains the home-first rule instead of the unit trade-off', () => {
+    expect(optimalExplain(plan({ optimal: true }), true)).toMatch(/^Your home college first: .*only where it has no articulated course/)
+    expect(optimalExplain(plan({ optimal: false }), true)).toMatch(/better plan may exist/)
+  })
+
   it('splits the "offered at" suffix off unsolvable entries', () => {
     expect(splitUnsolvable('CHEM 1A — offered at Foothill, De Anza')).toEqual({ what: 'CHEM 1A', offeredAt: 'Foothill, De Anza' })
     expect(splitUnsolvable('2 of: MATH 1A, MATH 1B')).toEqual({ what: '2 of: MATH 1A, MATH 1B' })

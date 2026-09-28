@@ -1,0 +1,104 @@
+import { describe, expect, it } from 'vitest'
+import me from '../../data/agreements/79-mechanical-engineering-b-s.json'
+import institutions from '../../data/institutions.json'
+import type { Agreement, Course, Institution, Plan, ReqNode, Requirement } from './types'
+import { solve } from './solve'
+
+/** "Prefer home college" (SolveOptions.preferHome): home courses for every requirement home can cover; another
+ *  college only where home has no articulated course, and then the plan says so in plain words. */
+
+const DA = 113, FH = 51, SM = 137 // De Anza (home), Foothill, Santa Monica
+const ME = me as unknown as Agreement
+const unitSystems = Object.fromEntries((institutions as Institution[]).map((i) => [i.id, i.terms]))
+
+const catalog = (courses: [string, number][]) => Object.fromEntries(courses.map(([id, units]): [string, Course] => {
+  const [inst, rest] = id.split(':'); const [prefix, number] = rest.split(' ')
+  return [id, { id, institutionId: +inst, prefix, number, title: `Course ${prefix}${number}`, units }]
+}))
+const req = (id: string, groups: string[][]): Requirement =>
+  ({ kind: 'req', id, label: id, units: 4, groups: groups.map((courses) => ({ institutionId: +courses[0].split(':')[0], courses })) })
+const and = (...children: (ReqNode | Requirement)[]): ReqNode => ({ kind: 'node', type: 'AND', required: true, children })
+const or = (...children: (ReqNode | Requirement)[]): ReqNode => ({ kind: 'node', type: 'OR', required: true, children })
+const agreement = (root: ReqNode, courses: [string, number][]): Agreement =>
+  ({ receivingId: 79, major: 'T', year: 'x', sendingIds: [DA, FH, SM], root, catalog: catalog(courses) })
+const planned = (p: Plan) => p.terms.flatMap((t) => t.courses).sort()
+const colleges = (p: Plan) => [...new Set(planned(p).map((c) => Number(c.split(':')[0])))].sort()
+const HOME = { allowed: [DA, FH], home: DA, preferHome: true }
+
+describe('solve: prefer home college', () => {
+  // MATH 1A: De Anza 5 units, Foothill 3 units. MATH 1C: Foothill only.
+  const both = agreement(and(req('MATH 1', [[`${DA}:MATH 1A`], [`${FH}:MATH 1A`]])), [[`${DA}:MATH 1A`, 5], [`${FH}:MATH 1A`, 3]])
+
+  it('home course wins when both colleges articulate the requirement, even when the other is cheaper', () => {
+    // pure units would take Foothill's 3-unit course
+    expect(planned(solve(new Set(), both, { allowed: [DA, FH], home: DA, collegePenalty: 0, chainPenalty: 0 }))).toEqual([`${FH}:MATH 1A`])
+    for (const extra of [{}, { collegePenalty: 0, chainPenalty: 0 }]) {
+      const p = solve(new Set(), both, { ...HOME, ...extra })
+      expect(planned(p)).toEqual([`${DA}:MATH 1A`])
+      expect(p.chosen['MATH 1'].institutionId).toBe(DA)
+      expect(p.fallbacks).toBeUndefined()
+    }
+  })
+
+  it('uses another college only for the requirement home has no articulated course for, and labels it', () => {
+    const a = agreement(and(req('MATH 1', [[`${DA}:MATH 1A`], [`${FH}:MATH 1A`]]), req('MATH 3', [[`${FH}:MATH 1C`]])),
+      [[`${DA}:MATH 1A`, 5], [`${FH}:MATH 1A`, 3], [`${FH}:MATH 1C`, 5]])
+    const p = solve(new Set(), a, HOME)
+    // Foothill is in the plan anyway (for MATH 3), yet MATH 1 still stays at De Anza
+    expect(planned(p)).toEqual([`${FH}:MATH 1C`, `${DA}:MATH 1A`].sort())
+    expect(p.unsolvable).toEqual([])
+    expect(p.fallbacks).toEqual([{ requirementId: 'MATH 3', institutionId: FH, courses: [`${FH}:MATH 1C`], reason: 'not-at-home',
+      note: 'Not offered at De Anza; take MATH 1C at Foothill.' }])
+  })
+
+  it('a home college that covers everything uses no other college, even through a cheaper OR alternative', () => {
+    // OR: PHYS at De Anza (3 x 5 units) or ENGR at Foothill (1 x 2 units); CHEM at both
+    const a = agreement(and(
+      or(req('PHYS', [[`${DA}:PHYS 4A`, `${DA}:PHYS 4B`, `${DA}:PHYS 4C`]]), req('ENGR', [[`${FH}:ENGR 10`]])),
+      req('CHEM', [[`${DA}:CHEM 1A`], [`${FH}:CHEM 1A`]]),
+    ), [[`${DA}:PHYS 4A`, 5], [`${DA}:PHYS 4B`, 5], [`${DA}:PHYS 4C`, 5], [`${FH}:ENGR 10`, 2], [`${DA}:CHEM 1A`, 5], [`${FH}:CHEM 1A`, 4]])
+    expect(colleges(solve(new Set(), a, { allowed: [DA, FH], home: DA }))).toContain(FH) // the cost rule alone leaves home
+    const p = solve(new Set(), a, HOME)
+    expect(colleges(p)).toEqual([DA])
+    expect(p.result.isValid).toBe(true)
+    expect(p.fallbacks).toBeUndefined()
+  })
+
+  it('never falls back to a college the student did not select', () => {
+    const a = agreement(and(req('MATH 1', [[`${DA}:MATH 1A`]]), req('BIO', [[`${SM}:BIO 1`]])), [[`${DA}:MATH 1A`, 5], [`${SM}:BIO 1`, 4]])
+    const p = solve(new Set(), a, HOME)
+    expect(planned(p)).toEqual([`${DA}:MATH 1A`])
+    expect(p.unsolvable).toEqual(['BIO — offered at Santa Monica'])
+    expect(p.fallbacks).toBeUndefined()
+  })
+
+  it('finishes a series the student already started elsewhere instead of retaking it at home, and says so', () => {
+    const a = agreement(and(req('CALC', [[`${DA}:MATH 1A`, `${DA}:MATH 1B`], [`${FH}:MATH 1A`, `${FH}:MATH 1B`]])),
+      [[`${DA}:MATH 1A`, 5], [`${DA}:MATH 1B`, 5], [`${FH}:MATH 1A`, 5], [`${FH}:MATH 1B`, 5]])
+    const p = solve(new Set([`${FH}:MATH 1A`]), a, HOME)
+    expect(planned(p)).toEqual([`${FH}:MATH 1B`])
+    expect(p.result.splitSeriesViolations).toEqual([])
+    expect(p.fallbacks?.map((f) => [f.reason, f.note])).toEqual([['started', 'Finish the series you started at Foothill: take MATH 1B at Foothill.']])
+  })
+
+  it('is off by default and ignored when home is not an allowed college', () => {
+    expect(planned(solve(new Set(), both, { allowed: [DA, FH], home: DA, collegePenalty: 0, chainPenalty: 0, preferHome: false }))).toEqual([`${FH}:MATH 1A`])
+    expect(planned(solve(new Set(), both, { allowed: [FH], home: DA, preferHome: true }))).toEqual([`${FH}:MATH 1A`])
+  })
+
+  it('real agreement (Berkeley ME, De Anza + Foothill): every Foothill course is a labeled fallback home cannot cover', () => {
+    const opts = { ...HOME, termSystem: 'quarter' as const, unitSystems, startTerm: { season: 'Fall' as const, year: 2026 } }
+    const p = solve(new Set(), ME, opts)
+    expect(p.result.splitSeriesViolations.filter((v) => v.blocking)).toEqual([])
+    const away = planned(p).filter((c) => !c.startsWith(`${DA}:`))
+    const labeled = (p.fallbacks ?? []).flatMap((f) => f.courses)
+    const prereq = new Set(p.prereqOnly ?? [])
+    expect(away.filter((c) => !prereq.has(c)).every((c) => labeled.includes(c))).toBe(true)
+    for (const f of p.fallbacks ?? []) {
+      expect(f.reason).toBe('not-at-home')
+      expect(f.note).toMatch(/^Not offered at De Anza; take .+ at Foothill\.$/)
+    }
+    // the same plan with De Anza alone never has more requirements met than with the fallback
+    expect(Object.keys(p.result.satisfied).length).toBeGreaterThanOrEqual(Object.keys(solve(new Set(), ME, { ...opts, allowed: [DA] }).result.satisfied).length)
+  })
+})

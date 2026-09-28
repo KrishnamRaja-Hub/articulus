@@ -18,8 +18,11 @@ describe('inputsKey', () => {
   })
   it('changes with every other solver input', () => {
     const base = inputsKey(inputs())
-    for (const over of [{ allowed: [113] }, { home: 51 }, { unitCap: 12 }, { maxTerms: 5 }, { start: 'Spring-2027' }, { summer: true }])
+    for (const over of [{ allowed: [113] }, { home: 51 }, { unitCap: 12 }, { maxTerms: 5 }, { start: 'Spring-2027' }, { summer: true }, { preferHome: true }])
       expect(inputsKey(inputs(over))).not.toBe(base)
+  })
+  it('prefer home is off unless set: unset and false are the same request', () => {
+    expect(inputsKey(inputs({ preferHome: false }))).toBe(inputsKey(inputs()))
   })
   it('summer is off unless set: unset and false are the same request (Round 10)', () => {
     expect(inputsKey(inputs({ summer: false }))).toBe(inputsKey(inputs()))

@@ -176,8 +176,10 @@ export const PREREQ_TAG = 'prerequisite'
 export const prereqOnlySet = (plan: Plan): ReadonlySet<CourseId> => new Set(Array.isArray(plan.prereqOnly) ? plan.prereqOnly : [])
 
 /** The trade-off behind the label, for a tooltip and the schedule header. */
-export const optimalExplain = (plan: Plan) => {
-  const how = 'Lowest cost under our rules: units, counting each extra college and each subject (math, physics…) split across colleges as a few extra units. Spreading courses over more colleges can sometimes save units.'
+export const optimalExplain = (plan: Plan, preferHome = false) => {
+  const how = preferHome
+    ? 'Your home college first: every requirement it can cover is planned there, and another college is used only where it has no articulated course. Then the fewest units.'
+    : 'Lowest cost under our rules: units, counting each extra college and each subject (math, physics…) split across colleges as a few extra units. Spreading courses over more colleges can sometimes save units.'
   return plan.optimal === false ? `${how} The search stopped early, so a slightly better plan may exist.` : how
 }
 

@@ -18,9 +18,11 @@ export interface PlanInputs {
   start: string
   /** "Include summer" (off by default). */
   summer?: boolean
+  /** "Prefer home college" (solve.ts preferHome; the Planner turns it on by default). */
+  preferHome?: boolean
 }
 export const inputsKey = (i: PlanInputs) =>
-  JSON.stringify([[...i.taken].sort(), [...i.allowed], i.home, i.unitCap, i.maxTerms, i.start, i.summer === true])
+  JSON.stringify([[...i.taken].sort(), [...i.allowed], i.home, i.unitCap, i.maxTerms, i.start, i.summer === true, i.preferHome === true])
 
 /** A plan as delivered by the solver, with the exact inputs it was solved for. */
 export interface Solved { agreement: Agreement; key: string; plan: PlanResult }
