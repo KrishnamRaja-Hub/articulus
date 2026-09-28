@@ -68,6 +68,9 @@ export default function Planner() {
   // product decision (Round 10): summer is never planned unless the student turns it on
   const [summer, setSummer] = useState(false)
   const summerHelp = useId()
+  // product decision: plan at the home college first; other colleges only where home has no articulated course
+  const [preferHome, setPreferHome] = useState(true)
+  const preferHomeHelp = useId()
   const [today] = useState(() => new Date())
   const trust = useTrust()
 
@@ -102,7 +105,7 @@ export default function Planner() {
   const current = useMemo(() => (agreement ? verifySchedule(taken, agreement) : EMPTY_RESULT), [taken, agreement])
   // each plan is kept with the exact inputs it was solved for; `planning` is derived on every render by comparing them
   // with the current inputs, so no frame pairs the current selection with another input's verdict (r7 M-1, M-2)
-  const key = inputsKey({ taken, allowed, home, unitCap: UNIT_CAP, maxTerms, start: termKey(start), summer })
+  const key = inputsKey({ taken, allowed, home, unitCap: UNIT_CAP, maxTerms, start: termKey(start), summer, preferHome })
   const [solved, setSolved] = useState<Solved | null>(null)
   // the inputs of the newest request; SolveClient delivers only the newest request's plan (it may do so synchronously)
   const requested = useRef<Omit<Solved, 'plan'> | null>(null)
@@ -111,7 +114,7 @@ export default function Planner() {
   useEffect(() => {
     if (!agreement) return
     requested.current = { agreement, key }
-    client.request({ taken, agreement, opts: { allowed, home, unitCap: UNIT_CAP, maxTerms, termSystem: terms, unitSystems, startTerm: start, summer } })
+    client.request({ taken, agreement, opts: { allowed, home, unitCap: UNIT_CAP, maxTerms, termSystem: terms, unitSystems, startTerm: start, summer, preferHome } })
   }, [agreement, key])
   const view = planView(solved, agreement, key)
   // while planning, `plan` is the previous plan for this agreement (shown dimmed, never as a verdict) or empty
@@ -214,6 +217,9 @@ export default function Planner() {
   const beyond = new Set(beyondWindow(plan.terms, start, terms))
   const summers = plan.terms.filter((t) => t.season === 'Summer').length
   const tooLong = tooLongNote(beyond.size > 0, terms)
+  // "Not offered at <home>; take … at <other>": only from a plan solved for these inputs
+  const fallbacks = settled ? plan.fallbacks ?? [] : []
+  const fallbackOf = (id: string) => fallbacks.find((f) => f.requirementIds.includes(id))
 
   return (
     <section id="plan" ref={ref} className="px-6 py-32 md:py-48">
@@ -244,6 +250,16 @@ export default function Planner() {
               <Select value={termKey(start)} label={`First ${terms} to plan`} onChange={(k) => setStartPick(startOptions.find((t) => termKey(t) === k) ?? null)}>
                 {startOptions.map((t, i) => <option key={termKey(t)} value={termKey(t)}>{termLabel(t)}{i === 0 ? ' (next open registration)' : ''}</option>)}
               </Select>
+            </div>
+            <div>
+              <label className="flex min-h-11 cursor-pointer items-center gap-3 text-[14.5px] text-ink">
+                <input type="checkbox" data-prefer-home-toggle checked={preferHome} onChange={(e) => setPreferHome(e.target.checked)} aria-describedby={preferHomeHelp}
+                  className="h-5 w-5 shrink-0 cursor-pointer rounded accent-accent" />
+                <span className="font-medium">Prefer home college</span>
+              </label>
+              <p id={preferHomeHelp} className="pl-8 text-[13px] text-ink-2">{preferHome
+                ? `Every requirement ${byId[home].short} can cover is planned there. Another selected college is used only where ${byId[home].short} has no articulated course.`
+                : 'Off: the plan may move courses to another selected college when that saves units.'}</p>
             </div>
             <div>
               <label className="flex min-h-11 cursor-pointer items-center gap-3 text-[14.5px] text-ink">
@@ -323,7 +339,7 @@ export default function Planner() {
             {!failed && <dl data-stats data-stale={planning || undefined} aria-hidden={planning || undefined}
               className={`grid grid-cols-3 gap-6 text-[14px] text-ink-2 transition-opacity md:text-right ${planning ? 'opacity-40' : ''}`}>
               <Stat n={plan.terms.length - summers} l={plan.terms.length - summers === 1 ? terms : `${terms}s`} note={summers ? `+ ${summers} summer${summers === 1 ? '' : 's'}` : null} />
-              <Stat n={plan.totalUnits} l={incomplete ? 'units scheduled' : 'units to go'} note={note} title={incomplete ? undefined : optimalExplain(plan)} />
+              <Stat n={plan.totalUnits} l={incomplete ? 'units scheduled' : 'units to go'} note={note} title={incomplete ? undefined : optimalExplain(plan, preferHome)} />
               <Stat n={Object.keys(plan.result.satisfied).length} l="requirements" />
             </dl>}
           </div>
@@ -460,7 +476,13 @@ export default function Planner() {
               <h3 className="h3">Your cross-enrollment schedule</h3>
               <span className="text-[14px] text-ink-3">Starts {termLabel(start)} · {UNIT_CAP} units per term max{summer ? ` · summer up to ${SUMMER_MAX_COURSES} courses, ${SUMMER_CAP} units` : ''}</span>
             </div>
-            {plan.terms.length > 0 && !incomplete && note && <p data-optimal className="mt-1 max-w-3xl text-[13.5px] text-ink-3">How it is chosen: {optimalExplain(plan)}</p>}
+            {plan.terms.length > 0 && !incomplete && note && <p data-optimal className="mt-1 max-w-3xl text-[13.5px] text-ink-3">How it is chosen: {optimalExplain(plan, preferHome)}</p>}
+            {fallbacks.length > 0 && (
+              <div data-fallbacks className="mt-4 rounded-2xl border border-line bg-bg/60 px-5 py-3 text-[14px]">
+                <div className="font-medium">Courses away from {byId[home].name}</div>
+                <ul className="mt-1 list-disc space-y-0.5 pl-5 text-ink-2">{fallbacks.map((f) => <li key={f.courses.join()}>{f.requirementIds.length > 0 && <span className="font-medium text-ink">{f.requirementIds.join(', ')}: </span>}{f.note}</li>)}</ul>
+              </div>
+            )}
             {summer && settled && plan.terms.length > 0 && !plan.terms.some((t) => t.season === 'Summer') && (
               <p data-summer-unused className="mt-1 max-w-3xl text-[13.5px] text-ink-2">Summer would not finish this plan sooner, so none is planned.</p>
             )}
@@ -552,6 +574,7 @@ export default function Planner() {
                           <span className="font-medium">{r.req.id}</span>
                           <span className="truncate text-[14px] text-ink-2">{r.req.label !== r.req.id ? r.req.label : ''}</span>
                         </div>
+                        {!done && fallbackOf(r.req.id) && <p data-fallback className="mt-1 text-[13px] text-ink-2">{fallbackOf(r.req.id)!.note}</p>}
                         {!done && hints[r.req.id]?.map((h) => (
                           <p key={h.institutionId} data-hint className="mt-1 text-[13px] text-campus-a">{honorsNote(h)}</p>
                         ))}

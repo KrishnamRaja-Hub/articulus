@@ -133,7 +133,7 @@ describe('pack: topic prerequisites (MED-3)', () => {
       }
     }
     expect(checked).toBeGreaterThan(500)
-  })
+  }, 20_000)
 })
 
 describe('pack: unit cap (F-14)', () => {

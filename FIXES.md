@@ -482,3 +482,9 @@ Audit of every title use in `src/` and `scripts/`. Only `prereq.ts` `equiv` used
 - Greedy packing is not optimal. With quarter and semester colleges sharing the cap, some plans could still be a term shorter.
 - The summer unit cap is in the home college's units (10 quarter or 8 semester), even for a summer course at a college on the other calendar. Its units are converted, so the load is right, but that college's own summer limit may differ.
 - Summer caps and sessions are one rule for every college. Real summer schedules, session lengths and which courses are offered in summer are not modelled.
+
+## Prefer home college
+
+The planner plans every requirement the home college can cover at home. It uses another selected college only where home has no articulated course, and it says why in plain words ("Not offered at De Anza; take MATH 1C at Foothill."). The Planner turns this on by default with a "Prefer home college" checkbox.
+
+**Known limitation (K2):** a course at another college is priced once for the whole plan, either without the prerequisites a home course could stand in for or with all of them. When one subject's stand-in is planned at home and another subject's is not (for example, it is listed only in an optional row), neither pricing is right for both subjects. The finished plan is still valid and every note is true, but it can cost a few units more than the best plan.

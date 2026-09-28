@@ -95,4 +95,20 @@ export interface Plan {
   prereqOnly?: string[]
   /** Human-readable prerequisite notes, e.g. an inferred prerequisite the agreement lists only at another college. */
   prereqWarnings?: string[]
+  /** preferHome only (solve.ts): each chosen requirement planned at a college other than home, in plain words.
+   *  Absent when there are none. */
+  fallbacks?: Fallback[]
+}
+
+/** Courses planned away from the home college (preferHome), with the plain-words reason in `note`.
+ *  reason 'not-at-home': home has no articulated course for the requirement; 'no-data': home articulates it but its
+ *  course data is missing; 'started': the student already began that college's series; 'series': part of the series
+ *  of a requirement home cannot cover (taking it at home would take it twice); 'prerequisite': needed to enroll in a
+ *  later course there (requirementIds empty). `courses`: planned courses, each listed in one entry only. */
+export interface Fallback {
+  requirementIds: string[]
+  institutionId: number
+  courses: CourseId[]
+  reason: 'not-at-home' | 'no-data' | 'started' | 'series' | 'prerequisite'
+  note: string
 }
