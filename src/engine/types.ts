@@ -100,12 +100,15 @@ export interface Plan {
   fallbacks?: Fallback[]
 }
 
-/** A requirement planned away from the home college (preferHome). reason 'not-at-home': home has no articulated
- *  course for it; 'started': the student already began that college's series. `courses`: the ones still to take. */
+/** Courses planned away from the home college (preferHome), with the plain-words reason in `note`.
+ *  reason 'not-at-home': home has no articulated course for the requirement; 'no-data': home articulates it but its
+ *  course data is missing; 'started': the student already began that college's series; 'series': part of the series
+ *  of a requirement home cannot cover (taking it at home would take it twice); 'prerequisite': needed to enroll in a
+ *  later course there (requirementIds empty). `courses`: planned courses, each listed in one entry only. */
 export interface Fallback {
-  requirementId: string
+  requirementIds: string[]
   institutionId: number
   courses: CourseId[]
-  reason: 'not-at-home' | 'started'
+  reason: 'not-at-home' | 'no-data' | 'started' | 'series' | 'prerequisite'
   note: string
 }

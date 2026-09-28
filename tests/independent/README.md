@@ -14,6 +14,7 @@ fails and prints the exact transcript to reproduce it. It started from the couns
 | `verify-real.test.ts` | `verifySchedule` vs the oracle on all 22 agreements. For every row it tries every subset of the courses its groups list at 1, 2 and 3 colleges (plus honors twins), both alone and with the rest of the major complete. It also runs random sparse, dense, near-complete, honors-flipped and garbage transcripts. |
 | `verify-synth.test.ts` | Synthetic trees (nested AND/OR/N_OF, optional subtrees, UC-only rows, unrecorded rows, honors twins, shared courses, repeated ids) and hand-built edge trees. A self-test runs six plausible regressions (for example "unrecorded row treated as UC-only" or "honors twins dropped") and requires the suite to catch each one. |
 | `planner.test.ts` | `solve` vs the oracle and an independent brute force, on realistic synthetic agreements (half of them with rows named by UC subject, so subject chains exist) and on the real grid (homes × {home, home + Foothill, all 15}) plus random transcripts. Every section runs twice: with the product default weights (5, 5), then with pure units. It also runs the latent-finding repros. |
+| `preferHome.test.ts` | `solve` with "Prefer home college" on (the Planner default), on every real agreement and on random transcripts: allowed colleges only, no course twice, no requirement lost against the plan without it, every course away from home explained once in `fallbacks`, and a row home covers met away from home only with a stated reason. |
 
 The planner rules checked are:
 

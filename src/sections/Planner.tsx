@@ -219,7 +219,7 @@ export default function Planner() {
   const tooLong = tooLongNote(beyond.size > 0, terms)
   // "Not offered at <home>; take … at <other>": only from a plan solved for these inputs
   const fallbacks = settled ? plan.fallbacks ?? [] : []
-  const fallbackOf = (id: string) => fallbacks.find((f) => f.requirementId === id)
+  const fallbackOf = (id: string) => fallbacks.find((f) => f.requirementIds.includes(id))
 
   return (
     <section id="plan" ref={ref} className="px-6 py-32 md:py-48">
@@ -480,7 +480,7 @@ export default function Planner() {
             {fallbacks.length > 0 && (
               <div data-fallbacks className="mt-4 rounded-2xl border border-line bg-bg/60 px-5 py-3 text-[14px]">
                 <div className="font-medium">Courses away from {byId[home].name}</div>
-                <ul className="mt-1 list-disc space-y-0.5 pl-5 text-ink-2">{fallbacks.map((f) => <li key={f.requirementId}><span className="font-medium text-ink">{f.requirementId}:</span> {f.note}</li>)}</ul>
+                <ul className="mt-1 list-disc space-y-0.5 pl-5 text-ink-2">{fallbacks.map((f) => <li key={f.courses.join()}>{f.requirementIds.length > 0 && <span className="font-medium text-ink">{f.requirementIds.join(', ')}: </span>}{f.note}</li>)}</ul>
               </div>
             )}
             {summer && settled && plan.terms.length > 0 && !plan.terms.some((t) => t.season === 'Summer') && (

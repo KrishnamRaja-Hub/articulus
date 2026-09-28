@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import me from '../../data/agreements/79-mechanical-engineering-b-s.json'
 import institutions from '../../data/institutions.json'
@@ -47,7 +48,7 @@ describe('solve: prefer home college', () => {
     // Foothill is in the plan anyway (for MATH 3), yet MATH 1 still stays at De Anza
     expect(planned(p)).toEqual([`${FH}:MATH 1C`, `${DA}:MATH 1A`].sort())
     expect(p.unsolvable).toEqual([])
-    expect(p.fallbacks).toEqual([{ requirementId: 'MATH 3', institutionId: FH, courses: [`${FH}:MATH 1C`], reason: 'not-at-home',
+    expect(p.fallbacks).toEqual([{ requirementIds: ['MATH 3'], institutionId: FH, courses: [`${FH}:MATH 1C`], reason: 'not-at-home',
       note: 'Not offered at De Anza; take MATH 1C at Foothill.' }])
   })
 
@@ -92,13 +93,86 @@ describe('solve: prefer home college', () => {
     expect(p.result.splitSeriesViolations.filter((v) => v.blocking)).toEqual([])
     const away = planned(p).filter((c) => !c.startsWith(`${DA}:`))
     const labeled = (p.fallbacks ?? []).flatMap((f) => f.courses)
-    const prereq = new Set(p.prereqOnly ?? [])
-    expect(away.filter((c) => !prereq.has(c)).every((c) => labeled.includes(c))).toBe(true)
-    for (const f of p.fallbacks ?? []) {
-      expect(f.reason).toBe('not-at-home')
-      expect(f.note).toMatch(/^Not offered at De Anza; take .+ at Foothill\.$/)
-    }
+    expect(labeled.sort()).toEqual(away) // every course away from home is in the box, once
+    for (const f of p.fallbacks ?? []) expect(f.note).toMatch(/ at Foothill\./)
     // the same plan with De Anza alone never has more requirements met than with the fallback
     expect(Object.keys(p.result.satisfied).length).toBeGreaterThanOrEqual(Object.keys(solve(new Set(), ME, { ...opts, allowed: [DA] }).result.satisfied).length)
+  })
+
+  /* ---- regressions (tester round 1) ---- */
+
+  it('F1: a course already taken at a college the student did not select still counts; nothing is retaken at home', () => {
+    const a = agreement(and(req('MATH 1', [[`${DA}:MATH 1A`], [`${SM}:MATH 1A`]])), [[`${DA}:MATH 1A`, 5], [`${SM}:MATH 1A`, 5]])
+    const p = solve(new Set([`${SM}:MATH 1A`]), a, HOME)
+    expect(planned(p)).toEqual([])
+    expect(p.result.isValid).toBe(true)
+  })
+
+  it('F1: real UCLA CS with ENGL 1D and MATH 7 taken at Santa Monica (not selected) costs no more units than without the setting', () => {
+    const ucla = JSON.parse(readFileSync('data/agreements/117-computer-science-b-s.json', 'utf8')) as Agreement
+    const taken = new Set([`${SM}:ENGL 1D`, `${SM}:MATH 7`])
+    const base = { allowed: [DA, FH], home: DA, termSystem: 'quarter' as const, unitSystems, startTerm: { season: 'Fall' as const, year: 2026 } }
+    const on = solve(taken, ucla, { ...base, preferHome: true }), off = solve(taken, ucla, base)
+    expect(on.totalUnits).toBeLessThanOrEqual(off.totalUnits)
+    expect(planned(on)).not.toContain(`${DA}:ENGL C1000`)
+  })
+
+  it('F2: when home cannot finish a series, the whole series comes from the college that can (no course taken twice)', () => {
+    // PHYS 2A-2C at home or De Anza; PHYS 2D only at De Anza, whose PHYS 4D needs 4A-4C there
+    const a = agreement(and(
+      req('PHYS 2A', [[`${FH}:PHYS 4A`], [`${DA}:PHYS 4A`]]), req('PHYS 2B', [[`${FH}:PHYS 4B`], [`${DA}:PHYS 4B`]]),
+      req('PHYS 2C', [[`${FH}:PHYS 4C`], [`${DA}:PHYS 4C`]]), req('PHYS 2D', [[`${DA}:PHYS 4D`]]),
+    ), [[`${FH}:PHYS 4A`, 5], [`${FH}:PHYS 4B`, 5], [`${FH}:PHYS 4C`, 5], [`${DA}:PHYS 4A`, 5], [`${DA}:PHYS 4B`, 5], [`${DA}:PHYS 4C`, 5], [`${DA}:PHYS 4D`, 5]])
+    // titles that do not match across colleges: no home course stands in for a De Anza prerequisite
+    ;(['A', 'B', 'C'] as const).forEach((x, i) => { a.catalog[`${FH}:PHYS 4${x}`].title = ['Mechanics', 'Electricity', 'Waves'][i] })
+    const p = solve(new Set(), a, { allowed: [FH, DA], home: FH, preferHome: true })
+    expect(planned(p)).toEqual([`${DA}:PHYS 4A`, `${DA}:PHYS 4B`, `${DA}:PHYS 4C`, `${DA}:PHYS 4D`])
+    expect(p.fallbacks?.map((f) => f.note)).toEqual([
+      'Not offered at Foothill; take PHYS 4D at De Anza.',
+      'Foothill cannot finish this series (it has no course for PHYS 2D); take PHYS 4A + PHYS 4B + PHYS 4C at De Anza.',
+    ])
+  })
+
+  it('F2: a prerequisite a home course stands in for is not pulled away from home', () => {
+    const a = agreement(and(req('PHYS 2A', [[`${FH}:PHYS 4A`], [`${DA}:PHYS 4A`]]), req('PHYS 2B', [[`${DA}:PHYS 4B`]])),
+      [[`${FH}:PHYS 4A`, 5], [`${DA}:PHYS 4A`, 5], [`${DA}:PHYS 4B`, 5]]) // same titles: Foothill 4A covers De Anza 4B's prerequisite
+    const p = solve(new Set(), a, { allowed: [FH, DA], home: FH, preferHome: true })
+    expect(planned(p)).toEqual([`${DA}:PHYS 4B`, `${FH}:PHYS 4A`])
+  })
+
+  it('F2: real UCSD ECE, home Irvine Valley + De Anza: no physics course taken twice', () => {
+    const ece = JSON.parse(readFileSync('data/agreements/7-ece-electrical-engineering-b-s.json', 'utf8')) as Agreement
+    const p = solve(new Set(), ece, { allowed: [124, DA], home: 124, preferHome: true, termSystem: 'semester', unitSystems, startTerm: { season: 'Fall', year: 2026 } })
+    const phys = planned(p).filter((c) => c.split(':')[1].startsWith('PHYS '))
+    const level = phys.map((c) => c.split(':')[1])
+    expect(new Set(level).size).toBe(level.length) // PHYS 4B at both colleges was the bug
+    expect(phys).toContain(`${DA}:PHYS 4D`)
+    expect(p.totalUnits).toBeLessThan(53)
+  })
+
+  it('F3: among colleges for a requirement home cannot cover, the fewest units win (not the fewest courses)', () => {
+    const a = agreement(and(req('B', [[`${FH}:B 1`, `${FH}:B 2`], [`${SM}:B 9`]])), [[`${FH}:B 1`, 2], [`${FH}:B 2`, 2], [`${SM}:B 9`, 10]])
+    const p = solve(new Set(), a, { allowed: [DA, FH, SM], home: DA, preferHome: true })
+    expect(planned(p)).toEqual([`${FH}:B 1`, `${FH}:B 2`])
+    expect(p.fallbacks?.[0].note).toBe('Not offered at De Anza; take B 1 + B 2 at Foothill.')
+  })
+
+  it('F4: home articulates the course but its course data is missing: says so instead of "Not offered"', () => {
+    const a = agreement(and(req('MATH 1', [[`${DA}:MATH 1A`], [`${FH}:MATH 1A`]])), [[`${FH}:MATH 1A`, 5]])
+    const p = solve(new Set(), a, HOME)
+    expect(p.fallbacks?.map((f) => [f.reason, f.note])).toEqual([['no-data', 'Course details for De Anza are missing; take MATH 1A at Foothill.']])
+  })
+
+  it('F5: a prerequisite planned away from home is listed with its reason; a course serving two requirements is listed once', () => {
+    // Foothill ENGR 2 (only there) needs ENGR 1 there; ENGR 2 also covers ROW Y, which home covers too
+    const a = agreement(and(req('X', [[`${FH}:ENGR 2`]]), req('Y', [[`${DA}:ENGR 5`], [`${FH}:ENGR 2`]])),
+      [[`${FH}:ENGR 1`, 4], [`${FH}:ENGR 2`, 4], [`${DA}:ENGR 5`, 4]])
+    a.catalog[`${FH}:ENGR 1`].title = 'Engineering I'; a.catalog[`${FH}:ENGR 2`].title = 'Engineering II'
+    const p = solve(new Set(), a, HOME)
+    expect(planned(p)).toEqual([`${FH}:ENGR 1`, `${FH}:ENGR 2`])
+    expect(p.fallbacks?.map((f) => [f.requirementIds, f.courses, f.note])).toEqual([
+      [['X', 'Y'], [`${FH}:ENGR 2`], 'Not offered at De Anza; take ENGR 2 at Foothill. ENGR 2 also counts for Y.'],
+      [[], [`${FH}:ENGR 1`], 'Prerequisite for ENGR 2 at Foothill; take ENGR 1 at Foothill.'],
+    ])
   })
 })
