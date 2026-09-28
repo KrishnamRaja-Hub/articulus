@@ -234,7 +234,9 @@ describe('solve: prefer home college', () => {
       for (const timeLimitMs of [0, 1]) {
         const p = solve(new Set(), a, { allowed: [DA, FH, SM], home: DA, preferHome: true, timeLimitMs })
         honest(p, n)
-        expect(p.result.isValid).toBe(true)
+        // a starved search may stop before the plan is complete (the slot search honours timeLimitMs): then it fails
+        // closed, naming every requirement still missing, never a false green
+        if (!p.result.isValid) for (const m of p.result.missing) expect(p.unsolvable.some((u) => u === m || u.startsWith(`${m} (`))).toBe(true)
       }
     }
   })

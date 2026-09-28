@@ -37,6 +37,7 @@ Rules implemented by `oracle.ts` (README "Verification", FIXES.md Round 3):
    - s + a + d < n: cannot be met.
    - a > 0: the CC alternatives are owed first. UC-only rows fill only max(0, n − s − a) slots.
    - Otherwise: deferred.
+   - **One course, one slot** (N_OF with n ≥ 2, `oracle.ts` rule 4b): s counts only satisfied children that can fill slots together, each spending its own taken courses (and its own row). The CC route is owed while fewer slots are filled than the agreement's CC alternatives could fill together. With no shared course this is the rule above.
 5. **Optional subtrees.** They never fail, satisfy or defer anything for their parent.
 6. **Blocking splits.** Top down from a failing root, an AND needs every failing required child, and an OR / N_OF needs every failing child that has a CC route. A split in a needed row is blocking. Any other split is a warning.
 7. **Validity.** `isValid` = the root passes and there is no blocking split.

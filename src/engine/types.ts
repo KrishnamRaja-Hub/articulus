@@ -28,7 +28,9 @@ export interface Requirement {
 
 export interface ReqNode {
   kind: 'node'
-  type: 'AND' | 'OR' | 'N_OF'
+  /** UNITS: "complete N units from the following" (ASSIST NFollowingUnits): met when the chosen alternatives, each
+   *  with courses of its own, add up to at least `n` units (the rows' `units`). */
+  type: 'AND' | 'OR' | 'N_OF' | 'UNITS'
   n?: number
   title?: string
   required: boolean
@@ -66,10 +68,6 @@ export interface ValidationResult {
   /** required requirement ids no sending college in the agreement articulates: completed at the university
    *  after transfer. They do not make isValid false and are never "missing". */
   deferred: string[]
-  /** Required "choose N of" groups with N >= 2, by title. The engine does not yet stop one course from filling two
-   *  slots in such a group (TESTER r6 M-4), so a would-be "complete" verdict must never show green while this is set.
-   *  Absent when there are none. */
-  review?: string[]
 }
 
 /** A calendar period at one kind of college (H-3). units: home-system units, nearest 0.5. span: the quarter periods

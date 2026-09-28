@@ -171,19 +171,34 @@ describe('round 7 M-1: noArticulation reasons', () => {
   })
 })
 
-describe('M-4 safety net', () => {
-  it('warns on a required "choose 2+ of" group, and not on a choose-1 group', () => {
+describe('M-4: "choose 2+ of" groups are checked by the engine', () => {
+  it('a required "choose 2+ of" group raises no review warning (one course fills one slot, round 10)', () => {
     const d = copy()
     agreement(d, (a) => {
       const base = req(a, 'MATH 51')
       const row = (id: string): Requirement => ({ ...base, id, label: id })
       a.root.children.push({ kind: 'node', type: 'N_OF', n: 2, required: true, title: 'PICK TWO', children: [row('P1'), row('P2'), row('P3')] })
     })
-    const w = validate(d).findings.filter((f) => f.check === 'tree.choose-n-review')
-    expect(w).toHaveLength(1)
-    expect(w[0].severity).toBe('warning')
-    expect(w[0].message).toContain('"PICK TWO"')
-    expect(warnings(validate(good))).not.toContain('tree.choose-n-review')
+    const r = validate(d)
+    expect(r.findings.filter((f) => f.check === 'tree.choose-n-review')).toEqual([])
+    expect(r.findings.filter((f) => /two slots|M-4/.test(f.message))).toEqual([])
+  })
+})
+
+describe('round 10: "N units from the following" (UNITS) groups', () => {
+  it('a positive amount the rows can reach passes; zero, or more than the rows hold, is an error', () => {
+    const errorsOf = (n: number) => {
+      const d = copy()
+      agreement(d, (a) => {
+        const base = req(a, 'MATH 51')
+        const row = (id: string): Requirement => ({ ...base, id, label: id, units: 4 })
+        a.root.children.push({ kind: 'node', type: 'UNITS', n, required: true, title: 'PICK 8 UNITS', children: [row('P1'), row('P2'), row('P3')] })
+      })
+      return validate(d).findings.filter((f) => f.check === 'tree.units' || f.check === 'tree.schema').map((f) => f.check)
+    }
+    expect(errorsOf(8)).toEqual([])
+    expect(errorsOf(0)).toEqual(['tree.units'])
+    expect(errorsOf(13)).toEqual(['tree.units'])
   })
 })
 

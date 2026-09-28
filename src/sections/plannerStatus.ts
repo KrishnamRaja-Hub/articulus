@@ -50,17 +50,13 @@ export const PLANNING: Status = { ok: false, tone: 'pending', title: 'Planning�
 
 export const UNCONFIRMED_TITLE = "Can't confirm — data needs refresh"
 export const CAUTION_TITLE = "Covered under last year's agreement — confirm with a counselor"
-export const REVIEW_TITLE = 'Looks covered — confirm the "choose several" requirement with a counselor'
 export const PLAN_FAILED_TITLE = "Couldn't build a plan"
 export const CAVEAT = {
   planFailed: 'Something went wrong while planning. Change an input to try again, or confirm your plan with a counselor.',
   unconfirmed: 'The ASSIST data behind this check is out of date or unchecked, so it cannot say you are done. Confirm with a counselor.',
   problem: 'The ASSIST data behind this check needs a refresh. Confirm with a counselor.',
   aging: 'The ASSIST data behind this check is more than a week old. Confirm with a counselor before enrolling.',
-  review: 'This major has a "choose several of these" requirement, and this check cannot yet guarantee one course is not counted twice in it. Confirm with a counselor before enrolling.',
   priorYear: "This check uses the prior academic year's agreements, and articulation can change between years. Confirm with a counselor before enrolling.",
-  // both caveats at once (round 7 L-5): the review sentence, then the prior-year one, with a single "confirm" ending
-  reviewPriorYear: 'This major has a "choose several of these" requirement, and this check cannot yet guarantee one course is not counted twice in it. It also uses the prior academic year\'s agreements, and articulation can change between years. Confirm with a counselor before enrolling.',
 } as const
 
 /** One status drives the badge's color, icon and title, so a red badge never claims coverage and a green one
@@ -96,11 +92,6 @@ export function badgeStatus(current: ValidationResult, plan: Plan, uc: string,
     ? { ok: false, tone: 'problem', title: problem, details, caveat: CAVEAT.problem }
     : { ok: false, tone: 'problem', title: problem, details }
   if (trust === 'untrusted') return { ok: false, tone: 'unconfirmed', title: UNCONFIRMED_TITLE, details, caveat: CAVEAT.unconfirmed }
-  // a "choose 2+ of" group: one course may still fill two slots (M-4), so a would-be green is amber, never green
-  const review = [...new Set([...(current.review ?? []), ...(plan.result.review ?? [])])]
-  // with prior-year data too, the caveat says both, never only the review one (round 7 L-5)
-  if (review.length) return { ok: false, tone: 'caution', title: REVIEW_TITLE, details: [...details, `Check: ${review.join(', ')}`],
-    caveat: priorYear ? CAVEAT.reviewPriorYear : CAVEAT.review }
   if (priorYear) return { ok: false, tone: 'caution', title: CAUTION_TITLE, details, caveat: CAVEAT.priorYear }
   if (trust === 'aging') return { ok: true, tone: 'ok', title: 'Every requirement covered', details, caveat: CAVEAT.aging }
   return { ok: true, tone: 'ok', title: 'Every requirement covered', details }
@@ -140,9 +131,7 @@ export function scheduleNote(status: Status, plan: Plan, trustIn: TrustLevel = '
   if (complete && trust !== 'untrusted') return empty ? { tone: 'ok', text: COMPLETE_NOTE } : null
   // would be complete on prior-year agreements (badgeStatus gives this the 'caution' tone, L-1)
   if (status.tone === 'caution' && plan.unsolvable.length === 0 && plan.result.isValid) return empty
-    ? { tone: 'warn', text: status.title === REVIEW_TITLE
-      ? 'Nothing more to schedule, but a "choose several" requirement may be counting one course twice, so we can\'t confirm you are done. Confirm with a counselor before you stop taking courses.'
-      : "Nothing more to schedule under the prior year's agreements, but articulation can change between years, so we can't confirm you are done. Confirm with a counselor before you stop taking courses." }
+    ? { tone: 'warn', text: "Nothing more to schedule under the prior year's agreements, but articulation can change between years, so we can't confirm you are done. Confirm with a counselor before you stop taking courses." }
     : null
   // would be complete, but the data cannot be trusted (badgeStatus gives this the 'unconfirmed' tone)
   if (complete || (status.tone === 'unconfirmed' && plan.unsolvable.length === 0 && plan.result.isValid)) return empty

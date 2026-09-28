@@ -117,7 +117,8 @@ interface Row { key: string; req: Requirement; chain: Level[]; parentType: strin
 /** How many children a node needs, and how many it can skip. Optional children are not counted. */
 const levelOf = (n: ReqNode, path: string, id: number): Level => {
   const m = n.children.filter((c) => c.kind === 'req' || c.required).length
-  const need = n.type === 'AND' ? m : n.type === 'OR' ? Math.min(1, m) : Math.min(n.n ?? 1, m)
+  // UNITS ("N units from the following"): read as needing one row, so any removed or added row counts as a choice change
+  const need = n.type === 'AND' ? m : n.type === 'OR' || n.type === 'UNITS' ? Math.min(1, m) : Math.min(n.n ?? 1, m)
   return { need, slack: m - need, required: n.required, type: n.type, path, id }
 }
 

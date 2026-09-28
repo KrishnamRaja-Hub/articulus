@@ -24,7 +24,7 @@ The two colleges divide the physics topics differently, so the university only a
 
 ### Requirement tree
 
-`src/engine/normalize.ts` turns raw ASSIST payloads into an `Agreement`. The ASSIST `templateAssets` array holds `RequirementTitle` and `RequirementGroup` entries ordered by `position`; each group takes the nearest title before it. Each group becomes a `ReqNode` of type `AND`, `OR`, or `N_OF` (from the `NFollowing` advisement; a group whose only section is "N of" stays `N_OF`). Rows with several cells become `OR` nodes. Titles containing "RECOMMEND" mark the subtree as optional.
+`src/engine/normalize.ts` turns raw ASSIST payloads into an `Agreement`. The ASSIST `templateAssets` array holds `RequirementTitle` and `RequirementGroup` entries ordered by `position`; each group takes the nearest title before it. Each group becomes a `ReqNode` of type `AND`, `OR`, `N_OF` (from the `NFollowing` advisement; a group whose only section is "N of" stays `N_OF`), or `UNITS` (from the `NFollowingUnits` advisement: "complete N units from the following", met when the chosen rows, each with courses of its own, add up to N of their UC units; a row with unknown units never counts). Rows with several cells become `OR` nodes. Titles containing "RECOMMEND" mark the subtree as optional.
 
 Each leaf is a `Requirement`: one UC course or series (`PHYSICS 7B`, `MATH 51`) with a list of `CourseGroup`s. A group is a set of course ids tagged with a sending college (`{ institutionId: 113, courses: ["113:PHYS 4B", "113:PHYS 4C"] }`). ASSIST "Or" sending groups fan out into one group per course. Payloads from every sending college are merged into the same requirement, so one leaf lists the groups from all fifteen colleges.
 
@@ -37,6 +37,7 @@ Each leaf is a `Requirement`: one UC course or series (`PHYSICS 7B`, `MATH 51`) 
 - Optional (recommended) subtrees are evaluated for reporting but never fail their parent.
 - A split series is **blocking** only when the plan still needs that requirement. A split in a recommended course or in an alternative the plan does not need is a warning: those courses earn no credit toward it, and the student is told so.
 - A requirement is **completed at the UC after transfer** (`deferred`) only when no college in the agreement articulates it and ASSIST says so explicitly for at least one college (`ucOnly`). Inside an `OR` / `N_OF`, UC-only rows fill only the slots CC alternatives cannot; a CC route is always owed first.
+- **One course, one slot.** In a "choose N" group (`N_OF`, N ≥ 2) each chosen alternative fills one slot, and the courses that meet it are spent on that slot: another slot cannot reuse them, and the same row listed twice fills one slot. Which alternatives fill which slots is an exact assignment (`src/engine/slots.ts`), never greedy. UC-only rows fill only the slots the agreement's CC alternatives could never fill with courses of their own.
 - A row with no articulation and no ASSIST reason (absent from every payload) is neither: it stays missing and the UI says "No ASSIST record · confirm with a counselor". Better a counselor visit than a wrong "take it at the UC".
 
 Output fields:

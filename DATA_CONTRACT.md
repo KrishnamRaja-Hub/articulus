@@ -15,7 +15,9 @@
 }
 ```
 
-The pipeline writes this file on every successful refresh. The legacy file (`normalizeVersion: 1`, `fetchedAt: null`, `validation: null`) marks the fixtures fetched before the normalize fixes.
+The pipeline writes this file on every successful refresh.
+
+Requirement tree nodes (`data/agreements/*.json`, `src/engine/types.ts`) are `AND`, `OR`, `N_OF` (choose `n`), and, from `normalizeVersion` 5, `UNITS`: an ASSIST "NFollowingUnits" section, met when the chosen rows, each with courses of its own, add up to `n` units of the rows' `units` (the UC course's units). A row whose `units` is not a positive number never counts toward it. App code older than v5 reads `UNITS` as a malformed node and never shows green on it. The legacy file (`normalizeVersion: 1`, `fetchedAt: null`, `validation: null`) marks the fixtures fetched before the normalize fixes.
 
 ## Trust policy (the app enforces this in `src/data-trust.ts`)
 

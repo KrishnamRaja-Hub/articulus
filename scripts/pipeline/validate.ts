@@ -293,14 +293,21 @@ export function validateData(dataDir: string, o: ValidateOptions): Report {
         }
         return
       }
-      if (!err(isObj(n) && n.kind === 'node' && ['AND', 'OR', 'N_OF'].includes((n as ReqNode).type) && typeof (n as ReqNode).required === 'boolean' && Array.isArray((n as ReqNode).children),
-        'tree.schema', `${path}: node must be { kind: "node", type: AND|OR|N_OF, required, children }`)) { treeOk = false; return }
+      if (!err(isObj(n) && n.kind === 'node' && ['AND', 'OR', 'N_OF', 'UNITS'].includes((n as ReqNode).type) && typeof (n as ReqNode).required === 'boolean' && Array.isArray((n as ReqNode).children),
+        'tree.schema', `${path}: node must be { kind: "node", type: AND|OR|N_OF|UNITS, required, children }`)) { treeOk = false; return }
       const node = n as ReqNode
       if (node.title !== undefined) err(typeof node.title === 'string', 'tree.schema', `${path}: title must be a string`)
       err(node.children.length > 0, 'tree.empty-node', `${path}${node.title ? ` "${node.title}"` : ''}: node has no children`)
       if (node.type === 'N_OF') {
         err(isInt(node.n) && node.n! >= 1 && node.n! <= node.children.length, 'tree.n-of', `${path}: N_OF n=${node.n} with ${node.children.length} children`)
         warn(node.n !== node.children.length, 'tree.n-of-all', `${path}: N_OF ${node.n} of ${node.children.length} is "take all"`)
+      }
+      if (node.type === 'UNITS') {
+        // "N units from the following" (round 10): a positive amount the rows' units can reach
+        const rowsIn = (x: ReqNode | Requirement): Requirement[] => (x.kind === 'req' ? [x] : x.children.flatMap(rowsIn))
+        const total = [...new Map(rowsIn(node).map((r) => [r.id, Number.isFinite(r.units) && r.units > 0 ? r.units : 0])).values()].reduce((t, u) => t + u, 0)
+        if (err(typeof node.n === 'number' && Number.isFinite(node.n) && node.n > 0, 'tree.units', `${path}: UNITS n=${node.n} must be a positive number of units`))
+          err(node.n! <= total, 'tree.units', `${path}: UNITS ${node.n} units, but its rows add up to ${total}`)
       }
       if (node.title) {
         // a title that also says "required" is ambiguous and kept required on purpose (tree.ambiguous-title)
@@ -329,8 +336,6 @@ export function validateData(dataDir: string, o: ValidateOptions): Report {
       const req = n.children.filter((c) => c.kind === 'req' || c.required).length
       err(req > 0, 'tree.no-required-children', `${n.title ? `"${n.title}"` : `${n.type} node`}: required, but none of its ${n.children.length} children is`)
       if (n.type === 'N_OF') err(isInt(n.n) && n.n! >= 1 && n.n! <= req, 'tree.n-of-required', `${n.title ? `"${n.title}"` : 'N_OF node'}: choose ${n.n} of ${req} required children`)
-      // M-4 safety net: the engine may still count one course in two slots here, so the page sends students to a counselor
-      if (n.type === 'N_OF') warn(!(isInt(n.n) && n.n! >= 2), 'tree.choose-n-review', `${n.title ? `"${n.title}"` : 'N_OF node'}: choose ${n.n} of ${req}; one course may fill two slots (M-4), so a complete verdict shows "confirm with a counselor"`)
     }
     const secs = new Map(sections(a.root))
     for (const [n, r] of secs) {
@@ -379,7 +384,7 @@ export function validateData(dataDir: string, o: ValidateOptions): Report {
       else if (/ambiguous section title/.test(note)) warn(false, 'normalize.ambiguous-title', note)
       // round 7: content normalize could not read as ASSIST meant it is kept for a counselor, but must be visible
       else if (/sending course-group conjunctions not applied/.test(note)) warn(false, 'normalize.conjunctions', note)
-      else if (/template cell not modelled|template section type is not|NFollowingUnits not modelled|unknown group instruction/.test(note)) warn(false, 'normalize.unmodelled', note)
+      else if (/template cell not modelled|template section type is not|NFollowingUnits not modelled|NFollowingUnits row with unknown units|unknown group instruction/.test(note)) warn(false, 'normalize.unmodelled', note)
       else info('normalize.note', note, f)
     }
     agreementsStats.push({
@@ -483,6 +488,7 @@ export function minRows(n: ReqNode | Requirement): number {
   const kids = n.children.filter((c) => c.kind === 'req' || c.required).map(minRows).sort((a, b) => a - b)
   if (n.type === 'AND') return kids.reduce((t, k) => t + k, 0)
   if (n.type === 'OR') return kids[0] ?? 0
+  if (n.type === 'UNITS') return Math.min(...kids, 1) // at least one row; how many depends on their units
   return kids.slice(0, n.n ?? 1).reduce((t, k) => t + k, 0)
 }
 
