@@ -211,6 +211,34 @@ describe('solve: prefer home college', () => {
     expect(p.result.isValid).toBe(true)
   })
 
+  it('K1: two or three idle series at once, and a tiny time limit: never a plan with a false series note', () => {
+    const subjects = ['PHYS', 'CHEM', 'BIOL']
+    const kit = (n: number) => {
+      const s = subjects.slice(0, n), rows = s.flatMap((x, i) => [
+        req(`X${i} 1`, [[`${DA}:${x} 4A`], [`${FH}:${x} 4A`]]), req(`Y${i} 1`, [[`${FH}:${x} 4B`], [`${SM}:${x}Z 2`]])])
+      const a = agreement(and(...rows), s.flatMap((x): [string, number][] => [[`${DA}:${x} 4A`, 15], [`${FH}:${x} 4A`, 2], [`${FH}:${x} 4B`, 10], [`${SM}:${x}Z 2`, 1]]))
+      return titled(a, Object.fromEntries(s.flatMap((x) => [[`${DA}:${x} 4A`, `Mech ${x}`], [`${FH}:${x} 4A`, `Kin ${x}`], [`${FH}:${x} 4B`, `Kin ${x}`], [`${SM}:${x}Z 2`, `Wave ${x}`]])))
+    }
+    /** Every row planned away from home that home covers is met together with the row that pulled it there. */
+    const honest = (p: Plan, n: number) => {
+      for (let i = 0; i < n; i++) if (p.chosen[`X${i} 1`]?.institutionId === FH) expect(p.chosen[`Y${i} 1`]?.institutionId).toBe(FH)
+      for (const f of p.fallbacks ?? []) expect(f.note).not.toMatch(/a later requirement/)
+    }
+    for (const n of [1, 2, 3]) {
+      const a = kit(n)
+      for (const extra of [{}, { collegePenalty: 0, chainPenalty: 0 }]) {
+        const p = solve(new Set(), a, { allowed: [DA, FH, SM], home: DA, preferHome: true, ...extra })
+        honest(p, n)
+        expect(p.totalUnits).toBe(12 * n) // every pair at Foothill: the cheapest valid plan
+      }
+      for (const timeLimitMs of [0, 1]) {
+        const p = solve(new Set(), a, { allowed: [DA, FH, SM], home: DA, preferHome: true, timeLimitMs })
+        honest(p, n)
+        expect(p.result.isValid).toBe(true)
+      }
+    }
+  })
+
   const PSE = 'Physics for Scientists and Engineers: '
   const physics = (more: [string, number][]) => (root: ReqNode) => titled(agreement(root, [
     [`124:PHYS 4A`, 5], [`124:PHYS 4B`, 5], [`124:PHYS 4C`, 5], [`${DA}:PHYS 4A`, 5], [`${DA}:PHYS 4B`, 5], [`${DA}:PHYS 4C`, 5], [`${DA}:PHYS 4D`, 5], [`${SM}:PHYS 9`, 8], ...more]),

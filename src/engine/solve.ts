@@ -40,35 +40,45 @@ interface Candidate { noSeries: string[]; force: Record<string, number>; pricing
  *  (`by`: those rows), and the finished plan's real cost (units + college and chain penalties). */
 interface Meta { idle: { key: string; col: number; by: string[] }[]; cost: number }
 const metaOf = new WeakMap<Plan, Meta>()
-const MAX_CANDIDATES = 8
+const MAX_CANDIDATES = 10
+/** noSeries entry: keep no series group at all (the strict reading of home first). */
+const ALL = '*'
 
 /**
- * The plan (see solveOnce). With preferHome, candidates are planned (B3 pricing and full pricing; then, for a series
- * group kept without its pulling row there, one without that group and one with the pulling row forced to that
- * college), up to MAX_CANDIDATES within one shared timeLimitMs, and each finished plan (prerequisites included) is
- * scored: fewest requirements left unmet, valid under the home-first rule (no idle series group), then real cost.
+ * The plan (see solveOnce). With preferHome, candidates are planned within one shared timeLimitMs, up to
+ * MAX_CANDIDATES: first the strict one (no series group kept, so it can never carry a false series note), then B3
+ * pricing and full pricing; for plans that keep series groups without their pulling rows there ("idle"), one without
+ * all of those groups, one with all their pulling rows forced to those colleges, then each one alone. Only plans with
+ * no idle series group are returned (the strict plan always qualifies), scored on the finished plan (prerequisites
+ * included): fewest requirements left unmet, then real cost.
  */
 export function solve(taken: Set<CourseId>, a0: Agreement, opts: SolveOptions): Plan {
   const { allowed, home } = opts
   if (!opts.preferHome || home === undefined || !allowed.includes(home)) return solveOnce(taken, a0, opts)
   const t0 = Date.now(), limit = opts.timeLimitMs
   const left = () => (limit === undefined ? undefined : Math.max(0, limit - (Date.now() - t0)))
-  const queue: Candidate[] = [{ noSeries: [], force: {}, pricing: 'home' }, { noSeries: [], force: {}, pricing: 'full' }]
+  const none = { noSeries: [], force: {} }
+  const queue: Candidate[] = [{ ...none, noSeries: [ALL], pricing: 'home' }, { ...none, pricing: 'home' }, { ...none, pricing: 'full' }, { ...none, noSeries: [ALL], pricing: 'full' }]
   const seen = new Set<string>(), done: { plan: Plan; meta?: Meta }[] = []
   while (queue.length && done.length < MAX_CANDIDATES) {
     const c = queue.shift()!, k = JSON.stringify([[...c.noSeries].sort(), Object.entries(c.force).sort(), c.pricing])
     if (seen.has(k)) continue
     seen.add(k)
-    if (done.length && left() === 0) break
+    if (done.length && left() === 0) break // the strict plan is in: out of time, return the best valid one so far
     const plan = solveOnce(taken, a0, { ...opts, timeLimitMs: left() }, c), meta = metaOf.get(plan)
     done.push({ plan, meta })
-    for (const x of meta?.idle ?? []) {
+    const idle = meta?.idle ?? []
+    if (!idle.length) continue
+    queue.push({ ...c, noSeries: [...c.noSeries, ...idle.map((x) => x.key)] })
+    queue.push({ ...c, force: { ...c.force, ...Object.fromEntries(idle.map((x) => [[...x.by].sort()[0], x.col])) } })
+    for (const x of idle) {
       queue.push({ ...c, noSeries: [...c.noSeries, x.key] })
       for (const y of x.by) queue.push({ ...c, force: { ...c.force, [y]: x.col } })
     }
   }
-  const key = (d: { plan: Plan; meta?: Meta }) => [d.plan.unsolvable.length, d.plan.result.missing.length, d.meta?.idle.length ? 1 : 0, d.meta?.cost ?? d.plan.totalUnits]
-  return done.reduce((b, d) => (lex(key(d), key(b)) < 0 ? d : b)).plan
+  const valid = done.filter((d) => !d.meta?.idle.length)
+  const key = (d: { plan: Plan; meta?: Meta }) => [d.plan.unsolvable.length, d.plan.result.missing.length, d.meta?.cost ?? d.plan.totalUnits]
+  return (valid.length ? valid : done).reduce((b, d) => (lex(key(d), key(b)) < 0 ? d : b)).plan
 }
 
 
@@ -1122,7 +1132,7 @@ export function preferHomeAgreement(a: Agreement, taken: Set<CourseId>, home: nu
         return true
       }
       const key = `${r.id}|${g.institutionId}`
-      if (noSeries.includes(key)) return false
+      if (noSeries.includes(ALL) || noSeries.includes(key)) return false
       const by = pulls.filter((p) => p.inst === g.institutionId && g.courses.every((c) => has(taken, c, mix) || p.courses.has(c))).map((p) => p.id)
       if (by.length) series.set(key, [...new Set([...(series.get(key) ?? []), ...by])])
       return by.length > 0
