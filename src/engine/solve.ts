@@ -1,9 +1,9 @@
-import type { Agreement, CourseGroup, CourseId, Institution, Partial, Plan, ReqNode, Requirement, Term } from './types'
+import type { Agreement, CourseGroup, CourseId, Institution, Partial, Plan, ReqNode, Requirement } from './types'
 import { canRoute, capOf, has, honorsColleges, hypState, isDeferrable, reqStatus, rowUses, slotFill, slotted, treeStatus, ucOnly, verifySchedule, type ReqStatus } from './verify.ts'
 import { rowToken, type Ways } from './slots.ts'
 import institutions from '../../data/institutions.json' with { type: 'json' }
-import { prereqs } from './sequence.ts'
-import { checkStartTerm, nextOpenTerm, nthTerm, startSlot, type CalendarTerm } from './calendar.ts'
+import { checkStartTerm, nextOpenTerm } from './calendar.ts'
+import { pack } from './pack.ts'
 import { prereqClosure, prereqGraph } from './prereq.ts'
 
 export type TermSystem = 'quarter' | 'semester'
@@ -16,6 +16,8 @@ export interface SolveOptions {
   /** first term of the plan, read in the home calendar; default nextOpenTerm(today) (calendar.ts) */
   startTerm?: { season: 'Fall' | 'Winter' | 'Spring'; year: number }
   termSystem?: TermSystem                     // home college's system; Plan units are reported in it
+  /** Plan summer sessions too (pack.ts: lighter load, never a longer plan). Default false: summer is never planned. */
+  summer?: boolean
   unitSystems?: Record<number, TermSystem>    // institutionId -> native system; missing => assumed termSystem
   budget?: number                             // search nodes before falling back to greedy (optimal = false); default 200k
   timeLimitMs?: number                        // wall-clock search limit; past it, the best plan so far (optimal = false)
@@ -358,14 +360,16 @@ export function solve(taken: Set<CourseId>, a0: Agreement, opts: SolveOptions): 
   type Fam = number[][]
   /** Minimal requirement sets that make the subtree `sat` (S) or pass (P). A row with no way at `allowed` is given up.
    *  `path` names the place in the tree; `inSlot`: below a slot of a "choose N" group, where rows are occurrences. */
-  const fams = (n: ReqNode | Requirement, path = '', inSlot = false): { S: Fam; P: Fam } => {
+  // An occurrence is named by its row and the slots it sits in (every enclosing "choose N" group and which of its
+  // alternatives): two places of one row in the same slots have the same partners, so one way serves both.
+  const fams = (n: ReqNode | Requirement, path = '', inSlot = false, slotsAt = ''): { S: Fam; P: Fam } => {
     if (overflow) return { S: [[]], P: [[]] }
     if (n.kind === 'req') {
       if (ucOnly(n)) return { S: [], P: [[]] }
-      const id = inSlot ? occ(path, ix.get(n)!) : ix.get(n)!
+      const id = inSlot ? occ(`${slotsAt}#${ix.get(n)}`, ix.get(n)!) : ix.get(n)!
       return { S: [[id]], P: [[id]] }
     }
-    const ks = kidsOf(n), slots = slotted(n), fs = ks.map((c, j) => fams(c, `${path}/${j}`, inSlot || slots))
+    const ks = kidsOf(n), slots = slotted(n), fs = ks.map((c, j) => fams(c, `${path}/${j}`, inSlot || slots, slots ? `${slotsAt}/${path}:${j}` : slotsAt))
     if (n.type === 'AND') {
       const P = cross(fs.map((f) => f.P))
       // `sat` once all pass, unless every child can pass as UC-only: then one of them must be `sat`
@@ -430,6 +434,10 @@ export function solve(taken: Set<CourseId>, a0: Agreement, opts: SolveOptions): 
    *  split subject chains. `ws`: other requirements their courses touch, where a new split is counted, or, if in
    *  `guard`, forbidden; with a guard a requirement may be skipped. `pairs`: occurrences whose ways must spend
    *  different courses (M-4); each is given a way of its own, and may be given up when none fits. */
+  /** Most requirements a config may give up and still match the best config so far (solveAt): past it, stop. */
+  let skipCap = INF
+  /** With a config that is one component: the best config's cost vector (less what the config gives up outright). */
+  let capV: number[] | null = null, bestV: number[] | null = null
   const branch = (ls: number[], ws: number[], guard: Set<number> | null, W0: CourseId[][][], PW0: Set<CourseId>[], pCh: number, pairs: [number, number][] = []): Sol | null => {
     const partners = new Map<number, number[]>()
     for (const [x, y] of pairs) { partners.set(x, [...(partners.get(x) ?? []), y]); partners.set(y, [...(partners.get(y) ?? []), x]) }
@@ -464,7 +472,9 @@ export function solve(taken: Set<CourseId>, a0: Agreement, opts: SolveOptions): 
     const bound = (k: number) => {
       const rest = order.slice(k).filter((i) => !done(i)), share = new Map<CourseId, number>()
       for (const i of rest) for (const c of PW[i]) if (!P.has(c)) share.set(c, (share.get(c) ?? 0) + 1)
-      const t = [skip.length, ...sumV([...P])]
+      // a place in a slot whose every way clashes with a partner's already will be given up too
+      const clash = (i: number) => W[i].every((w) => { const all = spent.get(w)!; return partners.get(i)!.some((j) => { const o = assigned.get(j); return !!o && all.some((x) => o.has(x)) }) })
+      const t = [skip.length + order.slice(k).filter((i) => partners.has(i) && !assigned.has(i) && clash(i)).length, ...sumV([...P])]
       if (!pCh) {
         for (const i of rest) {
           let m0 = INF, m1 = 0, m2 = 0, m3 = 0
@@ -526,7 +536,8 @@ export function solve(taken: Set<CourseId>, a0: Agreement, opts: SolveOptions): 
       if (++nodes > budget || late()) return
       while (k < order.length && !partners.has(order[k]) && done(order[k])) k++
       if (k === order.length) return finish()
-      if (best && lex(bound(k), best.v) > 0) return
+      const lb = bound(k)
+      if ((best && lex(lb, best.v) > 0) || lb[0] > skipCap || (capV && lex(lb, capV) > 0)) return
       const i = order[k], mine = partners.get(i)
       const adds = W[i].map((w) => ({ w, add: w.filter((c) => !P.has(c)) })).map((x) => ({ ...x, key: [...sumV(x.add), ...x.add] }))
       for (const { w, add } of adds.sort((x, y) => lex(x.key, y.key))) {
@@ -635,13 +646,18 @@ export function solve(taken: Set<CourseId>, a0: Agreement, opts: SolveOptions): 
     pairs.forEach((p) => at(p[0]).ps.push(p))
     const cs: CourseId[] = [], skip = [...forced], got: [number, string[]][] = []
     let splits = 0, cost = 0
+    const cap = skipCap
+    capV = comps.size === 1 && bestV ? [bestV[0] - forced.length, ...bestV.slice(1)] : null
     for (const { ls, ws, ps } of comps.values()) {
+      skipCap = cap - skip.length // what this config has given up already counts against the cap
       // the colleges a component may use decide its ways
       const cols = [...new Set(ls.flatMap((i) => W[i].filter((w) => w.length).map((w) => instOf(w[0]))))].sort((x, y) => x - y)
-      const s = component(`${ls}|${ws}|${guard ? ws.filter((w) => guard.has(w)) : '-'}|${ps.map((p) => p.join('~'))}`, cols, ls, ws, guard, W, PW, pCh, ps)
-      if (!s) return null
+      const s = component(`${ls}|${ws}|${guard ? ws.filter((w) => guard.has(w)) : '-'}|${ps.map((p) => p.join('~'))}|${skipCap}|${capV}`, cols, ls, ws, guard, W, PW, pCh, ps)
+      if (!s) { skipCap = cap; capV = null; return null }
       cs.push(...s.cs); skip.push(...s.skip); splits += s.v[2]; cost += s.v[1]; got.push(...(s.got ?? []))
     }
+    skipCap = cap; capV = null
+    if (skip.length > cap) return null
     cs.sort()
     const [, away, hon, n] = sumV(cs)
     return { v: [skip.length, cost, splits, away, hon, n], cs, skip: skip.sort((x, y) => x - y), cfg: C0, ...(got.length ? { got } : {}) }
@@ -753,7 +769,16 @@ export function solve(taken: Set<CourseId>, a0: Agreement, opts: SolveOptions): 
       if (!solved.has(key)) {
         const PW = poolOf(W)
         let b: Sol | null = null
-        for (const C of configs) { const r = solveConfig(C, guarded, W, PW, pCh); if (r && better(r, b)) b = r }
+        // a config that must give up more than the best so far cannot win (what it gives up only grows)
+        const lost = (C: number[]) => C.filter((i) => isPseudo(i) || (isRow(i) && !sat0[i] && !W[i].length) || (isOcc(i) && !W[i].length)).length
+        // fewest given up, then fewest ids, then by content: a good incumbent early, in an order the input does not set
+        const ck = new Map(configs.map((C) => [C, C.map(idKey).sort().join('\u0007')]))
+        for (const C of [...configs].sort((x, y) => lost(x) - lost(y) || x.length - y.length || (ck.get(x)! < ck.get(y)! ? -1 : ck.get(x)! > ck.get(y)! ? 1 : 0))) {
+          if (b && lost(C) > b.v[0]) break
+          skipCap = b ? b.v[0] : INF; bestV = b ? b.v : null
+          const r = solveConfig(C, guarded, W, PW, pCh); if (r && better(r, b)) b = r
+        }
+        skipCap = INF; bestV = null
         solved.set(key, b)
       }
       return solved.get(key)!
@@ -1084,11 +1109,6 @@ export function solve(taken: Set<CourseId>, a0: Agreement, opts: SolveOptions): 
     planned = best.cs
     const h = withTaken(planned), st = statOf(h), ok = rootPasses(h)
     for (const i of best.cfg) if (!isPseudo(i) && !isPair(i) && !sat0[rowOf(i)] && st[rowOf(i)].satisfied) chosen[L[rowOf(i)].id] = completed(L[rowOf(i)], h)!
-    // a row filling a slot of a "choose N" group: the group its own way completes (M-4: not one another slot uses)
-    for (const [i, all] of best.got ?? []) {
-      const r = rowOf(i), g = !sat0[r] && completed(L[r], h, new Set(all))
-      if (g) chosen[L[r].id] = g
-    }
     // a plan the tree passes leaves nothing unmet, whatever its config gave up (a search cut short by the budget)
     unsolvable = best.skip.filter((i) => !ok && (isPseudo(i) || isOcc(i) || !st[i].satisfied)).map((i) => {
       if (isPseudo(i)) return pseudo[i - PSEUDO]
@@ -1103,7 +1123,7 @@ export function solve(taken: Set<CourseId>, a0: Agreement, opts: SolveOptions): 
   let prereqOnly: CourseId[] = [], prereqWarnings: string[] = []
   ;({ planned, chosen, prereqOnly, prereqWarnings, optimal } = withPrereqs(planned, chosen, optimal))
   const terms = pack([...planned], (c) => unitsOf(c, true), unitCap, startTerm, termSystem, (c) => a.catalog[c]?.title ?? '',
-    (c) => (a.catalog[c] ? unitSystems[a.catalog[c].institutionId] : undefined) ?? termSystem)
+    (c) => (a.catalog[c] ? unitSystems[a.catalog[c].institutionId] : undefined) ?? termSystem, { summer: opts.summer === true })
   const result = verifySchedule(withTaken(planned), a0)
   // Never report nothing unmet for a plan the checker does not pass (e.g. one course counted for two slots of a
   // "choose N" group that the fallback could not resolve): name what is missing instead.
@@ -1161,76 +1181,4 @@ function withValidUnits(a: Agreement): { a: Agreement; badUnits: CourseId[] } {
   const catalog = { ...a.catalog }
   for (const c of bad) delete catalog[c]
   return { a: { ...a, catalog }, badUnits: bad }
-}
-
-/* ---- term packing ---- */
-
-// ponytail: prerequisite order is inferred from ids and titles (sequence.ts); swap for real requisite data if ASSIST
-// ever populates `requisites`.
-function pack(courses: CourseId[], unitsOf: (c: CourseId) => number, cap: number, start: NonNullable<SolveOptions['startTerm']>, system: TermSystem, titleOf: (c: CourseId) => string = () => '', systemOf: (c: CourseId) => TermSystem = () => system): Term[] {
-  if (!(cap > 0 && Number.isFinite(cap))) cap = system === 'semester' ? 12 : 16 // NaN / <=0 / Infinity -> default
-  // preds: [course, gap]: gap 1 = strictly later term, 0 = same term or later (a lab after its lecture)
-  const preds = new Map<CourseId, [CourseId, number][]>(courses.map((c) => [c, []]))
-  for (const e of prereqs(courses, titleOf).edges) preds.get(e.to)!.push([e.from, e.rule === 'co' ? 0 : 1])
-  // depth: longest prerequisite chain below a course (the edges are acyclic); a lab sorts just after its lecture
-  const memo = new Map<CourseId, number>()
-  const depth = (c: CourseId): number => memo.get(c) ?? (memo.set(c, Math.max(0, ...preds.get(c)!.map(([p, g]) => depth(p) + (g || 0.5)))), memo.get(c)!)
-  const ordered = [...courses].sort((x, y) => depth(x) - depth(y) || unitsOf(y) - unitsOf(x))
-
-  // H-3: each course goes in a term of its own college's calendar; quarter and semester terms share one timeline
-  // (calendar.ts) and the cap applies to the combined load of every term running in each quarter period.
-  const slot0 = startSlot(start, system)
-  type Slot = { cal: CalendarTerm; courses: CourseId[]; units: number }
-  const bySys: Record<TermSystem, Slot[]> = { quarter: [], semester: [] }
-  const termAt = (s: TermSystem, j: number) => {
-    while (bySys[s].length <= j) bySys[s].push({ cal: nthTerm(s, slot0, bySys[s].length), courses: [], units: 0 })
-    return bySys[s][j]
-  }
-  // order on the timeline: start, then end, then home calendar first (Fall quarter and Fall semester share a span)
-  const key = (t: CalendarTerm) => [t.start, t.end, t.system === system ? 0 : 1]
-  const geq = (x: number[], y: number[]) => x[0] - y[0] || x[1] - y[1] || x[2] - y[2]
-  const load = new Map<number, number>() // quarter period -> combined units
-  const loadOf = (t: CalendarTerm) => { let m = 0; for (let k = t.start; k <= t.end; k++) m = Math.max(m, load.get(k) ?? 0); return m }
-  const EPS = 1e-9 // units are exact (unrounded) conversions, e.g. 5q = 3.333s
-  const placed = new Map<CourseId, CalendarTerm>()
-  const labs = new Map<CourseId, CourseId[]>()
-  for (const [l, ps] of preds) for (const [p, g] of ps) if (!g && systemOf(l) === systemOf(p)) labs.set(p, [...(labs.get(p) ?? []), l])
-  const ok = (t: CalendarTerm, x: CourseId, skip?: CourseId) => preds.get(x)!.every(([p, g]) => {
-    if (p === skip) return true
-    const q = placed.get(p)!
-    return g ? t.start > q.end : geq(key(t), key(q)) >= 0
-  })
-  for (const c of ordered) {
-    if (placed.has(c)) continue
-    const sys = systemOf(c)
-    // A lecture takes its labs into the same term when they fit and nothing else holds them back.
-    let go = (labs.get(c) ?? []).filter((l) => preds.get(l)!.every(([p]) => p === c || placed.has(p)))
-    if (go.reduce((s, l) => s + unitsOf(l), unitsOf(c)) > cap + EPS) go = []
-    const units = go.reduce((s, l) => s + unitsOf(l), unitsOf(c))
-    // earliest term after every prerequisite with room in every period it covers; a course bigger than the cap
-    // alone goes to a term with nothing running alongside it
-    let j = 0
-    for (;; j++) {
-      // N-3: with finite units and cap a course always fits within a few terms of its last prerequisite; never spin
-      if (j > 4 * (courses.length + 4)) throw new Error(`Could not place ${c} in any term (units ${unitsOf(c)}, cap ${cap}).`)
-      const t = termAt(sys, j).cal
-      if (!ok(t, c) || !go.every((l) => ok(t, l, c))) continue
-      if (units > cap + EPS ? loadOf(t) === 0 : loadOf(t) + units <= cap + EPS) break
-    }
-    const t = termAt(sys, j)
-    for (const x of [c, ...go]) { t.courses.push(x); placed.set(x, t.cal) }
-    t.units += units
-    for (let k = t.cal.start; k <= t.cal.end; k++) load.set(k, (load.get(k) ?? 0) + units)
-  }
-  const used = [...bySys.quarter, ...bySys.semester].filter((t) => t.courses.length).sort((x, y) => geq(key(x.cal), key(y.cal)))
-  const mixed = new Set(used.map((t) => t.cal.system)).size > 1
-  const terms: Term[] = used.map(({ cal, courses: cs, units }) => {
-    const l = loadOf(cal)
-    const t: Term = { name: `${cal.season} ${cal.year}${mixed ? ` (${cal.system})` : ''}`, courses: cs, units: half(units), system: cal.system, season: cal.season, year: cal.year, span: [cal.start, cal.end], load: half(l) }
-    // Only a single course larger than the cap can overflow; flag it rather than hide it.
-    if (l > cap + EPS) t.overCap = true
-    return t
-  })
-  if (mixed) for (const t of terms) t.concurrent = terms.filter((o) => o !== t && o.span![0] <= t.span![1] && t.span![0] <= o.span![1]).map((o) => o.name)
-  return terms // never drop courses (maxTerms NaN once returned []); UI flags > maxTerms
 }

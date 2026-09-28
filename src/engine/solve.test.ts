@@ -734,3 +734,72 @@ describe('round 8 N-1: a tree the planner cannot walk', () => {
     expect(p.unsolvable[0]).toMatch(/malformed/)
   })
 })
+
+describe('M-4: the planner fills each slot of a "choose N" group with its own course', () => {
+  const nof = (n: number, ...children: (ReqNode | Requirement)[]): ReqNode => ({ kind: 'node', type: 'N_OF', n, required: true, children })
+  const cs: [string, number][] = [['1:X 1', 3], ['1:Y 1', 4]]
+  it('a course that could fill two rows is counted once: a second course is planned', () => {
+    const a = agreement(and(nof(2, req('A', [['1:X 1'], ['1:Y 1']]), req('B', [['1:X 1']]))), cs)
+    const p = solve(new Set(['1:X 1']), a, { allowed: [1], home: 1 })
+    expect(plannedOf(p)).toEqual(['1:Y 1'])
+    expect(p.unsolvable).toEqual([])
+    expect(p.result.isValid).toBe(true)
+    expect(p.optimal).toBe(true)
+  })
+  it('nothing taken: both courses, never one course for both slots', () => {
+    const a = agreement(and(nof(2, req('A', [['1:X 1'], ['1:Y 1']]), req('B', [['1:X 1']]))), cs)
+    const p = solve(new Set(), a, { allowed: [1], home: 1 })
+    expect(plannedOf(p).sort()).toEqual(['1:X 1', '1:Y 1'])
+    expect(solve(new Set(), a, { allowed: [1], home: 1, budget: 0 }).result.isValid).toBe(true) // the fallback too
+  })
+  it('two rows that only share one course: a UC-only row fills the other slot', () => {
+    const a = agreement(and(nof(2, req('A', [['1:X 1']]), req('B', [['1:X 1']]), req('U', []))), cs)
+    const p = solve(new Set(), a, { allowed: [1], home: 1 })
+    expect(plannedOf(p)).toEqual(['1:X 1'])
+    expect(p.result).toMatchObject({ isValid: true, deferred: ['U'] })
+  })
+  it('no way to fill every slot with its own course: reported, and the plan does not verify', () => {
+    const a = agreement(and(nof(2, req('A', [['1:X 1']]), req('B', [['1:X 1']]))), cs)
+    const p = solve(new Set(), a, { allowed: [1], home: 1 })
+    expect(p.unsolvable.length).toBeGreaterThan(0)
+    expect(p.result.isValid).toBe(false)
+  })
+  it('"choose 20 of 40" with every course shared by two rows: 20 courses, quickly', () => {
+    const rows = Array.from({ length: 40 }, (_, i) => req(`R${i}`, [[`1:C ${i}`], [`1:C ${(i + 1) % 40}`]]))
+    const a = agreement(and(nof(20, ...rows)), Array.from({ length: 40 }, (_, i): [string, number] => [`1:C ${i}`, 3 + (i % 3)]))
+    const t = performance.now()
+    const p = solve(new Set(['1:C 0', '1:C 1', '1:C 2']), a, { allowed: [1], home: 1 })
+    expect(performance.now() - t).toBeLessThan(2000) // FIXES round 5: such trees took 1-2 s before this fix
+    expect(plannedOf(p)).toHaveLength(17)
+    expect(p.result.isValid).toBe(true)
+  })
+  /** Random "choose N" trees whose rows share courses and repeat: the planner and the checker agree. */
+  it('random cross-check: nothing unsolvable exactly when every allowed course passes, and then the plan verifies', () => {
+    let s = 7
+    const rnd = () => ((s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 2 ** 32)
+    const int = (n: number) => Math.floor(rnd() * n)
+    let checked = 0
+    for (let t = 0; t < 1500; t++) {
+      const pool = Array.from({ length: 3 + int(4) }, (_, i) => `1:K ${i}`)
+      const rows = Array.from({ length: 2 + int(5) }, (_, i) => rnd() < 0.12 ? req(`U${i}`, [])
+        : req(`R${i}`, Array.from({ length: 1 + int(2) }, () => [...new Set([pool[int(pool.length)], ...(rnd() < 0.3 ? [pool[int(pool.length)]] : [])])])))
+      const node = (d: number): ReqNode | Requirement => {
+        if (d > 1 || rnd() < 0.4) return rows[int(rows.length)]
+        const k = 2 + int(3), kids = Array.from({ length: k }, () => node(d + 1))
+        const type = (['AND', 'N_OF', 'N_OF', 'OR'] as const)[int(4)]
+        return { kind: 'node', type, n: type === 'N_OF' ? 1 + int(k) : undefined, required: true, children: kids }
+      }
+      const a = agreement(and(node(0), node(0)), pool.map((c): [string, number] => [c, 1 + int(4)]))
+      if (malformed(a.root)) continue
+      checked++
+      const taken = new Set(pool.filter(() => rnd() < 0.3))
+      for (const budget of [undefined, 0]) {
+        const p = solve(taken, a, { allowed: [1], home: 1, budget })
+        const ctx = `case ${t} budget ${budget}`
+        expect(p.unsolvable.length === 0, ctx).toBe(verifySchedule(new Set([...taken, ...pool]), a).isValid)
+        expect(p.result.isValid, ctx).toBe(p.unsolvable.length === 0)
+      }
+    }
+    expect(checked).toBeGreaterThan(1000)
+  }, 600_000)
+})

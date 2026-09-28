@@ -16,7 +16,8 @@
  * | semester | Fall   | Aug 20                              |
  * | semester | Spring | Jan 20                              |
  *
- * Summer is not planned. `year` is the calendar year the term starts in (Winter 2027 starts in January 2027), the same
+ * A plan never starts in Summer, so summer has no cutoff here. Summer sessions are planned only when the student turns on
+ * "Include summer", and only after the start term (src/engine/pack.ts). `year` is the calendar year the term starts in (Winter 2027 starts in January 2027), the same
  * convention as SolveOptions.startTerm in src/engine/solve.ts.
  */
 

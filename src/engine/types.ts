@@ -74,7 +74,7 @@ export interface ValidationResult {
  *  covers. overCap: load exceeds the per-term unit cap (only when one course alone is bigger than the cap). */
 export interface Term {
   name: string; courses: CourseId[]; units: number; overCap?: boolean
-  system?: 'quarter' | 'semester'; season?: 'Fall' | 'Winter' | 'Spring'; year?: number
+  system?: 'quarter' | 'semester'; season?: 'Fall' | 'Winter' | 'Spring' | 'Summer'; year?: number  // Summer: opt-in only
   span?: [number, number]; load?: number
   concurrent?: string[]   // names of the other planned terms that overlap this one
 }

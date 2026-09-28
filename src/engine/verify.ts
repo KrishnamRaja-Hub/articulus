@@ -300,11 +300,16 @@ export function treeStatus(n: ReqNode | Requirement, done: (r: Requirement) => b
   return fold(n, doneLeaf(done)).st
 }
 
+/** A name for a subtree that does not depend on the order of its children. */
+const canon = (n: ReqNode | Requirement): string => !isObj(n) ? '' : n.kind === 'req' ? n.id
+  : `${n.type}${n.n ?? ''}(${(Array.isArray(n.children) ? n.children : []).map(canon).sort().join(',')})`
 /** For the planner's fallback: the required alternatives of an OR / N_OF that fill its slots now, and the ways they spend. */
 export function slotFill(n: ReqNode, done: (r: Requirement) => boolean | Ways): { kids: (ReqNode | Requirement)[]; ways: Way[] } {
   const all = Array.isArray(n.children) ? n.children : [], keeps = keepsFor(all, null)
   const S = all.flatMap((c, j) => (countedNode(c) ? [{ c, r: fold(c, doneLeaf(done), keeps[j]) }] : []))
-    .filter((x) => x.r.st === 'sat').sort((x, y) => x.r.def.length - y.r.def.length)
+    .filter((x) => x.r.st === 'sat').map((x) => ({ ...x, k: canon(x.c) }))
+    // fewest deferred rows first, then by content, never by input order (the planner's plans must not depend on it)
+    .sort((x, y) => x.r.def.length - y.r.def.length || (x.k < y.k ? -1 : x.k > y.k ? 1 : 0))
   const fit = assignSlots(S.map((x) => x.r.uses), Math.max(0, needOf(n)))
   return { kids: fit.pick.map((i) => S[i].c), ways: fit.ways }
 }

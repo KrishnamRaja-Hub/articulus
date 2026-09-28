@@ -37,6 +37,7 @@ Each leaf is a `Requirement`: one UC course or series (`PHYSICS 7B`, `MATH 51`) 
 - Optional (recommended) subtrees are evaluated for reporting but never fail their parent.
 - A split series is **blocking** only when the plan still needs that requirement. A split in a recommended course or in an alternative the plan does not need is a warning: those courses earn no credit toward it, and the student is told so.
 - A requirement is **completed at the UC after transfer** (`deferred`) only when no college in the agreement articulates it and ASSIST says so explicitly for at least one college (`ucOnly`). Inside an `OR` / `N_OF`, UC-only rows fill only the slots CC alternatives cannot; a CC route is always owed first.
+- **One course, one slot.** In a "choose N" group (`N_OF`, N ≥ 2) each chosen alternative fills one slot, and the courses that meet it are spent on that slot: another slot cannot reuse them, and the same row listed twice fills one slot. Which alternatives fill which slots is an exact assignment (`src/engine/slots.ts`), never greedy. UC-only rows fill only the slots the agreement's CC alternatives could never fill with courses of their own.
 - A row with no articulation and no ASSIST reason (absent from every payload) is neither: it stays missing and the UI says "No ASSIST record · confirm with a counselor". Better a counselor visit than a wrong "take it at the UC".
 
 Output fields:
@@ -87,9 +88,13 @@ Exactness is checked in two places. `src/engine/solve.test.ts` compares full cos
      - **cs**: Intro Programming < Data Structures, and Intro Programming < Assembly / Architecture.
 
    Generic titles ("Calculus", "General Chemistry") take their level from the letter (1A = I). Courses at the same level are never ordered, so a lecture and its lab may share a term. Packing respects the per-term unit cap and never silently drops a course past `maxTerms`; the UI flags overflow. A single course larger than the cap gets a term to itself, marked `overCap` and flagged in the UI.
+
+   Packing (`src/engine/pack.ts`) puts the course at the head of the longest remaining prerequisite chain first (critical path). A chain is measured in time on each course's own calendar: a quarter is one period, a semester one and a half on average. Among equal chains the course whose prerequisites finish latest goes first, then the earlier order (fewest prerequisites above, larger courses first). Each course goes in the earliest term that fits. Greedy packing is not optimal, so the earlier order is packed too and kept when it finishes strictly sooner: a plan is never longer than before.
 7. Re-run `verifySchedule` on taken plus planned and return `{ terms, chosen, result, totalUnits, unsolvable, optimal }`.
 
 Units are converted between systems when the plan mixes quarter and semester colleges. Semester units are multiplied by 1.5 to quarter units. Packing and totals use exact converted units; only displayed numbers are rounded to 0.5. The default cap is 16 quarter units or 12 semester units per term, and terms are named for the student's `termSystem` (Fall/Winter/Spring for quarter, Fall/Spring for semester).
+
+Summer is never planned unless the student turns on **Include summer** in the planner (`SolveOptions.summer`, off by default). Then each college's summer session (quarter and semester alike, June to August, between Spring and Fall on the shared timeline) may hold at most `SUMMER_MAX_COURSES` = 2 courses and `SUMMER_UNIT_CAP` = 10 quarter or 8 semester units (never above the regular cap), across all colleges. A lecture and its lab go together or not at all. Prerequisites work the same way. Summer is used only when it lets the student finish sooner, so turning it on never lengthens a plan. The two-year "too long" window is measured by date, so a summer between the two years is inside it. Summer offerings and financial aid vary by college; the planner says so next to the toggle.
 
 Everything is deterministic. There is no language model anywhere in the path. Same inputs, same plan.
 
@@ -215,7 +220,8 @@ src/data.ts                  loads data/ fixtures, exposes institutions, univers
 src/engine/types.ts          Course, CourseGroup, Requirement, ReqNode, Agreement, ValidationResult, Plan
 src/engine/normalize.ts      raw ASSIST payloads -> Agreement (tree + catalog)
 src/engine/verify.ts         verifySchedule: tree fold, split-series detection
-src/engine/solve.ts          exact minimum-unit search + term packing
+src/engine/solve.ts          exact minimum-unit search
+src/engine/pack.ts           term packing, critical path first, opt-in summer
 src/engine/engine.test.ts    vitest cases against the real Berkeley ME agreement
 src/sections/Hero.tsx        landing
 src/sections/Trap.tsx        the PHYSICS 7B example, running the live engine
