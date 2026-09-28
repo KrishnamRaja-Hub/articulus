@@ -155,6 +155,9 @@ function place(ordered: CourseId[], preds: Map<CourseId, [CourseId, number][]>, 
   const placed = new Map<CourseId, CalendarTerm>()
   const labs = new Map<CourseId, CourseId[]>()
   for (const [l, ps] of preds) for (const [p, g] of ps) if (!g && systemOf(l) === systemOf(p)) labs.set(p, [...(labs.get(p) ?? []), l])
+  // co partners (a lecture's labs, a lab's lecture): the pair may use a summer only together
+  const coLabs = new Map<CourseId, CourseId[]>(), isLab = new Set<CourseId>()
+  for (const [l, ps] of preds) for (const [p, g] of ps) if (!g) { isLab.add(l); coLabs.set(p, [...(coLabs.get(p) ?? []), l]) }
   const ok = (t: CalendarTerm, x: CourseId, skip?: CourseId) => preds.get(x)!.every(([p, g]) => {
     if (p === skip) return true
     const q = placed.get(p)!
@@ -176,7 +179,9 @@ function place(ordered: CourseId[], preds: Map<CourseId, [CourseId, number][]>, 
       const t = termAt(sys, j).cal
       if (!ok(t, c) || !go.every((l) => ok(t, l, c))) continue
       if (t.season === 'Summer') {
-        if (loadOf(t) + units <= summerCap + EPS && (count.get(t.start) ?? 0) + 1 + go.length <= SUMMER_MAX_COURSES) break
+        // B1: a lab never goes to summer on its own, nor a lecture without every one of its labs
+        const together = !isLab.has(c) && (coLabs.get(c) ?? []).every((l) => go.includes(l))
+        if (together && loadOf(t) + units <= summerCap + EPS && (count.get(t.start) ?? 0) + 1 + go.length <= SUMMER_MAX_COURSES) break
       } else if (units > cap + EPS ? loadOf(t) === 0 : loadOf(t) + units <= cap + EPS) break
     }
     const t = termAt(sys, j)

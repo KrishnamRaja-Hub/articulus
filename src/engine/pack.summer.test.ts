@@ -1,9 +1,11 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import berkeleyMe from '../../data/agreements/79-mechanical-engineering-b-s.json'
+import irvineEe from '../../data/agreements/120-electrical-engineering-b-s.json'
 import institutions from '../../data/institutions.json'
 import type { Agreement, CourseId, Institution, Term } from './types'
 import { solve } from './solve'
+import { prereqs } from './sequence'
 import { pack, SUMMER_MAX_COURSES, SUMMER_UNIT_CAP } from './pack'
 import { summerSlot, type TermSystem } from './calendar'
 import { FALL, lengthOf, notLonger, packer, randomCase, violations, type MiniCatalog } from './pack.testkit'
@@ -28,6 +30,58 @@ function summerProblems(ts: Term[], unitsOf: (c: CourseId) => number, cap: numbe
   }
   return out
 }
+
+/** B1: a lab and its lecture (co edge) never split around a summer: if either is in summer, both are in that term. */
+function splitLabs(ts: Term[], courses: CourseId[], titleOf: (c: CourseId) => string): string[] {
+  const at = new Map(ts.flatMap((t) => t.courses.map((c): [CourseId, Term] => [c, t])))
+  return prereqs(courses, titleOf).edges.filter((e) => e.rule === 'co').filter((e) => {
+    const a = at.get(e.from)!, b = at.get(e.to)!
+    return (a.season === 'Summer' || b.season === 'Summer') && a !== b
+  }).map((e) => `${e.from} in ${at.get(e.from)!.name}, ${e.to} in ${at.get(e.to)!.name}`)
+}
+
+describe('summer: a lab never goes to summer apart from its lecture (B1)', () => {
+  it('semester repro: PHYS 4A / 4AL / 4B at cap 7', () => {
+    const titles: Record<string, string> = { 'PHYS 4A': 'Physics I', 'PHYS 4AL': 'Physics I Lab', 'PHYS 4B': 'Physics II' }
+    const ids = Object.keys(titles).map((c) => `1:${c}`)
+    const p = pack(ids, () => 4, 7, FALL, 'semester', (c) => titles[c.slice(2)], () => 'semester', { summer: true })
+    expect(splitLabs(p, ids, (c) => titles[c.slice(2)])).toEqual([])
+    expect(p.find((t) => t.courses.includes('1:PHYS 4AL'))!.season).not.toBe('Summer')
+  })
+
+  it('quarter repro: CHEM 1A 5 / 1AL 3 / 1B 5 / 1C 5 at cap 7', () => {
+    const k = packer(cat([['1:CHEM 1A', 5, 'Chemistry'], ['1:CHEM 1AL', 3, 'Chemistry Lab'], ['1:CHEM 1B', 5, 'Chemistry'],
+      ['1:CHEM 1C', 5, 'Chemistry']]), { 1: 'quarter' }, 'quarter')
+    const cs = ['1:CHEM 1A', '1:CHEM 1AL', '1:CHEM 1B', '1:CHEM 1C']
+    const p = k.run(cs, 7, { summer: true })
+    expect(splitLabs(p, cs, k.titleOf)).toEqual([])
+    expect(p.find((t) => t.courses.includes('1:CHEM 1AL'))!.season).not.toBe('Summer')
+  })
+
+  it('real data: UC Irvine EE, Foothill only, cap 6: ENGR 37L is not in a summer apart from ENGR 37', () => {
+    const a = irvineEe as unknown as Agreement
+    const p = solve(new Set(), a, { allowed: [51], home: 51, unitCap: 6, termSystem: 'quarter', unitSystems, startTerm: FALL, summer: true })
+    const cs = p.terms.flatMap((t) => t.courses)
+    expect(cs).toContain('51:ENGR 37L')
+    const termOf = (c: string) => p.terms.find((t) => t.courses.includes(c))!
+    // the pair exceeds the cap, so the lab follows later (as with summer off), but never in a summer on its own
+    expect(termOf('51:ENGR 37L').season).not.toBe('Summer')
+    expect(termOf('51:ENGR 37').season).not.toBe('Summer')
+    expect(splitLabs(p.terms, cs, (c) => a.catalog[c]?.title ?? '')).toEqual([])
+  })
+
+  it('random plans at low caps (3-8): no lab in summer apart from its lecture', () => {
+    let labsInSummer = 0
+    for (let seed = 1; seed <= 500; seed++) for (const cap of [3, 4, 5, 6, 7, 8]) {
+      const c = randomCase(seed), k = packer(c.catalog, c.systems, c.home)
+      const on = k.run(c.courses, cap, { summer: true })
+      expect(splitLabs(on, c.courses, k.titleOf), `seed ${seed} cap ${cap}`).toEqual([])
+      expect(violations(on, c.courses, k.titleOf), `seed ${seed} cap ${cap}`).toEqual([])
+      if (on.some((t) => t.season === 'Summer' && t.courses.some((x) => /L$/.test(x)))) labsInSummer++
+    }
+    expect(labsInSummer).toBeGreaterThan(0) // pairs do still use summer together
+  }, 120_000)
+})
 
 describe('summer: the calendar', () => {
   it('a quarter chain uses the summer after Spring, named and placed by date', () => {
@@ -137,6 +191,7 @@ describe('summer: off by default, on never longer (properties)', () => {
       expect(off.some((t) => t.season === 'Summer'), `seed ${seed}`).toBe(false)
       expect(lengthOf(on)[0] <= lengthOf(off)[0], `seed ${seed}`).toBe(true)
       expect(violations(on, c.courses, k.titleOf), `seed ${seed}`).toEqual([])
+      expect(splitLabs(on, c.courses, k.titleOf), `seed ${seed}`).toEqual([])
       expect(summerProblems(on, k.unitsOf, c.cap, c.home), `seed ${seed}`).toEqual([])
       expect(on.flatMap((t) => t.courses).sort(), `seed ${seed}`).toEqual(c.courses)
       // summer is used exactly when it finishes sooner

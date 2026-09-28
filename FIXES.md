@@ -420,6 +420,8 @@ Testers covered verdicts, the planner, the data pipeline, the GitHub workflows a
 - Critical path alone would have been later in 14 (default cap) and 58 (low cap) plans, all but 3 of them mixed-calendar. The fallback covers those.
 - 0 prerequisite violations. The old order, run through the new code, reproduces every old plan exactly (1,980 of 1,980).
 
+**Tester fix B1:** with summer on, a lab could land in summer apart from its lecture (the pair was over the regular cap, so the lab was placed alone and summer was open to it). Now a lab never goes to summer alone, and a lecture goes to summer only with all its labs. Summer off is unchanged. Regression tests cover the semester repro (PHYS 4A/4AL/4B, cap 7), the quarter repro (CHEM 1A/1AL/1B/1C, cap 7), the real repro (UC Irvine EE, Foothill only, cap 6: ENGR 37L), and 3,000 random plans at caps 3 to 8. They fail on 530ca5c. vitest: 1053 pass.
+
 **Summer, measured** on the same grid, default cap: 763 of 990 plans finish sooner with summer on, 0 later. Plans past the two-year window: 436 off, 295 on. Summer off gives exactly the same 1,980 plans as before the summer change.
 
 **Tests:** `pack.critical.test.ts` has the extra-term case (old order: 4 terms, new: 3), a mixed-calendar case where chains are measured in time, labs and caps, and two property tests: 1,500 random plans and every real agreement, each checking that the plan is never longer than the old order and no prerequisite is out of order. `pack.golden.test.ts` stores 176 real schedules with everything pack needs, so any change to packing shows up (regenerate with `UPDATE_PACK_GOLDEN=1`). It also checks all 176 against the old order, and that summer off gives exactly the stored schedules. `pack.summer.test.ts`: calendar placement on quarter, semester and mixed plans; the course and unit caps; labs; summer used only when sooner; 1,000 random plans and all 176 stored plans with summer on (never longer, cap held, no prerequisite out of order); and `solve` with summer unset, off and on. `planState.test.ts`: summer in the request key and in the two-year window.
@@ -435,4 +437,5 @@ Testers covered verdicts, the planner, the data pipeline, the GitHub workflows a
 
 **Still open:**
 - Greedy packing is not optimal. With quarter and semester colleges sharing the cap, some plans could still be a term shorter.
+- The summer unit cap is in the home college's units (10 quarter or 8 semester), even for a summer course at a college on the other calendar. Its units are converted, so the load is right, but that college's own summer limit may differ.
 - Summer caps and sessions are one rule for every college. Real summer schedules, session lengths and which courses are offered in summer are not modelled.
